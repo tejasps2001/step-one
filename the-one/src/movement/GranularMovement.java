@@ -9,7 +9,7 @@ import movement.Path;
  * Movement model where each path is generated based on offset and direction
  * (left, right, bottom, up) (work in progress)
  */
-public class GranularMovement extends MovementModel {
+public class GranularMovement extends MovementModel implements SwitchableMovement {
   /** Name space of the settings (append to group name space) */
   public static final String GRANULAR_MOVEMENT_NS = "GranularMovement.";
   /**
@@ -53,15 +53,36 @@ public class GranularMovement extends MovementModel {
     this.lastLoc = gm.startLoc;
   }
 
-  public generateNextPath(String direction) {
+  /**
+   * Generate a new path which makes the node move in the
+   * direction specified by an offset.
+   * @param direction
+   * @return the generated path 
+   */
+  public Path generateNextPath(String direction) {
     this.nextPath = new Path(generateSpeed());
-    // TODO add direction based offsets
-    double x = this.lastLoc.getX();
-    double y = this.lastLoc.getY() + offset;
-
+    double x = this.initLoc.getX();
+    double y = this.initLoc.getY();
+    switch (direction) {
+      case "up":
+        y += offset;        
+        break;
+      case "right":
+        x += offset;
+        break;
+      case "down":
+        y -= offset;
+      break;
+      case "left":
+        x -= offset;
+      break;
+      default:
+        break;
+    }
     Coord nextPoint = new Coord(x, y);
     this.nextPath.addWaypoint(nextPoint);
     this.lastLoc = nextPoint;
+    return this.nextPath;
   }
 
   /**
@@ -99,5 +120,31 @@ public class GranularMovement extends MovementModel {
   @Override
   public GranularMovement replicate() {
     return new GranularMovement(this);
+  }
+
+  /**
+   * Tell the movment model what its current location is
+   * @param lastWaypoint
+   */
+  public void setLocation(Coord lastWaypoint) {
+    this.initLoc = lastWaypoint.clone();
+  }
+
+  /**
+	 * Get the last location the getPath() of this movement model has returned
+	 * @return the last location
+	 */
+	public Coord getLastLocation() {
+    return this.lastLoc;
+  }
+
+  /**
+	 * Checks if the movement model is finished doing its task and it's time to
+	 * switch to the next movement model. The method should be called between
+	 * getPath() calls.
+	 * @return true if ready
+	 */
+	public boolean isReady() {
+    return true;
   }
 }

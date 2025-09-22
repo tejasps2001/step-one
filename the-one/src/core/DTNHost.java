@@ -151,10 +151,6 @@ public class DTNHost implements Comparable<DTNHost> {
 		return this.address;
 	}
 
-	public String getName() {
-		return this.name;
-	}
-
 	/**
 	 * Returns this hosts's ModuleCommunicationBus
 	 * @return this hosts's ModuleCommunicationBus
@@ -199,14 +195,6 @@ public class DTNHost implements Comparable<DTNHost> {
 	}
 
 	/**
-	 * Returns the current destination of this host. (this is not the final destination..)
-	 * @return The destination of current movement line segment
-	 */
-	public Coord getDestination() {
-		return this.destination;
-	}
-
-	/**
 	 * Returns the Path this node is currently traveling or null if no
 	 * path is in use at the moment.
 	 * @return The path this node is traveling
@@ -222,6 +210,13 @@ public class DTNHost implements Comparable<DTNHost> {
 	 */
 	public void setLocation(Coord location) {
 		this.location = location.clone();
+	}
+
+	/**
+	 * Returns the Node's name (groupId + netAddress)
+	 */
+	public String getName() {
+		return this.name;
 	}
 
 	/**
@@ -551,7 +546,4 @@ public class DTNHost implements Comparable<DTNHost> {
 		return this.getAddress() - h.getAddress();
 	}
 
-	public MovementModel getMovement() {
-		return movement;
-	}
 }

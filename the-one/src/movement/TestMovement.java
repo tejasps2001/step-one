@@ -1,7 +1,11 @@
 package movement;
 
 import core.Coord;
+import java.util.List;
+import core.DTNHost;
+import core.SimScenario;
 import core.Settings;
+import core.Connection;
 
 public class TestMovement extends ExtendedMovementModel {
     private ExtendedLinearMovement extendedLinearMM;
@@ -11,6 +15,14 @@ public class TestMovement extends ExtendedMovementModel {
     private static final int RANDOM_WALK_MODE = 2;
 
     private int mode;
+    private DTNHost host;
+    private int hostCounter;
+    private DTNHost fogHost;
+    private Connection fogConnection;
+    private List<Connection> connections;
+
+    // Host-specific variables
+    private static List<DTNHost> self;
 
     public TestMovement(Settings settings) {
         super(settings);
@@ -18,6 +30,7 @@ public class TestMovement extends ExtendedMovementModel {
         randomWalkMM = new RandomWalk(settings);
         setCurrentMovementModel(extendedLinearMM);
         mode = EXTENDED_LINEAR_MODE;
+        hostCounter = 0;
     }
 
     /**
@@ -46,14 +59,42 @@ public class TestMovement extends ExtendedMovementModel {
 
     @Override 
     public boolean newOrders() {
-        switch (mode) {
-            case EXTENDED_LINEAR_MODE:
-                if(extendedLinearMM.isReady())
-                    setCurrentMovementModel(randomWalkMM);
+        self = SimScenario.getInstance().getHosts();
+        while(hostCounter < self.size()) {
+            DTNHost host = self.get(hostCounter++);
+            String hostName = host.getName();
+            if(hostName.startsWith("m")) {
+                this.host = host;
+            }
+            if(hostName.startsWith("p")) {
+                fogHost = host;
+            }
+        }
+
+        this.connections = this.host.getConnections();
+        for(Connection connection: connections) {
+            if(connection.getOtherNode(this.host) == fogHost) {
+                fogConnection = connection;
+                // System.out.println(fogConnection);
                 break;
-        
-            default:
-                break;
+            }
+        }
+
+        if(fogConnection != null) {
+            switch (mode) {
+                case EXTENDED_LINEAR_MODE:
+                    System.out.println(fogConnection);
+                    if(fogConnection.isUp() == false && extendedLinearMM.isReady()){
+                        setCurrentMovementModel(randomWalkMM);
+                        mode = RANDOM_WALK_MODE;
+                    }
+                    else {
+                        extendedLinearMM.setNextPoint(new Coord(200, 200));
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
         return true;
     }

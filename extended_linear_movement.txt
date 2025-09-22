@@ -1,0 +1,14 @@
+# Scenario Name
+Scenario.name = simplest_scenario
+Scenario.simulateConnections = true
+Scenario.updateInterval = 0.1
+Scenario.endTime = 4200
+
+Scenario.nrofHostGroups = 1
+
+Group1.groupID = m
+Group1.nrofHosts = 1
+Group1.movementModel = ExtendedLinearMovement
+
+Group.nrofHosts = 1
+Events.nrof = 0 

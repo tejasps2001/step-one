@@ -15,9 +15,9 @@ public class ExtendedLinearMovement extends MovementModel implements SwitchableM
     super(s);
 
     this.locations = new ArrayList<>();
+    this.locations.add(new Coord(150, 200));
     this.locations.add(new Coord(150, 150));
-    this.locations.add(new Coord(150, 300));
-    // this.locations.add(new Coord(250, 450));
+    this.locations.add(new Coord(150, 200));
   }
 
   // Copy constructor
