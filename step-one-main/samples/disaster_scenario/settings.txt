@@ -1,0 +1,50 @@
+Scenario.name = disaster_scenario
+Scenario.simulateConnections = true
+Scenario.updateInterval = 1.0
+# 43200s == 12h
+Scenario.endTime = 3600
+Scenario.nrofHostGroups = 2
+
+# drone interface 
+
+btInterface.type = SimpleBroadcastInterface
+btInterface.transmitRange=10
+btInterface.transmitSpeed=21K
+
+lteInterface.type=SimpleBroadcastInterface
+lteInterface.transmitRange=10
+lteInterface.transmitSpeed=40K
+
+#fog interface 
+
+wlanInterface.type=SimpleBroadcastInterface
+wlanInterface.transmitRange=1000
+wlanInterface.transmitSpeed=42K
+
+
+
+
+#Group1= Drone group
+Group1.nrofInterfaces=2
+Group1.interface1=btInterface
+Group1.interface2=lteInterface
+Group1.groupID = d
+
+# Group = fog group
+
+Group2.nrofInterfaces = 1
+Group2.interface = wlanInterface
+Group1.groupID = f
+
+
+
+
+
+## Movement model settings
+# seed for movement models' pseudo random number generator (default = 0)
+MovementModel.rngSeed = 1
+# World's size for Movement Models without implicit size (width, height; meters)
+MovementModel.worldSize = 600, 600
+
+## messages are handled in-engine
+Events.nrof = 0 

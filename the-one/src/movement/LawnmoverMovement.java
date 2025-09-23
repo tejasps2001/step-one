@@ -1,5 +1,6 @@
 package movement;
 
+import java.net.NetworkInterface;
 import java.util.List;
 
 import core.Connection;
@@ -11,7 +12,7 @@ import core.SimScenario;
 /**
  * This movement model makes the host execute the lawnmover pattern
  */
-public class LawnmoverMovement extends ExtendedMovementModel implements SwitchableMovement {
+public class LawnmoverMovement extends ExtendedMovementModel {
     /** Name space of the settings (append to group name space) */
     public static final String LAWNMOVER_MOVEMENT_NS = "LawnmoverMovement.";
     /** 
@@ -21,11 +22,11 @@ public class LawnmoverMovement extends ExtendedMovementModel implements Switchab
     public static final String START_LOCATION_S = "startLocation";
 
     private Coord startLoc;
-    private int offset;
-    private GranularMovement granularMM;
     private Coord initLoc;
+    private Coord endLoc;
     private Path nextPath;
-    private prevLocation;
+    private double hostRange;
+    private boolean firstTime;
 
     private DTNHost host;
     private int hostCounter;
@@ -43,10 +44,9 @@ public class LawnmoverMovement extends ExtendedMovementModel implements Switchab
     public LawnmoverMovement(Settings settings) {
         super(settings);
         int coords[];
-        granularMM = new GranularMovement(settings);
         coords = settings.getCsvInts(LAWNMOVER_MOVEMENT_NS + START_LOCATION_S, 2);
         this.startLoc = new Coord(coords[0], coords[1]);
-        setCurrentMovementModel(granularMM);
+        this.firstTime=true;
     }
 
     /**
@@ -55,8 +55,33 @@ public class LawnmoverMovement extends ExtendedMovementModel implements Switchab
     */
     public LawnmoverMovement(LawnmoverMovement lm) {
         super(lm);
-        granularMM.setLocation(initLoc);
+        // the first interface assumed to be bluetooth interface
+        this.hostRange = this.host.getInterfaces().get(0).getTransmitRange();
     }
+
+    /**
+	 * Returns a single coordinate path (using the only possible coordinate)
+	 * 
+	 * @return a single coordinate path
+	 */
+	@Override
+	public Path getPath() {
+		Path p = nextPath;
+		this.nextPath = null;
+		return p;
+	}
+
+	/**
+	 * Returns Double.MAX_VALUE (no paths available)
+	 */
+	@Override
+	public double nextPathAvailable() {
+		if (nextPath == null) {
+			return Double.MAX_VALUE; // no new paths available
+		} else {
+			return 0;
+		}
+	}
 
     public boolean newOrders() {
         self = SimScenario.getInstance().getHosts();
@@ -70,26 +95,10 @@ public class LawnmoverMovement extends ExtendedMovementModel implements Switchab
                 fogHost = host;
             }
         }
+        this.nextPath = new Path(generateSpeed());
+        this.nextPath.addWaypoint(host.getLocation());
+        
 
-        this.connections = this.host.getConnections();
-        for(Connection connection: connections) {
-            if(connection.getOtherNode(this.host) == fogHost) {
-                fogConnection = connection;
-                // System.out.println(fogConnection);
-                break;
-            }
-        }
-
-        if(fogConnection != null) {
-            if(fogConnection.isUp() == false && granularMM.isReady()) {
-
-            }
-            else {
-                d
-                granularMM.generateNextPath("up");
-
-            }
-        }
         return true;
     }
 
