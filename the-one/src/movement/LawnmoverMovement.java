@@ -72,6 +72,7 @@ public class LawnmoverMovement extends MovementModel implements SwitchableMoveme
     @Override
 	public Path getPath() {
         //first motion after starting the simulation 
+	    System.out.println("init loc: " + initLoc);
 	    if (firstTime) {
             this.nextPath = new Path(0.05);
             this.nextPath.addWaypoint(this.initLoc);
@@ -191,6 +192,7 @@ public class LawnmoverMovement extends MovementModel implements SwitchableMoveme
 
 	@Override
 	public void setLocation(Coord lastWaypoint) {
+	    System.out.println("set initLocation: " + lastWaypoint);
 	    this.initLoc = lastWaypoint.clone();
 	}
 

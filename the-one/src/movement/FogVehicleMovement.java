@@ -15,7 +15,7 @@ public class FogVehicleMovement extends ExtendedMovementModel {
   private static boolean isReady;
   private String localMode;
   private int mode = LINEAR_MODE;
-  private boolean lawnmoverMMOnce;
+  private static boolean lawnmoverMMOnce;
   private List<Coord> pointList;
 
   public FogVehicleMovement(Settings settings) {
@@ -31,6 +31,7 @@ public class FogVehicleMovement extends ExtendedMovementModel {
     pointList.add(new Coord(300, 300));
     pointList.add(new Coord(600, 300));
     pointList.add(new Coord(900, 300));
+    pointList.add(new Coord(900, 600));
     extendedLinearMM = new ExtendedLinearMovement(proto.extendedLinearMM);
     stationaryMM = proto.stationaryMM.replicate();
     lawnmoverMM = proto.lawnmoverMM.replicate();
@@ -66,16 +67,18 @@ public class FogVehicleMovement extends ExtendedMovementModel {
       switch (mode) {
         case LINEAR_MODE:
           setCurrentMovementModel(extendedLinearMM);
-          if (!pointList.isEmpty())
+          if (!pointList.isEmpty()) {
             extendedLinearMM.setNextPoint(pointList.remove(0));
+            lawnmoverMMOnce = false;
+          }
           break;
         case STATIONARY_MODE:
           setCurrentMovementModel(stationaryMM);
           break;
       }
     } else {
-      if (lawnmoverMMOnce) {
-        mode = LINEAR_MODE;
+      if (mode == STATIONARY_MODE && lawnmoverMMOnce) {
+        return false;
       }
       switch (mode) {
         case LINEAR_MODE:
@@ -86,8 +89,8 @@ public class FogVehicleMovement extends ExtendedMovementModel {
           break;
         case STATIONARY_MODE:
           isReady = false;
-          lawnmoverMM = lawnmoverMM.replicate();
           setCurrentMovementModel(lawnmoverMM);
+          lawnmoverMM = lawnmoverMM.replicate();
           lawnmoverMMOnce = true;
           break;
       }
