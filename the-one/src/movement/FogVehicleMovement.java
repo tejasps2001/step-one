@@ -2,6 +2,7 @@ package movement;
 
 import core.Coord;
 import core.Settings;
+import java.util.*;
 
 public class FogVehicleMovement extends ExtendedMovementModel {
   private LawnmoverMovement lawnmoverMM;
@@ -13,8 +14,9 @@ public class FogVehicleMovement extends ExtendedMovementModel {
 
   private static boolean isReady;
   private String localMode;
-  private int mode;
+  private int mode = LINEAR_MODE;
   private boolean lawnmoverMMOnce;
+  private List<Coord> pointList;
 
   public FogVehicleMovement(Settings settings) {
     super(settings);
@@ -25,6 +27,10 @@ public class FogVehicleMovement extends ExtendedMovementModel {
 
   public FogVehicleMovement(FogVehicleMovement proto) {
     super(proto);
+    pointList = new ArrayList<Coord>();
+    pointList.add(new Coord(300, 300));
+    pointList.add(new Coord(600, 300));
+    pointList.add(new Coord(900, 300));
     extendedLinearMM = new ExtendedLinearMovement(proto.extendedLinearMM);
     stationaryMM = proto.stationaryMM.replicate();
     lawnmoverMM = proto.lawnmoverMM.replicate();
@@ -43,7 +49,7 @@ public class FogVehicleMovement extends ExtendedMovementModel {
       localMode = "droneVehicle";
     }
     
-    Coord initLoc = new Coord(300, 300);
+    Coord initLoc = pointList.remove(0);
     extendedLinearMM.setLocation(initLoc);
     return initLoc;
   }
@@ -60,6 +66,8 @@ public class FogVehicleMovement extends ExtendedMovementModel {
       switch (mode) {
         case LINEAR_MODE:
           setCurrentMovementModel(extendedLinearMM);
+          if (!pointList.isEmpty())
+            extendedLinearMM.setNextPoint(pointList.remove(0));
           break;
         case STATIONARY_MODE:
           setCurrentMovementModel(stationaryMM);
@@ -73,9 +81,12 @@ public class FogVehicleMovement extends ExtendedMovementModel {
         case LINEAR_MODE:
           isReady = true;
           setCurrentMovementModel(extendedLinearMM);
+          if (!pointList.isEmpty())
+            extendedLinearMM.setNextPoint(pointList.remove(0));
           break;
         case STATIONARY_MODE:
           isReady = false;
+          lawnmoverMM = lawnmoverMM.replicate();
           setCurrentMovementModel(lawnmoverMM);
           lawnmoverMMOnce = true;
           break;
