@@ -9,7 +9,7 @@ import core.Settings;
 /**
  * This movement model makes the host execute the lawnmover pattern
  */
-public class LawnmoverMovement extends MovementModel {
+public class LawnmoverMovement extends MovementModel implements SwitchableMovement {
     /** Name space of the settings (append to group name space) */
     public static final String LAWNMOVER_MOVEMENT_NS = "LawnmoverMovement.";
     /** 
@@ -31,6 +31,7 @@ public class LawnmoverMovement extends MovementModel {
     private static double fogRange;
     private static double droneRange;
     private boolean done;
+    private boolean firstTime;
 
     /**
      * Lawnmower Movement executes lawnmower sweeping pattern by a drone
@@ -59,14 +60,8 @@ public class LawnmoverMovement extends MovementModel {
         verticalShift = -1 * fogRange;
         this.horizontalShiftSum = 0;
         this.turning = true;
-
-        //first motion after starting the simulation 
+        this.firstTime = true;
         this.initLoc = lm.startLoc;
-        this.nextPath = new Path(generateSpeed());
-        this.nextPath.addWaypoint(this.initLoc);
-        this.endLoc = initLoc.clone();
-        endLoc.translate(0, verticalShift);
-        this.nextPath.addWaypoint(endLoc.clone());
     }
     
     /**
@@ -76,33 +71,42 @@ public class LawnmoverMovement extends MovementModel {
 	 */
     @Override
 	public Path getPath() {
+        //first motion after starting the simulation 
+	    if (firstTime) {
+            this.nextPath = new Path(0.05);
+            this.nextPath.addWaypoint(this.initLoc);
+            this.endLoc = initLoc.clone();
+            endLoc.translate(0, verticalShift);
+            this.nextPath.addWaypoint(endLoc.clone());
+            firstTime = false;
+	    }
         // Pass a clone of the Coord object since the original Coord would
         // be changed by getPath() faster than it is applied in the simulation
-        this.nextPath = new Path(0.5);
-        this.nextPath.addWaypoint(endLoc.clone());
+        this.nextPath = new Path(0.05);
         while(horizontalShiftSum <= fogRange) {
             if(turning==true) {
                 endLoc.translate(horizontalShift , 0 );
                 horizontalShiftSum += Math.abs(horizontalShift);
                 turning = !turning;
                 this.nextPath.addWaypoint(endLoc.clone());
-                break;
             }
             else{
                 verticalShift *= -1;
                 endLoc.translate(0, 2 * verticalShift);
                 this.nextPath.addWaypoint(endLoc.clone());
                 turning = !turning;
-                break;
             }
         }
+
         if(horizontalShiftSum > fogRange){
-            this.nextPath.addWaypoint(new Coord(300, 300));
+            this.nextPath.addWaypoint(this.initLoc);
             done = true;
         }
         Path p = nextPath;
-        if(done)
+        
+        if (done) {
             this.nextPath = null;
+        }
         return p;
 	}
 
@@ -181,7 +185,22 @@ public class LawnmoverMovement extends MovementModel {
     }
 
     @Override
-	public MovementModel replicate() {
+	public LawnmoverMovement replicate() {
 		return new LawnmoverMovement(this);
+	}
+
+	@Override
+	public void setLocation(Coord lastWaypoint) {
+	    this.initLoc = lastWaypoint.clone();
+	}
+
+	@Override
+	public boolean isReady() {
+	    return true;
+	}
+
+	@Override
+	public Coord getLastLocation() {
+	    return endLoc.clone();
 	}
 }

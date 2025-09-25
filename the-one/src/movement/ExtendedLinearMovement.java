@@ -15,9 +15,7 @@ public class ExtendedLinearMovement extends MovementModel implements SwitchableM
     super(s);
 
     this.locations = new ArrayList<>();
-    this.locations.add(new Coord(150, 200));
-    this.locations.add(new Coord(150, 150));
-    this.locations.add(new Coord(150, 200));
+    this.locations.add(new Coord(600, 300));
   }
 
   // Copy constructor
@@ -28,8 +26,7 @@ public class ExtendedLinearMovement extends MovementModel implements SwitchableM
     this.initLoc = this.locations.get(0);
     this.nextPath = new Path(0.1);
     this.nextPath.addWaypoint(initLoc);
-    this.nextPath.addWaypoint(this.locations.get(1));
-    lastLoc = this.locations.get(1);
+    lastLoc = this.locations.get(0);
 
 
     // this.nextPath.addWaypoint(this.locations.get(2));
@@ -58,7 +55,6 @@ public class ExtendedLinearMovement extends MovementModel implements SwitchableM
 
   public boolean setNextPoint(Coord nextLocation) {
     this.nextPath = new Path(0.1);
-    this.nextPath.addWaypoint(this.locations.get(2));
     this.nextPath.addWaypoint(nextLocation);
     return true;
   }
