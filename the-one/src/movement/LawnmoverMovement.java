@@ -1,18 +1,15 @@
 package movement;
 
-import java.net.NetworkInterface;
 import java.util.List;
-
 import core.Connection;
 import core.Coord;
 import core.DTNHost;
 import core.Settings;
-import core.SimScenario;
 
 /**
  * This movement model makes the host execute the lawnmover pattern
  */
-public class LawnmoverMovement extends ExtendedMovementModel {
+public class LawnmoverMovement extends MovementModel {
     /** Name space of the settings (append to group name space) */
     public static final String LAWNMOVER_MOVEMENT_NS = "LawnmoverMovement.";
     /** 
@@ -21,23 +18,23 @@ public class LawnmoverMovement extends ExtendedMovementModel {
      */
     public static final String START_LOCATION_S = "startLocation";
 
+    public static final String DRONE_GROUP_ID = "Group1.";
+
     private Coord startLoc;
     private Coord initLoc;
     private Coord endLoc;
     private Path nextPath;
-    private double hostRange;
-    private boolean firstTime;
-
-    private DTNHost host;
-    private int hostCounter;
-    private DTNHost fogHost;
-    private Connection fogConnection;
-    private List<Connection> connections;
-
-    // Host-specific variables
-    private static List<DTNHost> self;
+    private boolean turning;
+    private double horizontalShift;
+    private static double verticalShift;
+    private double horizontalShiftSum;
+    private static double fogRange;
+    private static double droneRange;
+    private boolean done;
 
     /**
+     * Lawnmower Movement executes lawnmower sweeping pattern by a drone
+     * around a fog vehicle.
     * Creates a new movement model based on a Settings object's settings.
     * @param s The Settings object where the settings are read from
     */
@@ -46,7 +43,9 @@ public class LawnmoverMovement extends ExtendedMovementModel {
         int coords[];
         coords = settings.getCsvInts(LAWNMOVER_MOVEMENT_NS + START_LOCATION_S, 2);
         this.startLoc = new Coord(coords[0], coords[1]);
-        this.firstTime=true;
+        Settings globalSettings = new Settings();
+        droneRange = globalSettings.getDouble("btInterface.transmitRange");
+        fogRange = globalSettings.getDouble("wlanInterface.transmitRange");
     }
 
     /**
@@ -55,20 +54,56 @@ public class LawnmoverMovement extends ExtendedMovementModel {
     */
     public LawnmoverMovement(LawnmoverMovement lm) {
         super(lm);
-        // the first interface assumed to be bluetooth interface
-        this.hostRange = this.host.getInterfaces().get(0).getTransmitRange();
-    }
+        // Assume the first interface to be bluetooth interface
+        horizontalShift = -1 * droneRange * 2;
+        verticalShift = -1 * fogRange;
+        this.horizontalShiftSum = 0;
+        this.turning = true;
 
+        //first motion after starting the simulation 
+        this.initLoc = lm.startLoc;
+        this.nextPath = new Path(generateSpeed());
+        this.nextPath.addWaypoint(this.initLoc);
+        this.endLoc = initLoc.clone();
+        endLoc.translate(0, verticalShift);
+        this.nextPath.addWaypoint(endLoc.clone());
+    }
+    
     /**
-	 * Returns a single coordinate path (using the only possible coordinate)
-	 * 
-	 * @return a single coordinate path
+     * Returns a single coordinate path (using the only possible coordinate)
+     * 
+     * @return a single coordinate path
 	 */
-	@Override
+    @Override
 	public Path getPath() {
-		Path p = nextPath;
-		this.nextPath = null;
-		return p;
+        // Pass a clone of the Coord object since the original Coord would
+        // be changed by getPath() faster than it is applied in the simulation
+        this.nextPath = new Path(0.5);
+        this.nextPath.addWaypoint(endLoc.clone());
+        while(horizontalShiftSum <= fogRange) {
+            if(turning==true) {
+                endLoc.translate(horizontalShift , 0 );
+                horizontalShiftSum += Math.abs(horizontalShift);
+                turning = !turning;
+                this.nextPath.addWaypoint(endLoc.clone());
+                break;
+            }
+            else{
+                verticalShift *= -1;
+                endLoc.translate(0, 2 * verticalShift);
+                this.nextPath.addWaypoint(endLoc.clone());
+                turning = !turning;
+                break;
+            }
+        }
+        if(horizontalShiftSum > fogRange){
+            this.nextPath.addWaypoint(new Coord(300, 300));
+            done = true;
+        }
+        Path p = nextPath;
+        if(done)
+            this.nextPath = null;
+        return p;
 	}
 
 	/**
@@ -84,22 +119,60 @@ public class LawnmoverMovement extends ExtendedMovementModel {
 	}
 
     public boolean newOrders() {
-        self = SimScenario.getInstance().getHosts();
-        while(hostCounter < self.size()) {
-            DTNHost host = self.get(hostCounter++);
-            String hostName = host.getName();
-            if(hostName.startsWith("m")) {
-                this.host = host;
-            }
-            if(hostName.startsWith("p")) {
-                fogHost = host;
-            }
-        }
+        // self = SimScenario.getInstance().getHosts();
+        // while(hostCounter < self.size()) {
+        //     DTNHost host = self.get(hostCounter++);
+        //     String hostName = host.getName();
+        //     if(hostName.startsWith("m")) {
+        //         this.host = host;
+        //     }
+        //     if(hostName.startsWith("p")) {
+        //         fogHost = host;
+        //     }
+        // }
+        
         this.nextPath = new Path(generateSpeed());
-        this.nextPath.addWaypoint(host.getLocation());
+        this.nextPath.addWaypoint(new Coord(150,150));
+        
+        // this.initLoc = endLoc.clone();
+        // this.nextPath.addWaypoint(this.initLoc);
+        // this.endLoc = endLoc.clone();
+        this.nextPath.addWaypoint(endLoc.clone());
+
+        if(turning) {
+            endLoc.translate(-1* horizontalShift , 0 );
+            this.nextPath.addWaypoint(endLoc.clone());
+        }
+        else{
+            endLoc.translate(verticalShift, 0);
+            verticalShift *= -1;
+            this.nextPath.addWaypoint(endLoc.clone());
+        }
+
+        turning = !turning;
+        return true;
         
 
-        return true;
+        // if(turning == true) {
+        //     if (horizontalShiftSum >= verticalShift) {
+        //         // if (horizontalShift < 0) {
+        //         //     this.nextPath = null;
+        //         //     return false;
+        //         // }
+        //         this.endLoc = this.startLoc.clone();
+        //         horizontalShift = -horizontalShift;
+        //         this.horizontalShiftSum = 0;
+        //     }
+
+        //     endLoc.translate(horizontalShift, 0 );
+        //     horizontalShiftSum += horizontalShift;
+        // } else { 
+        //     endLoc.translate(0, verticalShift * 2);
+        // }
+        
+        // turning = !turning;
+        // this.nextPath.addWaypoint(endLoc);
+        // return true;
     }
 
     @Override

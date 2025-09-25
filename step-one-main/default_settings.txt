@@ -27,8 +27,8 @@ btInterface.transmitRange = 12
 
 
 # assign network interface to all groups
-Group.nrofInterfaces = 1
-Group.interface1 = btInterface
+# Group.nrofInterfaces = 1
+# Group.interface1 = btInterface
 
 
 ## Message Router

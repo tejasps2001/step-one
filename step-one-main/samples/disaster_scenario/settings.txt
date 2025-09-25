@@ -9,36 +9,35 @@ Scenario.nrofHostGroups = 2
 
 btInterface.type = SimpleBroadcastInterface
 btInterface.transmitRange=10
-btInterface.transmitSpeed=21K
+btInterface.transmitSpeed=125k
 
 lteInterface.type=SimpleBroadcastInterface
-lteInterface.transmitRange=10
-lteInterface.transmitSpeed=40K
+lteInterface.transmitRange=9999999999
+lteInterface.transmitSpeed=1500k
 
 #fog interface 
 
 wlanInterface.type=SimpleBroadcastInterface
-wlanInterface.transmitRange=1000
-wlanInterface.transmitSpeed=42K
-
-
-
+wlanInterface.transmitRange=91
+wlanInterface.transmitSpeed=250k
 
 #Group1= Drone group
+Group1.nrofHosts=1
 Group1.nrofInterfaces=2
+# The drone-fog vehicle interface must be interface2
 Group1.interface1=btInterface
-Group1.interface2=lteInterface
+Group1.interface2=wlanInterface
 Group1.groupID = d
+Group1.movementModel = LawnmoverMovement
+Group1.LawnmoverMovement.startLocation = 300,300
 
 # Group = fog group
 
 Group2.nrofInterfaces = 1
-Group2.interface = wlanInterface
-Group1.groupID = f
-
-
-
-
+Group2.interface1 = wlanInterface
+Group2.groupID = f
+Group2.movementModel = StationaryMovement
+Group2.nodeLocation = 300,300
 
 ## Movement model settings
 # seed for movement models' pseudo random number generator (default = 0)
