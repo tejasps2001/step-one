@@ -72,7 +72,6 @@ public class LawnmoverMovement extends MovementModel implements SwitchableMoveme
     @Override
 	public Path getPath() {
         //first motion after starting the simulation 
-	    System.out.println("init loc: " + initLoc);
 	    if (firstTime) {
             this.nextPath = new Path(0.05);
             this.nextPath.addWaypoint(this.initLoc);
@@ -99,12 +98,38 @@ public class LawnmoverMovement extends MovementModel implements SwitchableMoveme
             }
         }
 
-        if(horizontalShiftSum > fogRange){
+        horizontalShift *= -1;
+        horizontalShiftSum = 0;
+        this.nextPath.addWaypoint(this.initLoc);
+        this.endLoc = this.initLoc.clone();
+        verticalShift *= -1;
+        endLoc.translate(0, verticalShift);
+        this.nextPath.addWaypoint(endLoc.clone());
+        turning = true;
+        
+        // this is pretty bad form
+        // sacrifices are required though
+        while(horizontalShiftSum <= fogRange) {
+            if(turning==true) {
+                endLoc.translate(horizontalShift , 0 );
+                horizontalShiftSum += Math.abs(horizontalShift);
+                turning = !turning;
+                this.nextPath.addWaypoint(endLoc.clone());
+            }
+            else{
+                verticalShift *= -1;
+                endLoc.translate(0, 2 * verticalShift);
+                this.nextPath.addWaypoint(endLoc.clone());
+                turning = !turning;
+            }
+        }
+        
+        if (horizontalShiftSum > fogRange){
             this.nextPath.addWaypoint(this.initLoc);
             done = true;
         }
-        Path p = nextPath;
         
+        Path p = nextPath;
         if (done) {
             this.nextPath = null;
         }
@@ -192,7 +217,6 @@ public class LawnmoverMovement extends MovementModel implements SwitchableMoveme
 
 	@Override
 	public void setLocation(Coord lastWaypoint) {
-	    System.out.println("set initLocation: " + lastWaypoint);
 	    this.initLoc = lastWaypoint.clone();
 	}
 

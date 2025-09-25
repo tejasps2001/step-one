@@ -27,11 +27,13 @@ public class FogVehicleMovement extends ExtendedMovementModel {
 
   public FogVehicleMovement(FogVehicleMovement proto) {
     super(proto);
+    // list of stops
     pointList = new ArrayList<Coord>();
     pointList.add(new Coord(300, 300));
     pointList.add(new Coord(600, 300));
     pointList.add(new Coord(900, 300));
     pointList.add(new Coord(900, 600));
+    
     extendedLinearMM = new ExtendedLinearMovement(proto.extendedLinearMM);
     stationaryMM = proto.stationaryMM.replicate();
     lawnmoverMM = proto.lawnmoverMM.replicate();
