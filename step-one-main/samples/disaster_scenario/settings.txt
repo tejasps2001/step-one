@@ -22,7 +22,7 @@ wlanInterface.transmitRange=91
 wlanInterface.transmitSpeed=250k
 
 #Group1= Drone group
-Group1.nrofHosts=1
+Group1.nrofHosts=2
 Group1.nrofInterfaces=2
 # The drone-fog vehicle interface must be interface2
 Group1.interface1=btInterface

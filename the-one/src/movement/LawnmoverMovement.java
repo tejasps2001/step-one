@@ -27,7 +27,7 @@ public class LawnmoverMovement extends MovementModel implements SwitchableMoveme
     private Path nextPath;
     private boolean turning;
     private double horizontalShift;
-    private static double verticalShift;
+    private double verticalShift;
     private double horizontalShiftSum;
     private static double fogRange;
     private static double droneRange;
@@ -68,12 +68,12 @@ public class LawnmoverMovement extends MovementModel implements SwitchableMoveme
             horizontalShift = droneRange * 2;
             verticalShift = fogRange;
         }
-        this.horizontalShiftSum = lm.horizontalShiftSum;
+        this.horizontalShiftSum = 0;
         this.turning = true;
 
         // first motion after starting the simulation
         this.initLoc = lm.startLoc;
-        this.nextPath = new Path(generateSpeed());
+        this.nextPath = new Path(0.5);
         this.nextPath.addWaypoint(this.initLoc);
         this.endLoc = initLoc.clone();
         endLoc.translate(0, verticalShift);
@@ -100,6 +100,7 @@ public class LawnmoverMovement extends MovementModel implements SwitchableMoveme
                 this.horizontalShiftSum += Math.abs(horizontalShift);
                 turning = !turning;
                 this.nextPath.addWaypoint(endLoc.clone());
+                
                 break;
             } else {
                 verticalShift *= -1;
