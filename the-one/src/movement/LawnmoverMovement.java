@@ -1,9 +1,6 @@
 package movement;
 
-import java.util.List;
-import core.Connection;
 import core.Coord;
-import core.DTNHost;
 import core.Settings;
 
 /**
@@ -17,8 +14,8 @@ public class LawnmoverMovement extends MovementModel {
      * line({@value})
      */
     public static final String START_LOCATION_S = "startLocation";
-
-    public static final String DRONE_GROUP_ID = "Group1.";
+    /**Group ID of the fog nodes */
+    public static final String FOG_GROUP_ID = "Group2.";
 
     private Coord startLoc;
     private Coord initLoc;
@@ -31,6 +28,7 @@ public class LawnmoverMovement extends MovementModel {
     private static double fogRange;
     private static double droneRange;
     private boolean done;
+    private Coord fogLoc;
 
     /**
      * Lawnmower Movement executes lawnmower sweeping pattern by a drone
@@ -43,9 +41,13 @@ public class LawnmoverMovement extends MovementModel {
         int coords[];
         coords = settings.getCsvInts(LAWNMOVER_MOVEMENT_NS + START_LOCATION_S, 2);
         this.startLoc = new Coord(coords[0], coords[1]);
+        // Create another settings object to access other node group's 
+        // settings
         Settings globalSettings = new Settings();
         droneRange = globalSettings.getDouble("btInterface.transmitRange");
         fogRange = globalSettings.getDouble("wlanInterface.transmitRange");
+        coords = globalSettings.getCsvInts(FOG_GROUP_ID + "nodeLocation", 2);
+        fogLoc = new Coord(coords[0], coords[1]);
     }
 
     /**
@@ -67,6 +69,7 @@ public class LawnmoverMovement extends MovementModel {
         this.endLoc = initLoc.clone();
         endLoc.translate(0, verticalShift);
         this.nextPath.addWaypoint(endLoc.clone());
+        this.fogLoc = lm.fogLoc.clone();
     }
     
     /**
@@ -97,7 +100,8 @@ public class LawnmoverMovement extends MovementModel {
             }
         }
         if(horizontalShiftSum > fogRange){
-            this.nextPath.addWaypoint(new Coord(300, 300));
+            System.err.println(fogLoc);
+            this.nextPath.addWaypoint(fogLoc.clone());
             done = true;
         }
         Path p = nextPath;
@@ -133,10 +137,6 @@ public class LawnmoverMovement extends MovementModel {
         
         this.nextPath = new Path(generateSpeed());
         this.nextPath.addWaypoint(new Coord(150,150));
-        
-        // this.initLoc = endLoc.clone();
-        // this.nextPath.addWaypoint(this.initLoc);
-        // this.endLoc = endLoc.clone();
         this.nextPath.addWaypoint(endLoc.clone());
 
         if(turning) {
@@ -151,28 +151,6 @@ public class LawnmoverMovement extends MovementModel {
 
         turning = !turning;
         return true;
-        
-
-        // if(turning == true) {
-        //     if (horizontalShiftSum >= verticalShift) {
-        //         // if (horizontalShift < 0) {
-        //         //     this.nextPath = null;
-        //         //     return false;
-        //         // }
-        //         this.endLoc = this.startLoc.clone();
-        //         horizontalShift = -horizontalShift;
-        //         this.horizontalShiftSum = 0;
-        //     }
-
-        //     endLoc.translate(horizontalShift, 0 );
-        //     horizontalShiftSum += horizontalShift;
-        // } else { 
-        //     endLoc.translate(0, verticalShift * 2);
-        // }
-        
-        // turning = !turning;
-        // this.nextPath.addWaypoint(endLoc);
-        // return true;
     }
 
     @Override
