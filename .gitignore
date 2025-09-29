@@ -135,3 +135,9 @@ gradle-app.setting
 **/build/
 
 # End of https://www.gitignore.io/api/java,gradle,intellij
+
+# Covers VS Code
+.vscode/
+
+# Ignore reports
+step-one-main/samples/**/reports/
