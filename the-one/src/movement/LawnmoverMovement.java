@@ -6,7 +6,7 @@ import core.Settings;
 /**
  * This movement model makes the host execute the lawnmover pattern
  */
-public class LawnmoverMovement extends MovementModel {
+public class LawnmoverMovement extends MovementModel implements SwitchableMovement {
     /** Name space of the settings (append to group name space) */
     public static final String LAWNMOVER_MOVEMENT_NS = "LawnmoverMovement.";
     /** 
@@ -61,8 +61,7 @@ public class LawnmoverMovement extends MovementModel {
         verticalShift = -1 * fogRange;
         this.horizontalShiftSum = 0;
         this.turning = true;
-
-        //first motion after starting the simulation 
+        this.firstTime = true;
         this.initLoc = lm.startLoc;
         this.nextPath = new Path(generateSpeed());
         this.nextPath.addWaypoint(this.initLoc);
@@ -79,34 +78,44 @@ public class LawnmoverMovement extends MovementModel {
 	 */
     @Override
 	public Path getPath() {
+        //first motion after starting the simulation 
+	    System.out.println("init loc: " + initLoc);
+	    if (firstTime) {
+            this.nextPath = new Path(0.05);
+            this.nextPath.addWaypoint(this.initLoc);
+            this.endLoc = initLoc.clone();
+            endLoc.translate(0, verticalShift);
+            this.nextPath.addWaypoint(endLoc.clone());
+            firstTime = false;
+	    }
         // Pass a clone of the Coord object since the original Coord would
         // be changed by getPath() faster than it is applied in the simulation
-        this.nextPath = new Path(0.5);
-        this.nextPath.addWaypoint(endLoc.clone());
+        this.nextPath = new Path(0.05);
         while(horizontalShiftSum <= fogRange) {
             if(turning==true) {
                 endLoc.translate(horizontalShift , 0 );
                 horizontalShiftSum += Math.abs(horizontalShift);
                 turning = !turning;
                 this.nextPath.addWaypoint(endLoc.clone());
-                break;
             }
             else{
                 verticalShift *= -1;
                 endLoc.translate(0, 2 * verticalShift);
                 this.nextPath.addWaypoint(endLoc.clone());
                 turning = !turning;
-                break;
             }
         }
+
         if(horizontalShiftSum > fogRange){
             System.err.println(fogLoc);
             this.nextPath.addWaypoint(fogLoc.clone());
             done = true;
         }
         Path p = nextPath;
-        if(done)
+        
+        if (done) {
             this.nextPath = null;
+        }
         return p;
 	}
 
@@ -159,7 +168,23 @@ public class LawnmoverMovement extends MovementModel {
     }
 
     @Override
-	public MovementModel replicate() {
+	public LawnmoverMovement replicate() {
 		return new LawnmoverMovement(this);
+	}
+
+	@Override
+	public void setLocation(Coord lastWaypoint) {
+	    System.out.println("set initLocation: " + lastWaypoint);
+	    this.initLoc = lastWaypoint.clone();
+	}
+
+	@Override
+	public boolean isReady() {
+	    return true;
+	}
+
+	@Override
+	public Coord getLastLocation() {
+	    return endLoc.clone();
 	}
 }
