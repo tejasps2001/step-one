@@ -2,100 +2,82 @@ package movement;
 
 import core.Coord;
 import core.Settings;
-import java.util.*;
 
 public class FogVehicleMovement extends ExtendedMovementModel {
-  private LawnmoverMovement lawnmoverMM;
-  private ExtendedLinearMovement extendedLinearMM;
+  /** Per node group setting for setting the location ({@value}) */
+  public static final String LOCATION_S = "nodeLocation";
+  private Coord initLoc;
+  
+  private FogVehicleSystem vehicleSystem;
+
   private SwitchableStationaryMovement stationaryMM;
+  private MapRouteMovement mapRouteMM;
 
-  private static final int LINEAR_MODE = 1;
-  private static final int STATIONARY_MODE = 2;
-
-  private static boolean isReady;
-  private String localMode;
-  private int mode = LINEAR_MODE;
-  private static boolean lawnmoverMMOnce;
-  private List<Coord> pointList;
+  private static final int STATIONARY_MODE = 1;
+  private static final int MAP_MODE = 2;
+  private int state;
+  private boolean scanning;
 
   public FogVehicleMovement(Settings settings) {
     super(settings);
-    extendedLinearMM = new ExtendedLinearMovement(settings);
+    
+    int fvs = settings.getInt(FogVehicleSystem.FOG_VEHICLE_SYSTEM_NR);
+    vehicleSystem = FogVehicleSystem.getFogVehicleSystem(fvs);
+    vehicleSystem.registerFogVehicle(this);
+    
+    mapRouteMM = new MapRouteMovement(settings);
     stationaryMM = new SwitchableStationaryMovement(settings);
-    lawnmoverMM = new LawnmoverMovement(settings);
+    setCurrentMovementModel(stationaryMM);
   }
 
   public FogVehicleMovement(FogVehicleMovement proto) {
     super(proto);
-    pointList = new ArrayList<Coord>();
-    pointList.add(new Coord(300, 300));
-    pointList.add(new Coord(600, 300));
-    pointList.add(new Coord(900, 300));
-    pointList.add(new Coord(900, 600));
-    extendedLinearMM = new ExtendedLinearMovement(proto.extendedLinearMM);
+    this.vehicleSystem = proto.vehicleSystem;
+    
+    mapRouteMM = proto.mapRouteMM.replicate();
     stationaryMM = proto.stationaryMM.replicate();
-    lawnmoverMM = proto.lawnmoverMM.replicate();
-    setCurrentMovementModel(extendedLinearMM);
-    mode = proto.mode;
-    isReady = true;
+    setCurrentMovementModel(stationaryMM);
+    
+    state = STATIONARY_MODE;
+    scanning = false;
+  }
 
+  @Override
+  public boolean newOrders() {
+    switch (state) {
+      case MAP_MODE:
+        setCurrentMovementModel(stationaryMM);
+        state = STATIONARY_MODE;
+        vehicleSystem.hasStopped();
+        break;
+      case STATIONARY_MODE:
+        if (!scanning) {
+          setCurrentMovementModel(mapRouteMM);
+          state = MAP_MODE;
+          vehicleSystem.nowMoving();
+        }
+        break;
+    }
+
+    return true;
+  }
+
+  /**
+   * Called by the fog vehicle system when all drones return
+   */
+  public void scanDone() {
+    scanning = false;
   }
 
   @Override
   public Coord getInitialLocation() {
-    String hostName = this.getHost().getName();
-    if (hostName.startsWith("f")) {
-      localMode = "fogVehicle";
-    } else {
-      localMode = "droneVehicle";
-    }
-    
-    Coord initLoc = pointList.remove(0);
-    extendedLinearMM.setLocation(initLoc);
+    initLoc = stationaryMM.getInitialLocation().clone();
+    stationaryMM.setLocation(initLoc);
     return initLoc;
   }
-
+  
   @Override
   public FogVehicleMovement replicate() {
-    return new FogVehicleMovement (this);
-  }
-
-  public boolean newOrders() {
-    mode = (mode == LINEAR_MODE) ? STATIONARY_MODE : LINEAR_MODE;
-    if (localMode == "fogVehicle") {
-      if (!isReady) return false;
-      switch (mode) {
-        case LINEAR_MODE:
-          setCurrentMovementModel(extendedLinearMM);
-          if (!pointList.isEmpty()) {
-            extendedLinearMM.setNextPoint(pointList.remove(0));
-            lawnmoverMMOnce = false;
-          }
-          break;
-        case STATIONARY_MODE:
-          setCurrentMovementModel(stationaryMM);
-          break;
-      }
-    } else {
-      if (mode == STATIONARY_MODE && lawnmoverMMOnce) {
-        return false;
-      }
-      switch (mode) {
-        case LINEAR_MODE:
-          isReady = true;
-          setCurrentMovementModel(extendedLinearMM);
-          if (!pointList.isEmpty())
-            extendedLinearMM.setNextPoint(pointList.remove(0));
-          break;
-        case STATIONARY_MODE:
-          isReady = false;
-          setCurrentMovementModel(lawnmoverMM);
-          lawnmoverMM = lawnmoverMM.replicate();
-          lawnmoverMMOnce = true;
-          break;
-      }
-    }
-
-    return true;
+    return new FogVehicleMovement(this);
   }
 }
