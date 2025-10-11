@@ -19,7 +19,7 @@ public class FogVehicleSystem {
   public FogVehicleMovement fogVehicle;
   public HashMap<Integer, DroneMovement> drones;
 
-  private Set<Integer> dronesScanning;
+  private HashSet<Integer> dronesScanning;
 
   /**
    * Creates a new instance of FogVehicleSystem without any fog
@@ -56,6 +56,7 @@ public class FogVehicleSystem {
     // assuming drones are either one or two
     List<Integer> dronesDirections = Arrays.asList(1, -1);
     dronesScanning = new HashSet<>();
+    int count = 0;
     for (DroneMovement drone : drones.values()) {
       drone.startScan(dronesDirections.get(count));
       dronesScanning.add(drone.getID());
@@ -65,10 +66,10 @@ public class FogVehicleSystem {
 
   /**
    * Called by a drone when it's done scanning.
-   * System remove the drone from scanning set.
+   * System removes the drone from scanning set.
    * @param droneID id of the drone that is done
    */
-  public void droneDone(droneID) {
+  public void droneDone(int droneID) {
     dronesScanning.remove(droneID);
     if (dronesScanning.isEmpty()) {
       fogVehicle.scanDone();
@@ -78,11 +79,10 @@ public class FogVehicleSystem {
   /**
    * Called by the fog vehicle when it is going to move to the
    * next point.
-   * @param nextPath the path to be taken next by the drones
    */
-  public void nowMoving(Path nextPath) {
+  public void nowMoving() {
     for (DroneMovement drone: drones.values()) {
-      drone.enterFog(nextPath);
+      drone.enterFog();
     }
   }
 
