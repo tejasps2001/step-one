@@ -92,7 +92,7 @@ public class DroneMovement extends ExtendedMovementModel {
 
   @Override
   public Coord getInitialLocation() {
-    initLoc = stationaryMM.getInitialLocation().clone();
+    initLoc = mapRouteMM.getInitialLocation().clone();
     stationaryMM.setLocation(initLoc);
     return initLoc;
   }

@@ -16,6 +16,7 @@ class LawnmowerMovement extends MovementModel implements SwitchableMovement {
   private double horizontalShiftSum;
   private boolean turning;
   private boolean done;
+  private boolean startMode;
 
   /**
    * Lawnmower Movement executes lawnmower sweeping pattern by a drone
@@ -43,19 +44,22 @@ class LawnmowerMovement extends MovementModel implements SwitchableMovement {
    */
   public LawnmowerMovement(LawnmowerMovement lm) {
     super(lm);
+    this.fogRange = lm.fogRange;
+    this.droneRange = lm.droneRange;
 
     horizontalShift = -1 * droneRange * 2;
     verticalShift = -1 * fogRange;
     horizontalShiftSum = 0;
     turning = false;
 
-    this.initLoc = lm.initLoc.clone();
-    this.nextPath = new Path(generateSpeed());
-    this.nextPath.addWaypoint(this.initLoc);
-    this.endLoc = initLoc.clone();
-    endLoc.translate(0, verticalShift);
-
-    this.nextPath.addWaypoint(endLoc.clone());
+    startMode = true;
+    // this.initLoc = lm.initLoc.clone();
+    // this.nextPath = new Path(generateSpeed());
+    // this.nextPath.addWaypoint(this.initLoc);
+    // this.endLoc = initLoc.clone();
+    // endLoc.translate(0, verticalShift);
+    //
+    // this.nextPath.addWaypoint(endLoc.clone());
   }
 
   /**
@@ -66,10 +70,14 @@ class LawnmowerMovement extends MovementModel implements SwitchableMovement {
   @Override
   public Path getPath() {
     this.nextPath = new Path(0.5);
+    this.endLoc = initLoc.clone();
+    
+    System.out.println("initLoc for lawnmower" + initLoc);
     nextPath.addWaypoint(initLoc);
-    nextPath.addWaypoint(endLoc.clone());
+    System.out.println("fogRange: " + fogRange);
 
     while (horizontalShiftSum <= fogRange) {
+      System.out.println("horizontalShiftSum: " + horizontalShiftSum);
       if (turning == true) {
         endLoc.translate(horizontalShift, 0);
         horizontalShiftSum += Math.abs(horizontalShift);
@@ -98,7 +106,7 @@ class LawnmowerMovement extends MovementModel implements SwitchableMovement {
 
   @Override
   public double nextPathAvailable() {
-    if (nextPath == null) {
+    if (nextPath == null && !startMode) {
       return Double.MAX_VALUE;
     } else {
       return 0;

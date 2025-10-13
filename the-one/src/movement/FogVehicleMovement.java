@@ -12,6 +12,7 @@ public class FogVehicleMovement extends ExtendedMovementModel {
 
   private SwitchableStationaryMovement stationaryMM;
   private MapRouteMovement mapRouteMM;
+  private int fvs;
 
   private static final int STATIONARY_MODE = 1;
   private static final int MAP_MODE = 2;
@@ -21,7 +22,7 @@ public class FogVehicleMovement extends ExtendedMovementModel {
   public FogVehicleMovement(Settings settings) {
     super(settings);
     
-    int fvs = settings.getInt(FogVehicleSystem.FOG_VEHICLE_SYSTEM_NR);
+    fvs = settings.getInt(FogVehicleSystem.FOG_VEHICLE_SYSTEM_NR);
     vehicleSystem = FogVehicleSystem.getFogVehicleSystem(fvs);
     vehicleSystem.registerFogVehicle(this);
     
@@ -35,6 +36,7 @@ public class FogVehicleMovement extends ExtendedMovementModel {
     this.vehicleSystem = proto.vehicleSystem;
     
     mapRouteMM = proto.mapRouteMM.replicate();
+    System.out.println("init Location for : " + proto.fvs + " : " + mapRouteMM.getInitialLocation());
     stationaryMM = proto.stationaryMM.replicate();
     setCurrentMovementModel(stationaryMM);
     
@@ -55,6 +57,7 @@ public class FogVehicleMovement extends ExtendedMovementModel {
         if (!scanning) {
           setCurrentMovementModel(mapRouteMM);
           state = MAP_MODE;
+          System.out.println("Fog vehicle Moving");
           vehicleSystem.nowMoving();
         }
         break;
@@ -72,9 +75,8 @@ public class FogVehicleMovement extends ExtendedMovementModel {
 
   @Override
   public Coord getInitialLocation() {
-    initLoc = stationaryMM.getInitialLocation().clone();
+    initLoc = mapRouteMM.getInitialLocation().clone();
     stationaryMM.setLocation(initLoc);
-    System.out.println(initLoc);
     return initLoc;
   }
   
