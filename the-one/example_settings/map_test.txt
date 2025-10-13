@@ -1,0 +1,19 @@
+Scenario.name = map_test_scenario
+Scenario.simulateConnections = true
+Scenario.updateInterval = 0.1
+Scenario.endTime = 1000
+
+Scenario.nrofHostGroups = 1
+
+Group.nrofHosts = 10
+Group.movementModel = MapBasedMovement
+Group.router = EpidemicRouter
+Group.bufferSize = 10M
+Group.waitTime = 0, 120
+
+MovementModel.worldSize = 100000, 100000
+
+MapBasedMovement.nrofMapFiles = 2
+
+MapBasedMovement.mapFile1 = data/myMap/roads_final.wkt
+MapBasedMovement.mapFile2 = data/myMap/target_roads_final.wkt

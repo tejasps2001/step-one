@@ -1,0 +1,63 @@
+Scenario.name = disaster_scenario
+Scenario.simulateConnections = true
+Scenario.updateInterval = 1.0
+# 43200s == 12h
+Scenario.endTime = 143600
+Scenario.nrofHostGroups = 2
+
+# drone interface 
+
+btInterface.type = SimpleBroadcastInterface
+btInterface.transmitRange=10
+btInterface.transmitSpeed=125k
+
+lteInterface.type=SimpleBroadcastInterface
+lteInterface.transmitRange=9999999999
+lteInterface.transmitSpeed=1500k
+
+#fog interface 
+
+wlanInterface.type=SimpleBroadcastInterface
+wlanInterface.transmitRange=91
+wlanInterface.transmitSpeed=250k
+
+# Group1= Drone group
+Group1.nrofHosts=1
+Group1.nrofInterfaces=2
+# The drone-fog vehicle interface must be interface2
+Group1.interface1=btInterface
+Group1.interface2=wlanInterface
+Group1.groupID = d
+Group1.movementModel = FogVehicleMovement
+Group1.LawnmoverMovement.startLocation = 300,300
+Group1.nodeLocation = 300,300
+
+# Group = Fog group
+Group2.nrofInterfaces = 1
+Group2.interface1 = wlanInterface
+Group2.groupID = f
+Group2.movementModel = FogVehicleMovement
+Group2.LawnmoverMovement.startLocation = 300,300
+Group2.nodeLocation = 300,300
+
+## Movement model settings
+# seed for movement models' pseudo random number generator (default = 0)
+MovementModel.rngSeed = 1
+# World's size for Movement Models without implicit size (width, height; meters)
+MovementModel.worldSize = 4500, 3400
+
+## messages are handled in-engine
+Events.nrof = 0 
+
+Group.speed = 0.1,0.1
+
+## GUI settings
+
+# GUI underlay image settings
+GUI.UnderlayImage.fileName = samples/demo/helsinki_underlay.png
+# Image offset in pixels (x, y)
+GUI.UnderlayImage.offset = 64, 20
+# Scaling factor for the image
+GUI.UnderlayImage.scale = 4.75
+# Image rotation (radians)
+GUI.UnderlayImage.rotate = -0.015
