@@ -46,6 +46,7 @@ public class FogVehicleMovement extends ExtendedMovementModel {
   public boolean newOrders() {
     switch (state) {
       case MAP_MODE:
+        System.out.println("stopped");
         setCurrentMovementModel(stationaryMM);
         state = STATIONARY_MODE;
         vehicleSystem.hasStopped();
@@ -73,6 +74,7 @@ public class FogVehicleMovement extends ExtendedMovementModel {
   public Coord getInitialLocation() {
     initLoc = stationaryMM.getInitialLocation().clone();
     stationaryMM.setLocation(initLoc);
+    System.out.println(initLoc);
     return initLoc;
   }
   

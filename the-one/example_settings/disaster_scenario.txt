@@ -1,0 +1,61 @@
+Scenario.name = map_test_scenario
+Scenario.simulateConnections = true
+Scenario.updateInterval = 0.1
+Scenario.endTime = 10000
+
+Scenario.nrofHostGroups = 4
+
+wlanInterface.type = SimpleBroadcastInterface
+wlanInterface.transmitSpeed = 250k
+wlanInterface.transmitRange = 1000
+
+Group.speed = 0.5,0.5
+
+# Group.nrofHosts = 10
+Group.movementModel = MapBasedMovement
+Group.router = EpidemicRouter
+Group.bufferSize = 10M
+Group.waitTime = 0, 120
+
+# Group 1 (fog vehicle)
+Group1.groupID = f
+Group1.nrofHosts = 1
+Group1.movementModel = FogVehicleMovement
+Group1.routeFile = data/myMap/fog1.wkt
+Group1.routeType = 1
+Group1.routeFirstStop = 1
+Group1.nodeLocation = 150, 150
+Group1.fogVehicleSystemNr = 2
+
+# Group 2 (drones)
+Group2.groupID = d
+Group2.nrofHosts = 1
+Group2.movementModel = DroneMovement
+Group2.routeFile = data/myMap/fog1.wkt
+Group2.routeType = 1
+Group2.routeFirstStop = 1
+Group2.nodeLocation = 150, 150
+Group2.fogVehicleSystemNr = 1
+
+MovementModel.worldSize = 100000, 100000
+
+# Group 3 (temp)
+Group3.groupID = e
+Group3.nrofHosts = 0
+Group3.movementModel = MapBasedMovement
+
+# Group 4 (fog vehicle)
+Group4.groupID = y
+Group4.nrofHosts = 1
+Group4.movementModel = FogVehicleMovement
+Group4.routeFile = data/myMap/fog1.wkt
+Group4.routeType = 1
+Group4.routeFirstStop = 1
+Group4.nodeLocation = 150, 150
+Group4.fogVehicleSystemNr = 1
+
+MapBasedMovement.nrofMapFiles = 2
+Events.nrof = 0
+
+MapBasedMovement.mapFile1 = data/myMap/roads_final.wkt
+MapBasedMovement.mapFile2 = data/myMap/target_roads_final.wkt

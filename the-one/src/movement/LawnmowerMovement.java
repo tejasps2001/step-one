@@ -49,6 +49,7 @@ class LawnmowerMovement extends MovementModel implements SwitchableMovement {
     horizontalShiftSum = 0;
     turning = false;
 
+    this.initLoc = lm.initLoc.clone();
     this.nextPath = new Path(generateSpeed());
     this.nextPath.addWaypoint(this.initLoc);
     this.endLoc = initLoc.clone();

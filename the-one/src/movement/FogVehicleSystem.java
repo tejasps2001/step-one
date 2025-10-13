@@ -20,7 +20,15 @@ public class FogVehicleSystem {
   public HashMap<Integer, DroneMovement> drones;
 
   private HashSet<Integer> dronesScanning;
+	static {
+		// DTNSim.registerForReset(FogVehicleSystem.class.getCanonicalName());
+		reset();
+	}
 
+	public static void reset() {
+		systems = new HashMap<Integer, FogVehicleSystem>();
+	}
+	
   /**
    * Creates a new instance of FogVehicleSystem without any fog
    * vehicle and drones.
