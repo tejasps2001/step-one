@@ -339,11 +339,11 @@ public class MapBasedMovement extends MovementModel implements SwitchableMovemen
 		}
 
 		if (visited.size() != nodes.size()) { // some node couldn't be reached
-			MapNode disconnected = null;
+			List<MapNode> disconnected = new ArrayList<MapNode>();
 			for (MapNode n : nodes) { // find an example node
 				if (!visited.contains(n)) {
-					disconnected = n;
-					break;
+					disconnected.add(n);
+					// break;
 				}
 			}
 			throw new SettingsError("SimMap is not fully connected. Only " +
