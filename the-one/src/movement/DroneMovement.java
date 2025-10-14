@@ -65,6 +65,7 @@ public class DroneMovement extends ExtendedMovementModel {
   // TODO: use direction
   public void startScan(int direction) {
     System.out.println("Drone Start scan");
+    lawnmowerMM.setDirection(direction);
     state = SCAN_MODE;
   }
 
