@@ -20,6 +20,7 @@ public class FogVehicleSystem {
   public HashMap<Integer, DroneMovement> drones;
 
   private HashSet<Integer> dronesScanning;
+  private boolean isScanning;
 	static {
 		// DTNSim.registerForReset(FogVehicleSystem.class.getCanonicalName());
 		reset();
@@ -61,6 +62,7 @@ public class FogVehicleSystem {
    * Tells the drones to start scanning the area.
    */
   public void hasStopped() {
+    System.out.println("fog vehicle has stopped");
     // assuming drones are either one or two
     List<Integer> dronesDirections = Arrays.asList(1, -1);
     dronesScanning = new HashSet<>();
@@ -70,6 +72,8 @@ public class FogVehicleSystem {
       dronesScanning.add(drone.getID());
       count++;
     }
+
+    isScanning = true;
   }
 
   /**
@@ -78,10 +82,22 @@ public class FogVehicleSystem {
    * @param droneID id of the drone that is done
    */
   public void droneDone(int droneID) {
+    System.out.println("drone is done");
     dronesScanning.remove(droneID);
     if (dronesScanning.isEmpty()) {
-      fogVehicle.scanDone();
+      scanDone();
     }
+  }
+
+  /**
+   * Called when all drones return
+   */
+  public void scanDone() {
+    isScanning = false;
+  }
+
+  public boolean isScanning() {
+    return isScanning;
   }
 
   /**
@@ -89,6 +105,7 @@ public class FogVehicleSystem {
    * next point.
    */
   public void nowMoving() {
+    System.out.println("now moving");
     for (DroneMovement drone: drones.values()) {
       drone.enterFog();
     }

@@ -17,7 +17,7 @@ public class FogVehicleMovement extends ExtendedMovementModel {
   private static final int STATIONARY_MODE = 1;
   private static final int MAP_MODE = 2;
   private int state;
-  private boolean scanning;
+  private int scanning;
 
   public FogVehicleMovement(Settings settings) {
     super(settings);
@@ -36,41 +36,30 @@ public class FogVehicleMovement extends ExtendedMovementModel {
     this.vehicleSystem = proto.vehicleSystem;
     
     mapRouteMM = proto.mapRouteMM.replicate();
-    System.out.println("init Location for : " + proto.fvs + " : " + mapRouteMM.getInitialLocation());
     stationaryMM = proto.stationaryMM.replicate();
     setCurrentMovementModel(stationaryMM);
     
     state = STATIONARY_MODE;
-    scanning = false;
   }
 
   @Override
   public boolean newOrders() {
     switch (state) {
       case MAP_MODE:
-        System.out.println("stopped");
         setCurrentMovementModel(stationaryMM);
         state = STATIONARY_MODE;
         vehicleSystem.hasStopped();
         break;
       case STATIONARY_MODE:
-        if (!scanning) {
+        if (!vehicleSystem.isScanning()) {
           setCurrentMovementModel(mapRouteMM);
           state = MAP_MODE;
-          System.out.println("Fog vehicle Moving");
           vehicleSystem.nowMoving();
         }
         break;
     }
 
     return true;
-  }
-
-  /**
-   * Called by the fog vehicle system when all drones return
-   */
-  public void scanDone() {
-    scanning = false;
   }
 
   @Override
