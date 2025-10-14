@@ -69,15 +69,13 @@ class LawnmowerMovement extends MovementModel implements SwitchableMovement {
    */
   @Override
   public Path getPath() {
+    horizontalShiftSum = 0;
     this.nextPath = new Path(0.5);
     this.endLoc = initLoc.clone();
     
-    System.out.println("initLoc for lawnmower" + initLoc);
     nextPath.addWaypoint(initLoc);
-    System.out.println("fogRange: " + fogRange);
 
     while (horizontalShiftSum <= fogRange) {
-      System.out.println("horizontalShiftSum: " + horizontalShiftSum);
       if (turning == true) {
         endLoc.translate(horizontalShift, 0);
         horizontalShiftSum += Math.abs(horizontalShift);

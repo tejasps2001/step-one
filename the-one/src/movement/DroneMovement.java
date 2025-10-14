@@ -28,7 +28,6 @@ public class DroneMovement extends ExtendedMovementModel {
 
     int fvs = settings.getInt(FogVehicleSystem.FOG_VEHICLE_SYSTEM_NR);
     vehicleSystem = FogVehicleSystem.getFogVehicleSystem(fvs);
-    vehicleSystem.registerDrone(this);
 
     lawnmowerMM = new LawnmowerMovement(settings);
     mapRouteMM = new MapRouteMovement(settings);
@@ -46,7 +45,7 @@ public class DroneMovement extends ExtendedMovementModel {
     mapRouteMM = proto.mapRouteMM.replicate();
     stationaryMM = proto.stationaryMM.replicate();
     setCurrentMovementModel(stationaryMM);
-    state = MAP_MODE;
+    state = STATIONARY_MODE;
     scanning = false;
   }
 
@@ -54,6 +53,7 @@ public class DroneMovement extends ExtendedMovementModel {
    * Called by fog vehicle system.
    */
   public void enterFog() {
+    System.out.println("Drone entering fog");
     state = MAP_MODE;
   }
 
@@ -64,21 +64,26 @@ public class DroneMovement extends ExtendedMovementModel {
    */
   // TODO: use direction
   public void startScan(int direction) {
+    System.out.println("Drone Start scan");
     state = SCAN_MODE;
   }
 
   public boolean newOrders() {
     switch (state) {
       case MAP_MODE:
+        System.out.println("Drone Moving");
         setCurrentMovementModel(mapRouteMM);
         state = STATIONARY_MODE;
         break;
       case SCAN_MODE:
+        System.out.println("Drone scanning now");
         setCurrentMovementModel(lawnmowerMM);
         state = STATIONARY_MODE;
         scanning = true;
         break;
       case STATIONARY_MODE:
+        System.out.println("Drone Idle");
+        setCurrentMovementModel(stationaryMM);
         // called if the lawnmowerMM is over
         if (scanning) {
           vehicleSystem.droneDone(this.id);
