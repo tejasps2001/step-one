@@ -3,13 +3,13 @@
 #
 
 ## Scenario settings
-Scenario.name = Tutorial
-Scenario.simulateConnections = true
-Scenario.updateInterval = 1.0
+# Scenario.name = Tutorial
+# Scenario.simulateConnections = true
+# Scenario.updateInterval = 1.0
 # time in seconds
-Scenario.endTime = 3600
+# Scenario.endTime = 3600
 
-Scenario.nrofHostGroups = 2
+Scenario.nrofHostGroups = 1
 
 ## Interface-specific settings:
 # type : which interface class the interface belongs to
@@ -20,10 +20,10 @@ Scenario.nrofHostGroups = 2
 
 
 # "Bluetooth" interface for all nodes
-btInterface.type = SimpleBroadcastInterface
+# btInterface.type = SimpleBroadcastInterface
 # Transmit speed of 2 Mbps = 250kBps
-btInterface.transmitSpeed = 250k
-btInterface.transmitRange = 12
+# btInterface.transmitSpeed = 250k
+# btInterface.transmitRange = 12
 
 
 # assign network interface to all groups
@@ -32,62 +32,62 @@ btInterface.transmitRange = 12
 
 
 ## Message Router
-deleteDelivered = true;
-Group.router = DirectDeliveryRouter
-Group.bufferSize = 5M
+# deleteDelivered = true;
+# Group.router = DirectDeliveryRouter
+# Group.bufferSize = 5M
 # Message TTL
-Group.msgTtl = 99999
+# Group.msgTtl = 99999
 
 
 
-Group.nrofHosts = 1
+# Group.nrofHosts = 1
 
-Group1.groupID = A
-Group2.groupID = B
+# Group1.groupID = A
+# Group2.groupID = B
 
 
 # Assign same movement model to all node groups, but
 # specify different coordinates for Group1, Group2
-Group.movementModel = StationaryMovement
+# Group.movementModel = StationaryMovement
 
-Group1.nodeLocation=200,200
-Group2.nodeLocation=200,210
+# Group1.nodeLocation=200,200
+# Group2.nodeLocation=200,210
 
 
 
 ## ------------------------
 ##   APPLICATIONS
 ## ------------------------
-processEngineApp1.type = bpm.BpmEngineApplication
-processEngineApp2.type = bpm.BpmEngineApplication
+# processEngineApp1.type = bpm.BpmEngineApplication
+# processEngineApp2.type = bpm.BpmEngineApplication
 
 
-Group.nrofApplications = 1
-Group1.application1 = processEngineApp1
-Group2.application1 = processEngineApp2
+# Group.nrofApplications = 1
+# Group1.application1 = processEngineApp1
+# Group2.application1 = processEngineApp2
 
 
 
 ## Movement model settings
 # seed for movement models' pseudo random number generator (default = 0)
-MovementModel.rngSeed = 1
+# MovementModel.rngSeed = 1
 # World's size for Movement Models without implicit size (width, height; meters)
-MovementModel.worldSize = 1000, 1000
+# MovementModel.worldSize = 1000, 1000
 
 ## messages are handled in-engine
-Events.nrof = 0 
+# Events.nrof = 0 
 
 
 
 ## Reports - all report names have to be valid report classes
 # how many reports to load
-Report.nrofReports = 0
-Report.reportDir = reports/tutorial
+# Report.nrofReports = 0
+# Report.reportDir = reports/tutorial
 # Report classes to load
-Report.report1 = MessageStatsReport
+# Report.report1 = MessageStatsReport
 
 
 ## Optimization settings -- these affect the speed of the simulation
 ## see World class for details.
-Optimization.cellSizeMult = 5
-Optimization.randomizeUpdateOrder = true
+# Optimization.cellSizeMult = 5
+# Optimization.randomizeUpdateOrder = true

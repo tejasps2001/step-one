@@ -28,7 +28,7 @@ highspeedInterface.transmitSpeed = 10M
 highspeedInterface.transmitRange = 1000
 
 # Define 6 different node groups
-Scenario.nrofHostGroups = 6
+Scenario.nrofHostGroups = 1
 
 ## Group-specific settings:
 # groupID : Group's identifier. Used as the prefix of host names
