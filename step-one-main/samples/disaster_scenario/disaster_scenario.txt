@@ -3,15 +3,16 @@ Scenario.simulateConnections = true
 Scenario.updateInterval = 0.5
 Scenario.endTime = 100000
 
-Scenario.nrofHostGroups = 5
+Scenario.nrofHostGroups = 6
 
 btInterface.type = SimpleBroadcastInterface
 btInterface.transmitSpeed = 250k
 btInterface.transmitRange = 20
 
 wlanInterface.type = SimpleBroadcastInterface
-wlanInterface.transmitSpeed = 250k
-wlanInterface.transmitRange = 100
+wlanInterface.transmitSpeed =999k
+wlanInterface.transmitRange = 200
+Group.nrofApplications=0
 
 Group.speed = 0.5,0.5
 Group.nrofInterfaces = 2
@@ -25,7 +26,7 @@ Group.bufferSize = 10M
 Group.waitTime = 0, 120
 
 # Group 1 (fog vehicle)
-Group1.groupID = f
+Group1.groupID = Fog
 Group1.nrofHosts = 1
 Group1.movementModel = FogVehicleMovement
 Group1.routeFile = samples/disaster_scenario/fog6.wkt
@@ -50,7 +51,7 @@ Group3.nrofHosts = 0
 Group3.movementModel = MapBasedMovement
 
 # Group 4 (fog vehicle)
-Group4.groupID = p
+Group4.groupID = Fog
 Group4.nrofHosts = 1
 Group4.movementModel = FogVehicleMovement
 Group4.routeFile = samples/disaster_scenario/fog7.wkt
@@ -69,6 +70,12 @@ Group5.routeFirstStop = 1
 Group5.nodeLocation = 150, 150
 Group5.fogVehicleSystemNr = 2
 
+#Group 6(human)
+Group6.groupID=Human
+Group6.nrofHosts=1
+Group6.movementModel=StaticMovement
+Group6.staticLocationFile= samples/disaster_scenario/human_nodes.wkt
+
 MapBasedMovement.nrofMapFiles = 2
 Events.nrof = 0
 Report.nrofReports = 0
@@ -76,3 +83,45 @@ Report.nrofReports = 0
 MapBasedMovement.mapFile1 = samples/disaster_scenario/roads_final.wkt
 MapBasedMovement.mapFile2 = samples/disaster_scenario/target_roads_final.wkt
 MovementModel.worldSize = 100000, 100000
+
+
+
+
+
+
+
+## ------------------------
+##   APPLICATIONS
+## ------------------------
+processEngineApp1.type = bpm.BpmEngineApplication
+processEngineApp2.type = bpm.BpmEngineApplication
+processEngineApp3.type = bpm.BpmEngineApplication
+
+
+
+
+
+
+Group1.nrofApplications = 1
+Group2.nrofApplications = 1
+Group1.application1 = processEngineApp1
+Group2.application1 = processEngineApp2
+
+
+
+Group4.nrofApplications = 1
+Group5.nrofApplications = 1
+Group6.nrofApplications = 1
+Group4.application1 = processEngineApp1
+Group5.application1 = processEngineApp2
+Group6.application1 = processEngineApp3
+
+
+
+processEngineApp1.autoDeployedProcesses = samples/disaster_scenario/Fog_model.bpmn20.xml
+processEngineApp2.autoDeployedProcesses = samples/disaster_scenario/Drone_model.bpmn20.xml
+processEngineApp1.autoStartedProcessKeys =fog
+processEngineApp2.autoStartedProcessKeys =drone
+
+processEngineApp3.autoDeployedProcesses = samples/disaster_scenario/Human.bpmn20.xml
+processEngineApp3.autoStartedProcessKeys =human

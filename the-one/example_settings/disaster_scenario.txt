@@ -25,7 +25,7 @@ Group.bufferSize = 10M
 Group.waitTime = 0, 120
 
 # Group 1 (fog vehicle)
-Group1.groupID = f
+Group1.groupID = Fog
 Group1.nrofHosts = 1
 Group1.movementModel = FogVehicleMovement
 Group1.routeFile = data/myMap/fog6.wkt

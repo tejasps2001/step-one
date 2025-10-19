@@ -1,0 +1,21 @@
+# Scenario Name
+Scenario.name = simplest_scenario
+Scenario.simulateConnections = true
+Scenario.updateInterval = 0.1
+Scenario.endTime = 4200
+
+Scenario.nrofHostGroups = 1
+
+Group1.groupID = m
+Group1.nrofHosts = 1
+Group1.movementModel = LinearMovement
+Group.waitTime = 0, 0
+Group1.speed = 0.1, 0.1
+
+Group.nrofHosts = 1
+Group1.LinearMovement.startLocation = 150, 150
+Group1.LinearMovement.endLocation = 150, 300
+Group1.LinearMovement.initLocType = 0
+Group1.LinearMovement.targetType = 1
+
+Events.nrof = 0 

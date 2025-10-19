@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:flowable="http://flowable.org/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath" targetNamespace="http://www.flowable.org/processdef">
+  <process id="human" name="Human" isExecutable="true">
+    <startEvent id="start" name="start" flowable:formFieldValidation="true"></startEvent>
+    <endEvent id="end" name="end"></endEvent>
+    <sequenceFlow id="sid-FC18AB98-EBC3-48E8-9A31-BF61DB9F14C6" sourceRef="start" targetRef="end"></sequenceFlow>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_human">
+    <bpmndi:BPMNPlane bpmnElement="human" id="BPMNPlane_human">
+      <bpmndi:BPMNShape bpmnElement="start" id="BPMNShape_start">
+        <omgdc:Bounds height="30.0" width="30.0" x="224.9999966472388" y="162.99999757111075"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="end" id="BPMNShape_end">
+        <omgdc:Bounds height="28.0" width="28.0" x="435.5999994039536" y="163.99999757111075"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="sid-FC18AB98-EBC3-48E8-9A31-BF61DB9F14C6" id="BPMNEdge_sid-FC18AB98-EBC3-48E8-9A31-BF61DB9F14C6">
+        <omgdi:waypoint x="254.9499962311526" y="177.99999757111075"></omgdi:waypoint>
+        <omgdi:waypoint x="435.5999994039536" y="177.99999757111075"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

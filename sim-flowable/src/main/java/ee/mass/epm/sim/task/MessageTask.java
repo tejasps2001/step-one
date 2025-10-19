@@ -19,6 +19,7 @@ public class MessageTask extends AbstractMessageTask {
     SimMessageContent getMessageContent(DelegateExecution execution) {
         // TODO: consider refactoring all of this logic under the MessageContent class itself
         EngineMessageContent msgContent = new EngineMessageContent();
+        System.out.println("Are we inside message task9");
 
         try {
             if (target_process_instance_id != null){ //todo should we allow generic messages?
@@ -40,6 +41,7 @@ public class MessageTask extends AbstractMessageTask {
             String[] varNames = StringUtils.stripAll(expressionText.split(MessageTask.INCLUDED_PROCESS_VARS_DELIMITER));
             msgContent.addProcessVarsFromExecution(execution, varNames);
         }
+        System.out.println("the message content is "+msgContent);
         return msgContent;
     }
 
