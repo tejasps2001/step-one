@@ -21,6 +21,5 @@ public class GetFogLocation extends SimulatedTask {
                 .map(c -> c.getOtherNode(localhost))
                 .findFirst().get();
         execution.setVariable("fogVehicleAddress", fogHost.getAddress());
-        System.out.println("the fog addresss Is "+fogHost.getAddress());
     }
 }

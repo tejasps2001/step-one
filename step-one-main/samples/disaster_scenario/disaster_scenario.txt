@@ -1,17 +1,17 @@
 Scenario.name = map_test_scenario
 Scenario.simulateConnections = true
 Scenario.updateInterval = 0.5
-Scenario.endTime = 100000
+Scenario.endTime = 120000
 
 Scenario.nrofHostGroups = 6
 
 btInterface.type = SimpleBroadcastInterface
 btInterface.transmitSpeed = 250k
-btInterface.transmitRange = 20
+btInterface.transmitRange = 200
 
 wlanInterface.type = SimpleBroadcastInterface
 wlanInterface.transmitSpeed =999k
-wlanInterface.transmitRange = 200
+wlanInterface.transmitRange = 800
 Group.nrofApplications=0
 
 Group.speed = 0.5,0.5
@@ -28,6 +28,8 @@ Group.waitTime = 0, 120
 # Group 1 (fog vehicle)
 Group1.groupID = Fog
 Group1.nrofHosts = 1
+Group1.nrofInterfaces = 1
+Group1.interface1 = wlanInterface
 Group1.movementModel = FogVehicleMovement
 Group1.routeFile = samples/disaster_scenario/fog6.wkt
 Group1.routeType = 1
@@ -38,6 +40,9 @@ Group1.fogVehicleSystemNr = 1
 # Group 2 (drones)
 Group2.groupID = d
 Group2.nrofHosts = 2
+Group2.nrofInterfaces = 2
+Group2.interface1 = btInterface
+Group2.interface2 = wlanInterface
 Group2.movementModel = DroneMovement
 Group2.routeFile = samples/disaster_scenario/fog6.wkt
 Group2.routeType = 1
@@ -53,6 +58,8 @@ Group3.movementModel = MapBasedMovement
 # Group 4 (fog vehicle)
 Group4.groupID = Fog
 Group4.nrofHosts = 1
+Group4.nrofInterfaces = 1
+Group4.interface1 = wlanInterface
 Group4.movementModel = FogVehicleMovement
 Group4.routeFile = samples/disaster_scenario/fog7.wkt
 Group4.routeType = 1
@@ -63,6 +70,9 @@ Group4.fogVehicleSystemNr = 2
 # Group 5 (drones)
 Group5.groupID = t
 Group5.nrofHosts = 2
+Group5.nrofInterfaces = 2
+Group5.interface1 = btInterface
+Group5.interface2 = wlanInterface
 Group5.movementModel = DroneMovement
 Group5.routeFile = samples/disaster_scenario/fog7.wkt
 Group5.routeType = 1
@@ -72,7 +82,9 @@ Group5.fogVehicleSystemNr = 2
 
 #Group 6(human)
 Group6.groupID=Human
-Group6.nrofHosts=1
+Group6.nrofHosts=25
+Group6.nrofInterfaces = 1
+Group6.interface1 = btInterface
 Group6.movementModel=StaticMovement
 Group6.staticLocationFile= samples/disaster_scenario/human_nodes.wkt
 
@@ -122,6 +134,7 @@ processEngineApp1.autoDeployedProcesses = samples/disaster_scenario/Fog_model.bp
 processEngineApp2.autoDeployedProcesses = samples/disaster_scenario/Drone_model.bpmn20.xml
 processEngineApp1.autoStartedProcessKeys =fog
 processEngineApp2.autoStartedProcessKeys =drone
+processEngineApp2.autoStartedProcessVars=messageContent="Hello World!"
 
 processEngineApp3.autoDeployedProcesses = samples/disaster_scenario/Human.bpmn20.xml
 processEngineApp3.autoStartedProcessKeys =human

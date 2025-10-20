@@ -83,7 +83,6 @@ public class ExtendedLinearMovement extends MovementModel implements SwitchableM
    * @see SwitchableMovement
    */
   public Coord getLastLocation() {
-    System.out.println("lastLoc: " + lastLoc);
     return lastLoc.clone();
   }
 }

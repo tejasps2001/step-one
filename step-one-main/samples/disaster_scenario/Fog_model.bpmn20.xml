@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:flowable="http://flowable.org/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath" targetNamespace="http://www.flowable.org/processdef">
-  <message id="humanLocation" name="HumanLocation"></message>
+  <message id="humanLocation1" name="HumanLocation"></message>
   <process id="fog" name="Fog_model" isExecutable="true">
     <startEvent id="start" name="start" flowable:formFieldValidation="true"></startEvent>
     <intermediateCatchEvent id="messageRecevied" name="messageReceived">
-      <messageEventDefinition messageRef="humanLocation"></messageEventDefinition>
+      <messageEventDefinition messageRef="humanLocation1"></messageEventDefinition>
     </intermediateCatchEvent>
     <serviceTask id="simulatedTask" name="simulatedTask" flowable:class="ee.mass.epm.samples.disaster_scenario.CallFirstResponders" flowable:type="stepone_work" flowable:triggerable="true">
       <extensionElements>
@@ -15,6 +15,7 @@
     </serviceTask>
     <sequenceFlow id="sid-C8EE135D-B2DE-4A55-804A-D5FB1880893B" sourceRef="start" targetRef="messageRecevied"></sequenceFlow>
     <sequenceFlow id="sid-5FB74E2B-3CA3-4063-B445-551D7C309F39" sourceRef="messageRecevied" targetRef="simulatedTask"></sequenceFlow>
+    <sequenceFlow id="sid-7D51D3B2-2F07-470C-A84B-4B9719946AA7" sourceRef="simulatedTask" targetRef="messageRecevied"></sequenceFlow>
   </process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_fog">
     <bpmndi:BPMNPlane bpmnElement="fog" id="BPMNPlane_fog">
@@ -25,17 +26,21 @@
         <omgdc:Bounds height="30.0" width="30.0" x="224.9999899417165" y="162.99999757111075"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="simulatedTask" id="BPMNShape_simulatedTask">
-        <omgdc:Bounds height="80.0" width="100.0" x="389.99999418854725" y="119.99999821186069"></omgdc:Bounds>
+        <omgdc:Bounds height="80.0" width="100.0" x="390.0" y="138.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="sid-7D51D3B2-2F07-470C-A84B-4B9719946AA7" id="BPMNEdge_sid-7D51D3B2-2F07-470C-A84B-4B9719946AA7">
+        <omgdi:waypoint x="390.0" y="177.99999939277774"></omgdi:waypoint>
+        <omgdi:waypoint x="254.94991913393747" y="177.99999775267023"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="sid-C8EE135D-B2DE-4A55-804A-D5FB1880893B" id="BPMNEdge_sid-C8EE135D-B2DE-4A55-804A-D5FB1880893B">
         <omgdi:waypoint x="129.94999883060646" y="177.99999970853327"></omgdi:waypoint>
         <omgdi:waypoint x="224.99998992005044" y="177.99999786160595"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="sid-5FB74E2B-3CA3-4063-B445-551D7C309F39" id="BPMNEdge_sid-5FB74E2B-3CA3-4063-B445-551D7C309F39">
-        <omgdi:waypoint x="239.9999899417165" y="162.99999757111075"></omgdi:waypoint>
-        <omgdi:waypoint x="239.9999899417165" y="87.0000010728836"></omgdi:waypoint>
-        <omgdi:waypoint x="439.99999418854725" y="87.0000010728836"></omgdi:waypoint>
-        <omgdi:waypoint x="439.99999418854725" y="119.99999821186069"></omgdi:waypoint>
+        <omgdi:waypoint x="239.83505674566393" y="163.0007991658303"></omgdi:waypoint>
+        <omgdi:waypoint x="239.0" y="87.0"></omgdi:waypoint>
+        <omgdi:waypoint x="440.0" y="87.0"></omgdi:waypoint>
+        <omgdi:waypoint x="440.0" y="138.0"></omgdi:waypoint>
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

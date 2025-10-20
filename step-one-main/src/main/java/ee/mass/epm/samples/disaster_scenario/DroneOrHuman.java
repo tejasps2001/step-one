@@ -21,11 +21,9 @@ public class DroneOrHuman extends SimulatedTask {
             
             if(c.isUp() && c.getOtherNode(localhost).getName().startsWith("Human") ) {
                 execution.setVariable("isHuman", true);
-                System.out.println("The value of vairable is ISHUMan is "+execution.getVariable("isHuman"));
                 return;
             }
         }
         execution.setVariable("isHuman", false);
-        System.out.println("The value of vairable is ISHUMan is "+execution.getVariable("isHuman"));
     }
 }
