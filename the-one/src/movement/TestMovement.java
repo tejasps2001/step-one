@@ -75,7 +75,6 @@ public class TestMovement extends ExtendedMovementModel {
         for(Connection connection: connections) {
             if(connection.getOtherNode(this.host) == fogHost) {
                 fogConnection = connection;
-                // System.out.println(fogConnection);
                 break;
             }
         }
@@ -83,7 +82,6 @@ public class TestMovement extends ExtendedMovementModel {
         if(fogConnection != null) {
             switch (mode) {
                 case EXTENDED_LINEAR_MODE:
-                    System.out.println(fogConnection);
                     if(fogConnection.isUp() == false && extendedLinearMM.isReady()){
                         setCurrentMovementModel(randomWalkMM);
                         mode = RANDOM_WALK_MODE;

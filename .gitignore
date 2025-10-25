@@ -141,3 +141,6 @@ gradle-app.setting
 
 # Ignore reports
 step-one-main/samples/**/reports/
+
+# Ignore the-one's binary files
+the-one/bin/

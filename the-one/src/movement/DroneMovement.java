@@ -53,7 +53,6 @@ public class DroneMovement extends ExtendedMovementModel {
    * Called by fog vehicle system.
    */
   public void enterFog() {
-    System.out.println("Drone entering fog");
     state = MAP_MODE;
   }
 
@@ -64,7 +63,6 @@ public class DroneMovement extends ExtendedMovementModel {
    */
   // TODO: use direction
   public void startScan(int direction) {
-    System.out.println("Drone Start scan");
     lawnmowerMM.setDirection(direction);
     state = SCAN_MODE;
   }
@@ -72,18 +70,15 @@ public class DroneMovement extends ExtendedMovementModel {
   public boolean newOrders() {
     switch (state) {
       case MAP_MODE:
-        System.out.println("Drone Moving");
         setCurrentMovementModel(mapRouteMM);
         state = STATIONARY_MODE;
         break;
       case SCAN_MODE:
-        System.out.println("Drone scanning now");
         setCurrentMovementModel(lawnmowerMM);
         state = STATIONARY_MODE;
         scanning = true;
         break;
       case STATIONARY_MODE:
-        System.out.println("Drone Idle");
         setCurrentMovementModel(stationaryMM);
         // called if the lawnmowerMM is over
         if (scanning) {

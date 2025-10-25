@@ -15,6 +15,7 @@ import core.SimScenario;
 public class GetHumanLocation extends SimulatedTask {
     @Override
     public void execute(DelegateExecution execution) {
+        super.execute(execution);
         // Retrieve the DTNHost based on the 'localhost' variable
         DTNHost localhost = SimScenario.getInstance().getHosts()
                 .get(execution.getVariable("localhost", Integer.class));
@@ -26,10 +27,7 @@ public class GetHumanLocation extends SimulatedTask {
             DTNHost otherNode = c.getOtherNode(localhost);
             if(c.isUp() && otherNode.getName().startsWith("Human")) {
                 Coord humanLocation = c.getOtherNode(localhost).getLocation();
-                // humanLocations.add(humanLocation);
-                System.out.println("Human Location: " + humanLocation);
                 execution.setVariable("humanLocation", humanLocation.toString());
-                System.out.println("the fog addresss Is  "+execution.getVariable("fogVehicleAddress"));
             }
         }
     }

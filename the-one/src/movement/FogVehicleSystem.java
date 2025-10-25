@@ -62,7 +62,6 @@ public class FogVehicleSystem {
    * Tells the drones to start scanning the area.
    */
   public void hasStopped() {
-    System.out.println("fog vehicle has stopped");
     // assuming drones are either one or two
     List<Integer> dronesDirections = Arrays.asList(1, -1);
     dronesScanning = new HashSet<>();
@@ -82,7 +81,6 @@ public class FogVehicleSystem {
    * @param droneID id of the drone that is done
    */
   public void droneDone(int droneID) {
-    System.out.println("drone is done");
     dronesScanning.remove(droneID);
     if (dronesScanning.isEmpty()) {
       scanDone();
@@ -105,7 +103,6 @@ public class FogVehicleSystem {
    * next point.
    */
   public void nowMoving() {
-    System.out.println("now moving");
     for (DroneMovement drone: drones.values()) {
       drone.enterFog();
     }
