@@ -33,7 +33,6 @@ public class MapGraphic extends PlayFieldGraphic {
 		if (simMap == null) {
 			return;
 		}
-
 		g2.setColor(PATH_COLOR);
 		g2.setBackground(BG_COLOR);
 

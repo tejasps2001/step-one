@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:flowable="http://flowable.org/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath" targetNamespace="http://www.flowable.org/processdef">
+  <signal id="deviceConnectedSignal" name="Device Nearby" flowable:scope="global"></signal>
+  <process id="drone" name="Drone_model" isExecutable="true">
+    <documentation>Drone bmp</documentation>
+    <startEvent id="start" name="start" flowable:formFieldValidation="true"></startEvent>
+    <serviceTask id="GetFogLocation" name="GetFogLocation
+" flowable:class="ee.mass.epm.samples.disaster_scenario.GetFogLocation" flowable:type="stepone_work" flowable:triggerable="true"></serviceTask>
+    <sequenceFlow id="sid-D51F2A43-45D0-4A4D-A500-523123B0E5FE" sourceRef="start" targetRef="GetFogLocation"></sequenceFlow>
+    <intermediateCatchEvent id="newConnectionDiscover" name="new Connection Discover">
+      <signalEventDefinition signalRef="deviceConnectedSignal"></signalEventDefinition>
+    </intermediateCatchEvent>
+    <serviceTask id="sid-3297625B-B139-407C-90A7-20A7D64F0D60" name="DroneOrHuman
+" flowable:class="ee.mass.epm.samples.disaster_scenario.DroneOrHuman" flowable:type="stepone_work" flowable:triggerable="true"></serviceTask>
+    <serviceTask id="getHumanLocation" name="getHumanLocation" flowable:class="ee.mass.epm.samples.disaster_scenario.GetHumanLocation" flowable:type="stepone_work" flowable:triggerable="true">
+      <extensionElements>
+        <flowable:field name="work_size">
+          <flowable:string><![CDATA[50]]></flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <serviceTask id="sendLocation" name="sendLocation" flowable:class="ee.mass.epm.sim.task.MessageTask" flowable:type="stepone_msg" flowable:triggerable="true">
+      <documentation>Once sent, the receiving process will be assigned a variable 'last_msg_source_address', with value of the senders address (this node).</documentation>
+      <extensionElements>
+        <flowable:field name="msg_name">
+          <flowable:string><![CDATA[HumanLocation]]></flowable:string>
+        </flowable:field>
+        <flowable:field name="msg_destination">
+          <flowable:expression><![CDATA[${fogVehicleAddress}]]></flowable:expression>
+        </flowable:field>
+        <flowable:field name="msg_size">
+          <flowable:string><![CDATA[10]]></flowable:string>
+        </flowable:field>
+        <flowable:field name="included_vars">
+          <flowable:string><![CDATA[humanLocation]]></flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <sequenceFlow id="sid-83A452AF-12F6-4C73-BE69-71027B23EA13" sourceRef="getHumanLocation" targetRef="sendLocation"></sequenceFlow>
+    <sequenceFlow id="sid-34DD05CD-1056-4455-9915-E85F8FC032EA" sourceRef="GetFogLocation" targetRef="newConnectionDiscover"></sequenceFlow>
+    <exclusiveGateway id="sid-D01C0FF1-C791-48FA-9452-923884544B28" default="No"></exclusiveGateway>
+    <sequenceFlow id="sid-2B35A4B4-B01C-4F0E-8101-7A35AF97C44F" sourceRef="sid-3297625B-B139-407C-90A7-20A7D64F0D60" targetRef="sid-D01C0FF1-C791-48FA-9452-923884544B28"></sequenceFlow>
+    <sequenceFlow id="No" name="No" sourceRef="sid-D01C0FF1-C791-48FA-9452-923884544B28" targetRef="newConnectionDiscover"></sequenceFlow>
+    <sequenceFlow id="sid-11CA7B70-CC0A-46C4-A017-59AA99020F0C" sourceRef="sendLocation" targetRef="newConnectionDiscover"></sequenceFlow>
+    <sequenceFlow id="sid-475DEA34-C3F4-4F07-98B9-C605A6E1EE55" sourceRef="newConnectionDiscover" targetRef="sid-3297625B-B139-407C-90A7-20A7D64F0D60"></sequenceFlow>
+    <sequenceFlow id="isHuman" name="isHuman" sourceRef="sid-D01C0FF1-C791-48FA-9452-923884544B28" targetRef="getHumanLocation">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${isHuman}]]></conditionExpression>
+    </sequenceFlow>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_drone">
+    <bpmndi:BPMNPlane bpmnElement="drone" id="BPMNPlane_drone">
+      <bpmndi:BPMNShape bpmnElement="start" id="BPMNShape_start">
+        <omgdc:Bounds height="30.0" width="30.0" x="74.99999664723883" y="204.99998286366542"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="GetFogLocation" id="BPMNShape_GetFogLocation">
+        <omgdc:Bounds height="79.99999999999997" width="99.99999999999997" x="164.99999754130843" y="179.999997317791"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="newConnectionDiscover" id="BPMNShape_newConnectionDiscover">
+        <omgdc:Bounds height="30.0" width="30.0" x="344.99999485909944" y="204.99999426305303"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="sid-3297625B-B139-407C-90A7-20A7D64F0D60" id="BPMNShape_sid-3297625B-B139-407C-90A7-20A7D64F0D60">
+        <omgdc:Bounds height="80.0" width="100.0" x="479.99997854232856" y="179.9999801814567"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="getHumanLocation" id="BPMNShape_getHumanLocation">
+        <omgdc:Bounds height="80.0" width="100.0" x="779.9999535083789" y="179.99997749924802"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="sendLocation" id="BPMNShape_sendLocation">
+        <omgdc:Bounds height="80.00000000000003" width="100.00000000000011" x="929.9999445676825" y="179.999997317791"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="sid-D01C0FF1-C791-48FA-9452-923884544B28" id="BPMNShape_sid-D01C0FF1-C791-48FA-9452-923884544B28">
+        <omgdc:Bounds height="40.0" width="40.0" x="644.999971166254" y="199.9999859184032"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="No" id="BPMNEdge_No">
+        <omgdi:waypoint x="665.499971166254" y="239.44289385317887"></omgdi:waypoint>
+        <omgdi:waypoint x="665.499971166254" y="353.99999804794794"></omgdi:waypoint>
+        <omgdi:waypoint x="359.99999485909944" y="353.99999804794794"></omgdi:waypoint>
+        <omgdi:waypoint x="359.99999485909944" y="234.9499296198171"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="sid-83A452AF-12F6-4C73-BE69-71027B23EA13" id="BPMNEdge_sid-83A452AF-12F6-4C73-BE69-71027B23EA13">
+        <omgdi:waypoint x="879.9499535082823" y="219.99998409882326"></omgdi:waypoint>
+        <omgdi:waypoint x="929.9999445676432" y="219.99999071160968"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="sid-475DEA34-C3F4-4F07-98B9-C605A6E1EE55" id="BPMNEdge_sid-475DEA34-C3F4-4F07-98B9-C605A6E1EE55">
+        <omgdi:waypoint x="374.9499943227179" y="219.99999426305303"></omgdi:waypoint>
+        <omgdi:waypoint x="479.99997854225705" y="219.99999426305303"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="sid-D51F2A43-45D0-4A4D-A500-523123B0E5FE" id="BPMNEdge_sid-D51F2A43-45D0-4A4D-A500-523123B0E5FE">
+        <omgdi:waypoint x="104.94999547705565" y="219.99998459237892"></omgdi:waypoint>
+        <omgdi:waypoint x="164.99999738031448" y="219.99999153614078"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="sid-11CA7B70-CC0A-46C4-A017-59AA99020F0C" id="BPMNEdge_sid-11CA7B70-CC0A-46C4-A017-59AA99020F0C">
+        <omgdi:waypoint x="979.9999445676826" y="179.999997317791"></omgdi:waypoint>
+        <omgdi:waypoint x="979.9999445676826" y="59.00000239908694"></omgdi:waypoint>
+        <omgdi:waypoint x="359.9999948590994" y="59.00000239908694"></omgdi:waypoint>
+        <omgdi:waypoint x="359.99999485909944" y="204.99999426305303"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="isHuman" id="BPMNEdge_isHuman">
+        <omgdi:waypoint x="684.5019374118244" y="220.4420581045341"></omgdi:waypoint>
+        <omgdi:waypoint x="779.9999535083658" y="220.1518037802069"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="sid-2B35A4B4-B01C-4F0E-8101-7A35AF97C44F" id="BPMNEdge_sid-2B35A4B4-B01C-4F0E-8101-7A35AF97C44F">
+        <omgdi:waypoint x="579.9499785423286" y="219.99998230412703"></omgdi:waypoint>
+        <omgdi:waypoint x="644.999971166254" y="219.99998506848522"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="sid-34DD05CD-1056-4455-9915-E85F8FC032EA" id="BPMNEdge_sid-34DD05CD-1056-4455-9915-E85F8FC032EA">
+        <omgdi:waypoint x="264.9499975413012" y="219.9999962644331"></omgdi:waypoint>
+        <omgdi:waypoint x="344.99999485909944" y="219.99999457800706"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
