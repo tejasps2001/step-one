@@ -78,7 +78,11 @@ public class POIGrid {
             cells [cellX][cellY].cost = -1;
         }
     }
-
+    public GridCell getCellAtCoord(Coord coord) {
+        int cellX =(int) Math.ceil(coord.getX());
+        int cellY =(int) Math.ceil(coord.getY());
+        return cells [cellX][cellY];
+    }   
     /**
 	 * A single cell in the cell grid. Contains information of any POI that are
 	 * currently in that part of the grid.

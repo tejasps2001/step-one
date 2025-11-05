@@ -1,6 +1,5 @@
 package movement;
 
-
 import java.util.*;
 import core.Coord;
 import core.Settings;
@@ -23,14 +22,23 @@ public class GridMovement extends MovementModel {
     private Coord startLoc;
     // The Ending Location of the node
     private Coord endLoc;
-    //indexing of the DTNHost
+    // indexing of the DTNHost
     private int hostCounter;
-    //to get set of DTNhost and to find our DTNHost
-    private  List<DTNHost> self;
+    // to get set of DTNhost and to find our DTNHost
+    private List<DTNHost> self;
 
     private POIGrid poiGrid;
 
     private Path nextPath;
+
+    private static final int NE = 1;
+    private static final int E = 2;
+    private static final  int SE = 3;
+    private static final  int S = 4;
+    private static final  int SW = 5;
+    private static final  int W = 6;
+    private static final  int NW = 7;
+    private static final  int N = 8;
 
     /**
      * Creates a new movement model based on a Settings object's settings.
@@ -56,14 +64,14 @@ public class GridMovement extends MovementModel {
         super(ilm);
         self = SimScenario.getInstance().getHosts();
         while (hostCounter < self.size()) {
-            DTNHost host = self.get(hostCounter++);
+            DTNHost temp = self.get(hostCounter++);
             String hostName = host.getName();
-            if (hostName.startsWith("drone")&& host.getMovement()==this) {
-                this.host = host;
+            if (hostName.startsWith("drone") && host.getMovement() == this) {
+                this.host = temp;
                 break;
             }
         }
-        this.poiGrid =new POIGrid();
+        this.poiGrid = new POIGrid();
         this.nextPath = new Path(generateSpeed());
         this.nextPath.addWaypoint(ilm.startLoc);
     }
@@ -85,10 +93,87 @@ public class GridMovement extends MovementModel {
      */
     @Override
     public Path getPath() {
-        
+        poiGrid.updateGrid(this.host);
+        Coord nextCoord = calculateNextCoord();
+        if (poiGrid.getCellAtCoord(nextCoord).getCost() == -1) {
+                int dir=nextDirection(host.getLocation(), nextCoord);
+                nextCoord=nextGridCoord(host.getLocation(), dir);
+                this.nextPath.addWaypoint(nextCoord);
+
+        } else {
+            this.nextPath.addWaypoint(nextCoord);
+
+        }
         Path p = nextPath;
         this.nextPath = null;
         return p;
+    }
+
+    public Coord calculateNextCoord() {
+        Coord currLoc = host.getLocation();
+        Coord destLoc = endLoc;
+        double distance = currLoc.distance(destLoc);
+        if (distance < 1) {
+            return endLoc;
+        } else {
+
+            double x = currLoc.getX() + ((destLoc.getX() - currLoc.getX()) / distance);
+            double y = currLoc.getY() + ((destLoc.getY() - currLoc.getY()) / distance);
+            return new Coord(x, y);
+
+        }
+    }
+
+    private static int nextDirection(Coord currCoord, Coord nextCoord) {
+        if (nextCoord.getX() > currCoord.getX()) {
+            if (nextCoord.getY() > currCoord.getY()) {
+                return NE;
+            } else if (nextCoord.getY() == currCoord.getY()) {
+                return E;
+
+            } else {
+                return SE;
+            }
+        } else if (nextCoord.getX() < currCoord.getX()) {
+            if (nextCoord.getY() < currCoord.getY()) {
+                return SW;
+            } else if (nextCoord.getY() == currCoord.getY()) {
+                return W;
+            } else {
+                return NW;
+            }
+        } else {
+            if (nextCoord.getY() > currCoord.getY()) {
+                return N;
+            } else {
+                return S;
+            }
+        }
+
+    }
+
+    private static Coord nextGridCoord(Coord coord, int dir){
+            switch(dir){
+                case NE:
+                    return new Coord(coord.getX(), coord.getY()+1); 
+                    
+                case E:
+                    return new Coord( coord.getX()+1, coord.getY()+1);
+                case SE:
+                    return new Coord( coord.getX()+1, coord.getY());
+                case S:
+                    return new Coord( coord.getX()+1, coord.getY()-1);
+                case SW:
+                    return new Coord( coord.getX(), coord.getY()-1);
+                case W:
+                    return new Coord( coord.getX()-1, coord.getY()-1);
+                case NW:
+                    return new Coord( coord.getX()-1, coord.getY());
+                case N:
+                    return new Coord( coord.getX()-1, coord.getY()+1);  
+                default:
+                    return coord;
+            }
     }
 
     /**
@@ -102,7 +187,6 @@ public class GridMovement extends MovementModel {
             return 0;
         }
     }
-    public void update
 
     @Override
     public GridMovement replicate() {
