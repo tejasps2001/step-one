@@ -27,7 +27,7 @@ public class GridMovement extends MovementModel {
     // to get set of DTNhost and to find our DTNHost
     private List<DTNHost> self;
     private boolean hostReceived;
-
+    private boolean printOnce;
     private POIGrid poiGrid;
 
     private Path nextPath;
@@ -64,7 +64,10 @@ public class GridMovement extends MovementModel {
     public GridMovement(GridMovement ilm) {
         super(ilm);
         this.nextPath = new Path(generateSpeed());
+        
         this.nextPath.addWaypoint(ilm.startLoc);
+        this.startLoc=ilm.startLoc.clone();
+        this.endLoc=ilm.endLoc.clone();
     }
 
     /**
@@ -109,6 +112,7 @@ public class GridMovement extends MovementModel {
         poiGrid.updateGrid(this.host);
         this.nextPath = new Path(generateSpeed());
         Coord nextCoord = calculateNextCoord();
+         System.out.print(nextCoord + " " + poiGrid.getCellAtCoord(nextCoord).getCost());
         if (poiGrid.getCellAtCoord(nextCoord).getCost() == -1) {
             int dir = nextDirection(host.getLocation(), nextCoord);
             nextCoord = nextGridCoord(host.getLocation(), dir);
@@ -166,21 +170,21 @@ public class GridMovement extends MovementModel {
     private static Coord nextGridCoord(Coord coord, int dir) {
         switch (dir) {
             case NE:
-                return new Coord(coord.getX(), coord.getY() + 1);
+                return new Coord(coord.getX(), coord.getY() + 10);
             case E:
-                return new Coord(coord.getX() + 1, coord.getY() + 1);
+                return new Coord(coord.getX() + 10, coord.getY() + 10);
             case SE:
-                return new Coord(coord.getX() + 1, coord.getY());
+                return new Coord(coord.getX() + 10, coord.getY());
             case S:
-                return new Coord(coord.getX() + 1, coord.getY() - 1);
+                return new Coord(coord.getX() + 10, coord.getY() - 10);
             case SW:
-                return new Coord(coord.getX(), coord.getY() - 1);
+                return new Coord(coord.getX(), coord.getY() - 10);
             case W:
-                return new Coord(coord.getX() - 1, coord.getY() - 1);
+                return new Coord(coord.getX() - 10, coord.getY() - 10);
             case NW:
-                return new Coord(coord.getX() - 1, coord.getY());
+                return new Coord(coord.getX() - 10, coord.getY());
             case N:
-                return new Coord(coord.getX() - 1, coord.getY() + 1);
+                return new Coord(coord.getX() - 10, coord.getY() + 10);
             default:
                 return coord;
         }

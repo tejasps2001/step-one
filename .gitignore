@@ -144,3 +144,5 @@ step-one-main/samples/**/reports/
 
 # Ignore the-one's binary files
 the-one/bin/
+sim-flowable/bin/
+step-one-main/bin/

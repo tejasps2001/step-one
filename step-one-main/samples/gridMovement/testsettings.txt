@@ -4,7 +4,6 @@ Scenario.nrofHostGroups = 2
 
 ### copy from the default_settings_not_using
 
-
 ## Scenario settings
 Scenario.name = Tutorial
 Scenario.simulateConnections = true
@@ -12,18 +11,15 @@ Scenario.updateInterval = 1.0
 # time in seconds
 Scenario.endTime = 3600
 
-
 # "Bluetooth" interface for all nodes
 btInterface.type = SimpleBroadcastInterface
 # Transmit speed of 2 Mbps = 250kBps
 btInterface.transmitSpeed = 250k
 btInterface.transmitRange = 12
 
-
 # assign network interface to all groups
 Group.nrofInterfaces = 1
 Group.interface1 = btInterface
-
 
 ## Message Router
 deleteDelivered = true;
@@ -32,14 +28,8 @@ Group.bufferSize = 5M
 # Message TTL
 Group.msgTtl = 99999
 
-
-
-
-
 ## messages are handled in-engine
 Events.nrof = 0 
-
-
 
 ## Reports - all report names have to be valid report classes
 # how many reports to load
@@ -53,24 +43,16 @@ Report.report1 = MessageStatsReport
 # seed for movement models' pseudo random number generator (default = 0)
 MovementModel.rngSeed = 1
 # World's size for Movement Models without implicit size (width, height; meters)
-MovementModel.worldSize = 1000, 1000
-MovementModel.cellSize = 1
-
-
-
-
+MovementModel.worldSize = 10000, 10000
+MovementModel.cellSize = 10
 
 
 ###end of the copy text
 
-
-
-
 Group1.nrofHosts = 1
-Group2.nrofHosts = 1
+Group2.nrofHosts = 3
 
-
-Group1.groupID = M
+Group1.groupID = drone
 Group2.groupID = S
 
 # Group 1 will move on a line
@@ -83,11 +65,10 @@ Group1.GridMovement.endLocation = 350,200
 Group1.LinearMovement.initLocType = 1
 Group1.LinearMovement.targetType = 1
 
-
 # Group2 will have static positions on a line
 Group2.movementModel = LinearFormation
-Group2.LinearFormation.startLocation = 200,210
-Group2.LinearFormation.endLocation = 300,210
+Group2.LinearFormation.startLocation = 200,200
+Group2.LinearFormation.endLocation = 320,200
 
 
 

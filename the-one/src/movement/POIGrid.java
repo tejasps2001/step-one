@@ -82,7 +82,7 @@ public class POIGrid {
 	public class GridCell {
         private float prob;
         private int cost;
-        private GridCell() {
+        GridCell() {
             this.prob = 1.0f; // Default probability of passing through is 1 (safe)
             this.cost = 0;    // Default cost is 0 (no cost)
         }
