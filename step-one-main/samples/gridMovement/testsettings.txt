@@ -54,6 +54,8 @@ Report.report1 = MessageStatsReport
 MovementModel.rngSeed = 1
 # World's size for Movement Models without implicit size (width, height; meters)
 MovementModel.worldSize = 1000, 1000
+MovementModel.cellSize = 1
+
 
 
 
@@ -65,16 +67,16 @@ MovementModel.worldSize = 1000, 1000
 
 
 Group1.nrofHosts = 1
-Group2.nrofHosts = 3
+Group2.nrofHosts = 1
 
 
 Group1.groupID = M
 Group2.groupID = S
 
 # Group 1 will move on a line
-Group1.movementModel = LinearMovement
-Group1.LinearMovement.startLocation = 50,200
-Group1.LinearMovement.endLocation = 350,200
+Group1.movementModel = GridMovement
+Group1.GridMovement.startLocation = 50,200
+Group1.GridMovement.endLocation = 350,200
 
 # Set linearmovement to move from one end of the line to the other (e.g. instead of random point on line).
 # See 'LinearMovement' class for more documentation
@@ -94,6 +96,6 @@ Group.speed = 0.3, 0.5
 
 
 
-processEngineApp1.autoDeployedProcesses = samples/tutorial3_signals_events/Tutorial_3_Signals_Events.bpmn20.xml
-processEngineApp1.autoStartedProcessKeys = tutorial3_signals
+#processEngineApp1.autoDeployedProcesses = samples/tutorial3_signals_events/Tutorial_3_Signals_Events.bpmn20.xml
+#processEngineApp1.autoStartedProcessKeys = tutorial3_signals
 

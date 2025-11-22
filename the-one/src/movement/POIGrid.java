@@ -1,5 +1,4 @@
 package movement;
-import core.DTNSim;
 import core.DTNHost;
 import core.Connection;
 import core.Settings;
@@ -35,26 +34,19 @@ public class POIGrid {
     private int cellSize;
 	private int rows;
 	private int cols;
-	private static int worldSizeX;
-	private static int worldSizeY;
+	private int worldSizeX;
+	public static final String CELL_SIZE_S = "cellSize";
+	private int worldSizeY;
 
-    static {
-		DTNSim.registerForReset(POIGrid.class.getCanonicalName());
-		reset();
-	}
-
-    public static void reset() {
-        Settings s = new Settings(MovementModel.MOVEMENT_MODEL_NS);
+    public POIGrid() {
+		Settings s = new Settings(MovementModel.MOVEMENT_MODEL_NS);
         int [] worldSize = s.getCsvInts(MovementModel.WORLD_SIZE,2);
 		worldSizeX = worldSize[0];
 		worldSizeY = worldSize[1];
-    }
-
-    public POIGrid() {
+		this.cellSize = s.getInt(CELL_SIZE_S);
         this.rows = worldSizeY/cellSize + 1;
 		this.cols = worldSizeX/cellSize + 1;
-        this.cellSize = cellSize;
-
+		this.cells = new GridCell[rows+2][cols+2];
         for (int i=0; i<rows+2; i++) {
 			for (int j=0; j<cols+2; j++) {
 				this.cells[i][j] = new GridCell();
@@ -64,7 +56,7 @@ public class POIGrid {
     public void updateGrid(DTNHost host) {
         List<Connection> connections = host.getConnections();
         if( connections.isEmpty()) {
-            return ;
+            return;
         }
         for( Connection conn: connections) {
             DTNHost otherHost = conn.getOtherNode(host);
