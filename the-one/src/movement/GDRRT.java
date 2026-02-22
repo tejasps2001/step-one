@@ -1,3 +1,4 @@
+import java.util.Random;
 package movement;
 
 class Node {
@@ -89,9 +90,52 @@ public class GDRRT {
     }
   }
 
+  /*
+   * Generates a random coord bounded by topLeft & bottomRight Coord object
+   */
+  private static Coord sample() {
+    // get bounds from topLeft & bottomRight
+    double leftX = topLeft.getX();
+    double topY = topLeft.getY();
+    double rightX = bottomRight.getX();
+    double bottomY = bottomRight.getY();
+
+    // generate a random (x, y) coordinate within bounds
+    Random randomInstance = new Random();
+    double x = randomInstance.doubles(leftX, rightX)
+      .findFirst()
+      .orElseThrow();
+    double y = randomInstance.doubles(topY, bottomY)
+      .findFirst()
+      .orElseThrow();
+
+    return new Coord(x, y);
+  }
+  
+  /*
+   * Generates a random coord bounded by topLeft & bottomRight Coord object
+   * The sample space is further limited by the hypersphere around posTemp
+   */
+  private static Coord sample(double d, Coord posTemp) {
+    // get bounds from topLeft,  bottomRight & posTemp + d
+    double leftX = Math.max(topLeft.getX(), posTemp.getX() - d);
+    double topY = Math.max(topLeft.getY(), posTemp.getY() - d);
+    double rightX = Math.min(bottomRight.getX(), posTemp.getX() + d);
+    double bottomY = Math.min(bottomRight.getY(), posTemp.getY() + d);
+
+    // generate a random (x, y) coordinate within bounds
+    Random randomInstance = new Random();
+    double x = randomInstance.doubles(leftX, rightX)
+      .findFirst()
+      .orElseThrow();
+    double y = randomInstance.doubles(topY, bottomY)
+      .findFirst()
+      .orElseThrow();
+
+    return new Coord(x, y);
+  }
+  
   // TODO: implement this
-  private static Coord sample() {}
-  private static Coord sample(double d, Coord posTemp) {}
   private static Coord steer(Coord nearest, Coord rand, double delta) {}
   private static findNearest(Node tree, Coord rand) {}
 }
