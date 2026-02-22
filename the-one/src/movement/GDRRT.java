@@ -135,7 +135,26 @@ public class GDRRT {
     return new Coord(x, y);
   }
   
+  /*
+   * Returns the rand Coord if it is reachable by covering delta distance
+   * from the nearest node in the RR Tree.
+   * If not, returns the furthest Coord in the direction of rand 
+   * that delta distance allows to go to.
+   */
+  private static Coord steer(Coord nearest, Coord rand, double delta) {
+    double distance = nearest.distance(rand);
+    if (distance <= delta) return rand;
+    
+    double xDistance = rand.getX() - nearest.getX();
+    double yDistance = rand.getY() - nearest.getY();
+    double parts = delta / distance;
+    
+    double x = nearest.getX() + (parts * xDistance);
+    double y = nearest.getY() + (parts * yDistance);
+
+    return new Coord(x, y);
+  }
+  
   // TODO: implement this
-  private static Coord steer(Coord nearest, Coord rand, double delta) {}
   private static findNearest(Node tree, Coord rand) {}
 }
