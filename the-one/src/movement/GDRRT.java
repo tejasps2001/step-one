@@ -1,5 +1,6 @@
-import java.util.Random;
 package movement;
+import core.Coord;
+import java.util.*;
 
 class Node {
   List<Node> children;
@@ -102,12 +103,8 @@ public class GDRRT {
 
     // generate a random (x, y) coordinate within bounds
     Random randomInstance = new Random();
-    double x = randomInstance.doubles(leftX, rightX)
-      .findFirst()
-      .orElseThrow();
-    double y = randomInstance.doubles(topY, bottomY)
-      .findFirst()
-      .orElseThrow();
+    double x = leftX + (rightX - leftX) * randomInstance.nextDouble();
+    double y = topY + (bottomY - topY) * randomInstance.nextDouble();
 
     return new Coord(x, y);
   }
@@ -125,12 +122,8 @@ public class GDRRT {
 
     // generate a random (x, y) coordinate within bounds
     Random randomInstance = new Random();
-    double x = randomInstance.doubles(leftX, rightX)
-      .findFirst()
-      .orElseThrow();
-    double y = randomInstance.doubles(topY, bottomY)
-      .findFirst()
-      .orElseThrow();
+    double x = leftX + (rightX - leftX) * randomInstance.nextDouble();
+    double y = topY + (bottomY - topY) * randomInstance.nextDouble();
 
     return new Coord(x, y);
   }
