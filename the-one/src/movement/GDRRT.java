@@ -3,7 +3,7 @@ import core.Coord;
 import java.util.*;
 
 class Node {
-  List<Node> children;
+  Set<Node> children;
   Node parent;
   Coord position;
   double cost;
@@ -12,12 +12,14 @@ class Node {
     this.position = c.clone();
     this.cost = cost;
     this.parent = null;
+    this.children = new HashSet<Node>();
   }
 
   Node (Coord c, double cost, Node parent) {
     this.position = c.clone();
     this.cost = cost;
     this.parent = parent;
+    this.children = new HashSet<Node>();
   }
 
   Coord getLocation() {
@@ -39,9 +41,12 @@ public class GDRRT {
 
   // maximum extension distance
   private static double delta;
-  private static double deltaMin;
+  
+  // TODO: make these proportional
   private static final int BASE_EXTENSION = 10;
   private static final int MIN_EXTENSION = 1;
+  private static double globalMinDistance;
+  private static double nearRadius = 5;
 
   private static final int OBSTACLE_CONSTANT = 1;
 
@@ -52,11 +57,16 @@ public class GDRRT {
   // total no of iterations algorithm runs far
   // higher means better path
   private static int totalIterations = 10;
+
+
   
   public static Path findPath(MapBasedMovement mapBasedMM, Coord startLoc, Coord endLoc) {
     tree = new Node(startLoc, 0);
     posTemp = tree.getLocation();
     Coord rand = sample(d, posTemp);
+    double minDistanceFromGoal = startLoc.distance(endLoc);
+    // TODO: set this proportional to the overall distance
+    globalMinDistance = startLoc.distance(endLoc);
 
     for (int i = 0; i < totalIterations; i++) {
       Coord nearest = findNearest(tree, rand);
@@ -149,5 +159,72 @@ public class GDRRT {
   }
   
   // TODO: implement this
-  private static findNearest(Node tree, Coord rand) {}
+  //Traversing the tree in  Level order  way 
+  //and try to check for min distance for each node;
+  private static Coord  findNearest(Node tree, Coord rand) {
+      Node xNearest = null;
+      double distance  = Integer.MAX_VALUE ; 
+      if( tree==null) { 
+         return null;
+      }
+      Queue<Node> q = new LinkedList<>();
+      q.add(tree);
+      while( !q.isEmpty()) {
+            Node temp = q.remove();
+            double temp_distance = distance(rand, temp.position );
+            if(  temp_distance > distance ) { 
+                xNearest = temp ;
+                distance = temp_distance;                      
+            }
+            for ( Node i : temp.children ){ 
+                  if ( i!=null ) { 
+                        q.add(i) ;
+                  }
+
+            }
+      }
+
+      return xNearest.position;
+  }
+
+  /*
+   * Return the Node from the tree which have least cost 
+    * from itself to the newNode and
+    * Doing this for checking there is any cases there is another 
+    * Node nearer than nearest 
+   */
+  private static Node chooseParent(List<Node> nearNodes, Node nearest, Coord newNode){
+          Node  min = nearest; 
+           min.cost = distance( min.position, newNode)  + min.cost;
+          for (int i = 0 ;i<nearNodes.size() ;i++ ) { 
+                Node temp = nearNodes.get(i);                
+                if ( temp.cost+distance( temp.position, newNode)  >  min.cost)  { 
+                      min = temp;
+                      min.cost = temp.cost+distance( temp.position, newNode);
+                }
+          }
+          return min ;       
+  }
+
+  /// Euclidian distance between two points in the space 
+  private static double distance(Coord a , Coord b) {
+    return Math.sqrt(Math.pow(b.getX() - a.getX(), 2) + Math.pow(b.getY() - a.getY(), 2));
+  }   
+
+
+  /*
+    * Inserting the Node as the child of the parent of 
+  */
+  public static void insertNode(Node minNode, Node newNode) {
+    minNode.children.add(newNode);
+  }
+
+
+  /*
+   * Finds all the nodes in the hypersphere with the newNode as center
+   * and radius rNear
+   */
+  static List<Node> near(Node tree, Node newNode, double rNear) {
+
+  }
 }
