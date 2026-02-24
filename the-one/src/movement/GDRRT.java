@@ -2,6 +2,7 @@ package movement;
 
 import core.Coord;
 import java.util.*;
+import util.PythonRunner;
 
 class Node {
   Set<Node> children;
@@ -75,7 +76,7 @@ public class GDRRT {
       // TODO: define obstacles from mapBasedMM
       // not sure what type obstacles should have or if there should be multiple
       // arguments
-      if (collisionFree(newNode, obstacles)) {
+      if (collisionFree(nearest, newNode)) {
         delta = BASE_EXTENSION;
         double currentDistance = distance(newNode, endLoc);
         if (currentDistance < minDistanceFromGoal) {
@@ -246,7 +247,19 @@ public class GDRRT {
     return list;
   }
 
- 
+  static int CollisionFree(Coord nearest, Coord newNode) {
+    String filePath = "C:\\Users\\tejas\\Documents\\Class_14\\Project\\Case_Study\\step-one\\step-one-main\\samples\\disaster_scenario\\target_roads_final.wkt";
+    int exitCode = 0;
+    ProcessBuilder pb = new ProcessBuilder("python", filePath, "LINESTRING (69.955702186 36.95972582,69.741652815 39.34090973)");
+    try {
+      Process process = pb.start();
+      exitCode = process.waitFor();
+    }
+    catch (Exception e) {
+      e.printStackTrace();
+    }
+    return exitCode;
+  }
 
 
 }
