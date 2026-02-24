@@ -61,6 +61,7 @@ public class GDRRT {
 
   public static Path findPath(MapBasedMovement mapBasedMM, Coord startLoc, Coord endLoc) {
     tree = new Node(startLoc, 0);
+
     posTemp = tree.getLocation();
     Coord rand = sample(d, posTemp);
     double minDistanceFromGoal = startLoc.distance(endLoc);
@@ -244,4 +245,8 @@ public class GDRRT {
 
     return list;
   }
+
+ 
+
+
 }
