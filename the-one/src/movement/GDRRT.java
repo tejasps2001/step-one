@@ -37,19 +37,8 @@ public class GDRRT {
   private static Node tree;
 
   // size of the sampling sphere
-  private static double d;
-  private static Coord posTemp;
 
-  // maximum extension distance
-  private static double delta;
-
-  // TODO: make these proportional
-  private static final int BASE_EXTENSION = 10;
-  private static final int MIN_EXTENSION = 1;
-  private static double globalMinDistance;
   private static double nearRadius = 5;
-
-  private static final int OBSTACLE_CONSTANT = 1;
 
   // bounds for the solution space (hard coded for now, calculate it later)
   private static Coord topLeft = new Coord(100, 100);
@@ -59,16 +48,17 @@ public class GDRRT {
   // higher means better path
   private static int totalIterations = 10;
 
-  // TODO: Constructor which gets xtarget
-
-  public static Path findPath(MapBasedMovement mapBasedMM, Coord startLoc, Coord endLoc) {
+  public static Path findPath(Coord startLoc, Coord endLoc) {
     tree = new Node(startLoc, 0);
-
-    posTemp = tree.getLocation();
-    Coord rand = sample(d, posTemp);
     double minDistanceFromGoal = startLoc.distance(endLoc);
-    // TODO: set this proportional to the overall distance
-    globalMinDistance = startLoc.distance(endLoc);
+    double delta_init = 0.01 * minDistanceFromGoal;
+    double d = 2 * delta_init;
+    double delta_min = 0.001 * minDistanceFromGoal;
+    double k = 0.01 * minDistanceFromGoal;
+    double delta = delta_init;
+    double globalMinDistance = 2 * delta_init;
+    Coord posTemp = tree.getLocation();
+    Coord rand = sample(d, posTemp);
 
     for (int i = 0; i < totalIterations; i++) {
       Node nearest = findNearest(tree, rand);
@@ -77,8 +67,9 @@ public class GDRRT {
       // TODO: define obstacles from mapBasedMM
       // not sure what type obstacles should have or if there should be multiple
       // arguments
+      // TODO: pass the obstacle file from GDRRTMovement
       if (collisionFree(nearest.position, newNode.position)) {
-        delta = BASE_EXTENSION;
+        delta = delta_init;
         double currentDistance = distance(newNode.position, endLoc);
         if (currentDistance < minDistanceFromGoal) {
           posTemp = newNode.position;
@@ -87,19 +78,20 @@ public class GDRRT {
 
         // what is this globalMinDistance exactly?
         if (minDistanceFromGoal < globalMinDistance) {
-          delta = MIN_EXTENSION;
+          delta = delta_min;
         }
 
         rand = sample(d, posTemp);
         List<Node> nearNodes = near(tree, newNode.position, nearRadius);
         Node minNode = chooseParent(nearNodes, nearest, newNode.position);
+        insertNode(minNode, newNode);
       } else {
-        delta = delta + OBSTACLE_CONSTANT;
+        delta = delta + k;
         rand = sample();
       }
 
-      return generatePath(tree, xtarget);
     }
+    return generatePath(tree, new Node(endLoc, Integer.MAX_VALUE));
   }
 
   /*
@@ -247,10 +239,13 @@ public class GDRRT {
   }
 
   static boolean collisionFree(Coord nearest, Coord newNode) {
-    String filePath = "C:\\Users\\tejas\\Documents\\Class_14\\Project\\Case_Study\\step-one\\step-one-main\\samples\\disaster_scenario\\target_roads_final.wkt";
+    String filePath = "C:\\Users\\tejas\\Documents\\Class_14\\Project\\Case_Study\\step-one\\the-one\\src\\util\\WKT.py";
     int exitCode = 0;
+    String obstacle_file_path = "C:\\Users\\tejas\\Documents\\Class_14\\Project\\Case_Study\\step-one\\step-one-main\\samples\\disaster_scenario\\target_roads_final.wkt";
+    String nearest_newNode = "LINESTRING (" + nearest.getX() + " " + nearest.getY() +
+                              ", " + newNode.getX() + newNode.getY() + ")";
     ProcessBuilder pb = new ProcessBuilder("python", filePath,
-        "LINESTRING (69.955702186 36.95972582,69.741652815 39.34090973)");
+        obstacle_file_path, nearest_newNode);
     try {
       Process process = pb.start();
       exitCode = process.waitFor();
@@ -260,12 +255,14 @@ public class GDRRT {
     return (exitCode != 0);
   }
 
-  static List<Node> generatePath(Node tree, Node xtarget) {
+  static Path generatePath(Node tree, Node xtarget) {
     Path p = new Path();
     List<Node> pathArray = new ArrayList<Node>();
     // Backtrack from xnearest to root using parent pointers
     pathArray = dfs(tree, pathArray, xtarget);
-    return pathArray;
+    for(Node waypoint : pathArray)
+      p.addWaypoint(waypoint.position);
+    return p;
   }
 
   static List<Node> dfs(Node tree, List<Node> pathSoFar, Node xtarget) {

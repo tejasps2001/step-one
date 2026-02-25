@@ -3,7 +3,11 @@ from shapely.wkt import loads
 from shapely.geometry import LineString
 
 # line = loads(sys.argv[1])
-obstacleInfo = loads(sys.argv[1])
+obstacleFile = sys.arg[1]
+obstacleInfo = ''
+with open(obstacleFile, 'r') as f:
+    obstacleInfo = f.read()
+obstaclewkt = loads(obstacleInfo)
 xnearrand = loads(sys.argv[2])
 obstacleOutline = []
 i = 0

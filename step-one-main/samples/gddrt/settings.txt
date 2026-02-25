@@ -50,12 +50,12 @@ Group2.groupID = B
 # specify different coordinates for Group1, Group2
 Group.movementModel = StationaryMovement
 
-Group1.nodeLocation=200,200
+Group1.nodeLocation=50, 37
 Group1.movementModel=GDRRTMovement
 
 
 
-Group2.nodeLocation=200,210
+Group2.nodeLocation=71, 37
 
 
 

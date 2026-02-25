@@ -1,5 +1,4 @@
 package movement;
-
 import core.Coord;
 import core.Settings;
 
@@ -17,7 +16,6 @@ public class GDRRTMovement extends MovementModel {
     private Coord startLoc;
     // ending location of the node
     private Coord endLoc;
-    private Path nextPath;
     private MapBasedMovement mapBasedMM;
     private LinearMovement linearMM;
 
@@ -35,7 +33,7 @@ public class GDRRTMovement extends MovementModel {
         coords = s.getCsvInts(GDRRT_MOVEMENT_NS + END_LOCATION_S, 2);
         this.endLoc = new Coord(coords[0], coords[1]);
         // We need MapRouteMovement for storing the obstacles WKT file
-        mapBasedMM = new MapBasedMovement(s);
+        // mapBasedMM = new MapBasedMovement(s);
     }
 
     public GDRRTMovement(GDRRTMovement proto) {
@@ -49,12 +47,13 @@ public class GDRRTMovement extends MovementModel {
 
     @Override
     public Path getPath() {
-        return GDDRT.findPath(mapBasedMM, startLoc, endLoc);
+        Path p = GDRRT.findPath(this.startLoc, this.endLoc);
+        return p;
     }
     
     @Override
     public Coord getInitialLocation() {
-        initLoc = startLoc.clone();
+        Coord initLoc = startLoc.clone();
         return initLoc;
     }
     
