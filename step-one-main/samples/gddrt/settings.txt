@@ -1,15 +1,15 @@
 #
-# Default settings for the simulation
+#  settings for the GDRRT
 #
 
 ## Scenario settings
-#Scenario.name = Tutorial
-#Scenario.simulateConnections = true
-#Scenario.updateInterval = 1.0
+Scenario.name = GDRRT
+Scenario.simulateConnections = true
+Scenario.updateInterval = 1.0
 # time in seconds
 Scenario.endTime = 3600
 
-#Scenario.nrofHostGroups = 1
+Scenario.nrofHostGroups = 2
 
 ## Interface-specific settings:
 # type : which interface class the interface belongs to
@@ -27,8 +27,8 @@ Scenario.endTime = 3600
 
 
 # assign network interface to all groups
-# Group.nrofInterfaces = 1
-# Group.interface1 = btInterface
+Group.nrofInterfaces = 0
+#Group.interface1 = btInterface
 
 
 ## Message Router
@@ -40,18 +40,22 @@ Scenario.endTime = 3600
 
 
 
-# Group.nrofHosts = 1
+Group.nrofHosts = 1
 
-# Group1.groupID = A
-# Group2.groupID = B
+Group1.groupID = A
+Group2.groupID = B
 
 
 # Assign same movement model to all node groups, but
 # specify different coordinates for Group1, Group2
-# Group.movementModel = StationaryMovement
+Group.movementModel = StationaryMovement
 
-# Group1.nodeLocation=200,200
-# Group2.nodeLocation=200,210
+Group1.nodeLocation=200,200
+Group1.movementModel=GDRRTMovement
+
+
+
+Group2.nodeLocation=200,210
 
 
 
@@ -70,12 +74,12 @@ Scenario.endTime = 3600
 
 ## Movement model settings
 # seed for movement models' pseudo random number generator (default = 0)
-# MovementModel.rngSeed = 1
+#MovementModel.rngSeed = 1
 # World's size for Movement Models without implicit size (width, height; meters)
-# MovementModel.worldSize = 1000, 1000
+MovementModel.worldSize = 1000, 1000
 
 ## messages are handled in-engine
-# Events.nrof = 0 
+Events.nrof = 0 
 
 
 

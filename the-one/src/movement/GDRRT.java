@@ -2,7 +2,6 @@ package movement;
 
 import core.Coord;
 import java.util.*;
-import util.PythonRunner;
 
 class Node {
   Set<Node> children;
@@ -60,6 +59,8 @@ public class GDRRT {
   // higher means better path
   private static int totalIterations = 10;
 
+  // TODO: Constructor which gets xtarget
+
   public static Path findPath(MapBasedMovement mapBasedMM, Coord startLoc, Coord endLoc) {
     tree = new Node(startLoc, 0);
 
@@ -70,17 +71,17 @@ public class GDRRT {
     globalMinDistance = startLoc.distance(endLoc);
 
     for (int i = 0; i < totalIterations; i++) {
-      Coord nearest = findNearest(tree, rand);
-      Coord newNode = steer(nearest, rand, delta);
+      Node nearest = findNearest(tree, rand);
+      Node newNode = steer(nearest.position, rand, delta);
 
       // TODO: define obstacles from mapBasedMM
       // not sure what type obstacles should have or if there should be multiple
       // arguments
-      if (collisionFree(nearest, newNode)) {
+      if (collisionFree(nearest.position, newNode.position)) {
         delta = BASE_EXTENSION;
-        double currentDistance = distance(newNode, endLoc);
+        double currentDistance = distance(newNode.position, endLoc);
         if (currentDistance < minDistanceFromGoal) {
-          posTemp = newNode;
+          posTemp = newNode.position;
           minDistanceFromGoal = currentDistance;
         }
 
@@ -90,16 +91,14 @@ public class GDRRT {
         }
 
         rand = sample(d, posTemp);
-        List<Node> nearNodes = near(tree, newNode, nearRadius);
-        Node minNode = chooseParent(nearNodes, nearest, newNode);
-        insertNode(minNode, newNode);
-        tree = rewire(tree, nearNodes, minNode, newNode);
+        List<Node> nearNodes = near(tree, newNode.position, nearRadius);
+        Node minNode = chooseParent(nearNodes, nearest, newNode.position);
       } else {
         delta = delta + OBSTACLE_CONSTANT;
         rand = sample();
       }
 
-      return generatePath(tree);
+      return generatePath(tree, xtarget);
     }
   }
 
@@ -146,10 +145,10 @@ public class GDRRT {
    * If not, returns the furthest Coord in the direction of rand
    * that delta distance allows to go to.
    */
-  private static Coord steer(Coord nearest, Coord rand, double delta) {
+  private static Node steer(Coord nearest, Coord rand, double delta) {
     double distance = nearest.distance(rand);
     if (distance <= delta)
-      return rand;
+      return new Node(new Coord(rand.getX(), rand.getY()), Integer.MAX_VALUE);
 
     double xDistance = rand.getX() - nearest.getX();
     double yDistance = rand.getY() - nearest.getY();
@@ -158,13 +157,13 @@ public class GDRRT {
     double x = nearest.getX() + (parts * xDistance);
     double y = nearest.getY() + (parts * yDistance);
 
-    return new Coord(x, y);
+    return new Node(new Coord(x, y), Integer.MAX_VALUE);
   }
 
   // TODO: implement this
   // Traversing the tree in Level order way
   // and try to check for min distance for each node;
-  private static Coord findNearest(Node tree, Coord rand) {
+  private static Node findNearest(Node tree, Coord rand) {
     Node xNearest = null;
     double distance = Integer.MAX_VALUE;
     if (tree == null) {
@@ -187,7 +186,7 @@ public class GDRRT {
       }
     }
 
-    return xNearest.position;
+    return xNearest;
   }
 
   /*
@@ -225,14 +224,14 @@ public class GDRRT {
    * Finds all the nodes in the hypersphere with the newNode as center
    * and radius rNear
    */
-  static List<Node> near(Node tree, Node newNode, double rNear) {
+  static List<Node> near(Node tree, Coord newNode, double rNear) {
     List<Node> list = new ArrayList<>();
     Queue<Node> q = new LinkedList<>();
 
     q.add(tree);
     while (!q.isEmpty()) {
       Node temp = q.remove();
-      double temp_distance = newNode.position.distance(temp.position);
+      double temp_distance = newNode.distance(temp.position);
       if (temp_distance < rNear) {
         list.add(temp);
       }
@@ -247,19 +246,40 @@ public class GDRRT {
     return list;
   }
 
-  static int CollisionFree(Coord nearest, Coord newNode) {
+  static boolean collisionFree(Coord nearest, Coord newNode) {
     String filePath = "C:\\Users\\tejas\\Documents\\Class_14\\Project\\Case_Study\\step-one\\step-one-main\\samples\\disaster_scenario\\target_roads_final.wkt";
     int exitCode = 0;
-    ProcessBuilder pb = new ProcessBuilder("python", filePath, "LINESTRING (69.955702186 36.95972582,69.741652815 39.34090973)");
+    ProcessBuilder pb = new ProcessBuilder("python", filePath,
+        "LINESTRING (69.955702186 36.95972582,69.741652815 39.34090973)");
     try {
       Process process = pb.start();
       exitCode = process.waitFor();
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       e.printStackTrace();
     }
-    return exitCode;
+    return (exitCode != 0);
   }
 
+  static List<Node> generatePath(Node tree, Node xtarget) {
+    Path p = new Path();
+    List<Node> pathArray = new ArrayList<Node>();
+    // Backtrack from xnearest to root using parent pointers
+    pathArray = dfs(tree, pathArray, xtarget);
+    return pathArray;
+  }
 
+  static List<Node> dfs(Node tree, List<Node> pathSoFar, Node xtarget) {
+    if(tree == null) return null;
+    if(tree == xtarget) return pathSoFar;
+    pathSoFar.add(tree);
+
+    for(Node child : pathSoFar) {
+      List<Node> curPath = dfs(child, pathSoFar, xtarget);
+      if (curPath != null) {
+        return curPath;
+      }
+    }
+
+    return null;
+  }
 }
