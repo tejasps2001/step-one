@@ -38,22 +38,26 @@ public class GDRRTMovement extends MovementModel {
 
     public GDRRTMovement(GDRRTMovement proto) {
         super(proto);
-        mapBasedMM = proto.mapBasedMM.replicate();
+        this.startLoc = proto.startLoc.clone();
+        this.endLoc = proto.endLoc.clone();
+        // mapBasedMM = proto.mapBasedMM.replicate();
     }
-
+    
     public GDRRTMovement replicate() {
-       return new GDRRTMovement(this);
+        return new GDRRTMovement(this);
     }
-
+    
     @Override
     public Path getPath() {
-        Path p = GDRRT.findPath(this.startLoc, this.endLoc);
+        GDRRTPlanner gdrrt = new GDRRTPlanner();
+        Path p = gdrrt.generatePath(this.startLoc, this.endLoc);
+        System.out.println(p);
         return p;
     }
     
     @Override
     public Coord getInitialLocation() {
-        Coord initLoc = startLoc.clone();
+        Coord initLoc = this.startLoc.clone();
         return initLoc;
     }
     

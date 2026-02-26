@@ -30,6 +30,14 @@ class Node {
   double getCost() {
     return this.cost;
   }
+  public String toString( ) { 
+        String str = ""+this.position + "-->";
+        for( Node i : children){
+          str+=""+ i.position;
+    
+        }
+        return str;
+  }
 }
 
 public class GDRRT {
@@ -46,12 +54,12 @@ public class GDRRT {
 
   // total no of iterations algorithm runs far
   // higher means better path
-  private static int totalIterations = 10;
+  private static int totalIterations = 100;
 
   public static Path findPath(Coord startLoc, Coord endLoc) {
     tree = new Node(startLoc, 0);
     double minDistanceFromGoal = startLoc.distance(endLoc);
-    double delta_init = 0.01 * minDistanceFromGoal;
+    double delta_init = 0.1 * minDistanceFromGoal;
     double d = 2 * delta_init;
     double delta_min = 0.001 * minDistanceFromGoal;
     double k = 0.01 * minDistanceFromGoal;
@@ -62,6 +70,7 @@ public class GDRRT {
 
     for (int i = 0; i < totalIterations; i++) {
       Node nearest = findNearest(tree, rand);
+      // System.out.println("" + nearest.position + rand + delta);
       Node newNode = steer(nearest.position, rand, delta);
 
       // TODO: define obstacles from mapBasedMM
@@ -85,6 +94,7 @@ public class GDRRT {
         List<Node> nearNodes = near(tree, newNode.position, nearRadius);
         Node minNode = chooseParent(nearNodes, nearest, newNode.position);
         insertNode(minNode, newNode);
+        System.out.println("Printing the minNode " + minNode);
       } else {
         delta = delta + k;
         rand = sample();
@@ -166,7 +176,7 @@ public class GDRRT {
     while (!q.isEmpty()) {
       Node temp = q.remove();
       double temp_distance = distance(rand, temp.position);
-      if (temp_distance > distance) {
+      if (temp_distance < distance) {
         xNearest = temp;
         distance = temp_distance;
       }
@@ -177,7 +187,6 @@ public class GDRRT {
 
       }
     }
-
     return xNearest;
   }
 
@@ -270,11 +279,10 @@ public class GDRRT {
     if(tree == xtarget) return pathSoFar;
     pathSoFar.add(tree);
 
-    for(Node child : pathSoFar) {
+    for(Node child : tree.children) {
       List<Node> curPath = dfs(child, pathSoFar, xtarget);
-      if (curPath != null) {
+      if (curPath != null)
         return curPath;
-      }
     }
 
     return null;

@@ -32,30 +32,32 @@ Group.nrofInterfaces = 0
 
 
 ## Message Router
-# deleteDelivered = true;
-# Group.router = DirectDeliveryRouter
-# Group.bufferSize = 5M
-# Message TTL
-# Group.msgTtl = 99999
+deleteDelivered = true;
+Group.router = DirectDeliveryRouter
+Group.bufferSize = 5M
+Message TTL
+Group.msgTtl = 99999
 
 
 
 Group.nrofHosts = 1
 
 Group1.groupID = A
-Group2.groupID = B
+Group1.speed = 0.5,0.5
 
+Group2.groupID = B
 
 # Assign same movement model to all node groups, but
 # specify different coordinates for Group1, Group2
 Group.movementModel = StationaryMovement
 
-Group1.nodeLocation=50, 37
 Group1.movementModel=GDRRTMovement
 
+Group1.GDRRTMovement.startLocation=10,10
+Group1.GDRRTMovement.endLocation=200,210
 
-
-Group2.nodeLocation=71, 37
+Group2.movementModel = StationaryMovement
+Group2.nodeLocation=200,210
 
 
 
@@ -83,9 +85,11 @@ Events.nrof = 0
 
 
 
+
+
 ## Reports - all report names have to be valid report classes
 # how many reports to load
-# Report.nrofReports = 0
+Report.nrofReports = 0
 # Report.reportDir = reports/tutorial
 # Report classes to load
 # Report.report1 = MessageStatsReport
