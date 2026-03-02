@@ -76,7 +76,7 @@ public class GDRRTPlanner {
             Coord newCoord = steer(xNearest.getLocation(), xRand, delta);
 
             // Line 7: Collision check (Assumed true for this implementation) [cite: 352]
-            if (isCollisionFree(newCoord)) {
+            if (isCollisionFree(xNearest.position, newCoord)) {
                 delta = deltaInit; // Line 8 [cite: 353]
 
                 double distNew = newCoord.distance(xGoal.getLocation());
@@ -123,7 +123,7 @@ public class GDRRTPlanner {
         Node[] pathArray = new Node[1000];
         // Backtrack from xnearest to root using parent pointers
         pathArray = planPath(xInit, xGoal);
-        for(Node waypoint : pathArray)
+        for (Node waypoint : pathArray)
             p.addWaypoint(waypoint.position);
         return p;
     }
@@ -178,10 +178,24 @@ public class GDRRTPlanner {
         }
     }
 
-    private boolean isCollisionFree(Coord c) {
-        // Placeholder for environment geometry checks
-        return true;
+    private boolean isCollisionFree(Coord nearest, Coord newNode) {
+        String filePath = "C:\\Users\\tejas\\Documents\\Class_14\\Project\\Case_Study\\step-one\\the-one\\src\\util\\WKT.py";
+        int exitCode = 0;
+        String obstacle_file_path = "C:\\Users\\tejas\\Documents\\Class_14\\Project\\Case_Study\\step-one\\step-one-main\\samples\\disaster_scenario\\target_roads_final.wkt";
+        String nearest_newNode = "LINESTRING (" + nearest.getX() + " " + nearest.getY() +
+                ", " + newNode.getX() + newNode.getY() + ")";
+        ProcessBuilder pb = new ProcessBuilder("python", filePath,
+                obstacle_file_path, nearest_newNode);
+        try {
+            Process process = pb.start();
+            exitCode = process.waitFor();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return (exitCode != 0);
     }
+
+    
 
     private Node[] constructPath(Node goalNode) {
         List<Node> path = new ArrayList<>();
