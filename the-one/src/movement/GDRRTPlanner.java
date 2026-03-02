@@ -1,6 +1,10 @@
 package movement;
 
 import core.Coord;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
 import java.util.*;
 
 class Node {
@@ -50,7 +54,7 @@ public class GDRRTPlanner {
     private double d = 60.0; // Sampling range diameter
     private double distGlobMin = 20.0; // Threshold for fine-tuning convergence
     private double rNear = 60.0; // Radius for finding neighbor nodes
-    private int maxNodes = 100; // Maximum node limit
+    private int maxNodes = 10000; // Maximum node limit
 
     /**
      * Implementation of the GDRRT* algorithm [cite: 337]
@@ -101,6 +105,7 @@ public class GDRRTPlanner {
                 tree.add(xNew);
                 xNearest.children.add(xNew);
                 rewire(tree, xNew, xNearNodes);
+               
 
                 // Check if goal is reached
                 if (xNew.getLocation().distance(xGoal.getLocation()) < delta) {
@@ -178,23 +183,48 @@ public class GDRRTPlanner {
         }
     }
 
-    private boolean isCollisionFree(Coord nearest, Coord newNode) {
-        String filePath = "C:\\Users\\tejas\\Documents\\Class_14\\Project\\Case_Study\\step-one\\the-one\\src\\util\\WKT.py";
-        int exitCode = 0;
-        String obstacle_file_path = "C:\\Users\\tejas\\Documents\\Class_14\\Project\\Case_Study\\step-one\\step-one-main\\samples\\disaster_scenario\\target_roads_final.wkt";
-        String nearest_newNode = "LINESTRING (" + nearest.getX() + " " + nearest.getY() +
-                ", " + newNode.getX() + newNode.getY() + ")";
-        ProcessBuilder pb = new ProcessBuilder("python", filePath,
-                obstacle_file_path, nearest_newNode);
-        try {
-            Process process = pb.start();
-            exitCode = process.waitFor();
-        } catch (Exception e) {
-            e.printStackTrace();
+   private boolean isCollisionFree(Coord nearest, Coord newNode) {
+
+    String pythonPath = "python";  // or full path
+    
+    String script="D:/Practice/Drone Fight/step-one/step-one/the-one/src/util/WKT.py";
+    String obstacle ="D:/Practice/Drone Fight/step-one/step-one/step-one-main/samples/gddrt/obstacles.wkt";
+
+    String edge = "LINESTRING (" + nearest.getX() + " " + nearest.getY()
+            + ", " + newNode.getX() + " " + newNode.getY() + ")";
+
+    int exitCode = -1;
+
+    try {
+        ProcessBuilder pb = new ProcessBuilder(
+                pythonPath,
+                script,
+                obstacle,
+                edge
+        );
+
+        pb.redirectErrorStream(true);
+
+        Process process = pb.start();
+
+        BufferedReader reader =
+                new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+        String line;
+        while ((line = reader.readLine()) != null) {
+            System.out.println("[PYTHON] " + line);
         }
-        return (exitCode != 0);
+
+        exitCode = process.waitFor();
+
+    } catch (Exception e) {
+        e.printStackTrace();
     }
 
+    System.out.println("    Exit code: " + exitCode);
+
+    return exitCode == 1;  // true if collision-free
+}
     
 
     private Node[] constructPath(Node goalNode) {

@@ -1,21 +1,39 @@
 import sys
 from shapely.wkt import loads
-from shapely.geometry import LineString
 
-# line = loads(sys.argv[1])
-obstacleFile = sys.arg[1]
-obstacleInfo = ''
-with open(obstacleFile, 'r') as f:
-    obstacleInfo = f.read()
-obstaclewkt = loads(obstacleInfo)
-xnearrand = loads(sys.argv[2])
-obstacleOutline = []
-i = 0
-for obstacle in obstacleInfo:
-    obstacleOutline[i] = obstacle.buffer(0.5).boundary
-    i += 1
+# -----------------------------
+# Arguments from Java
+# -----------------------------
+obstacle_file = sys.argv[1]
+edge_wkt = sys.argv[2]
 
-for obstacle in obstacleOutline:
-    if(xnearrand.intersects(obstacle)):
-        sys.exit(0)
-sys.exit(1)
+BUFFER_DISTANCE = 10
+
+try:
+    # Load edge (new connection)
+    edge = loads(edge_wkt)
+
+    # Open obstacle file
+    with open(obstacle_file, "r") as f:
+        for line in f:
+            line = line.strip()
+
+            if not line:
+                continue   # skip empty lines
+
+            # Convert each LINESTRING to geometry
+            obstacle = loads(line)
+
+            # Add safety buffer
+            buffered = obstacle.buffer(BUFFER_DISTANCE)
+            print("Checking the collision between",edge,obstacle)
+            # Collision check
+            if edge.intersects(buffered):
+                sys.exit(0)   # collision detected
+
+    # If loop completes → no collision
+    sys.exit(1)
+
+except Exception as e:
+    print("Python error:", e)
+    sys.exit(2)   # crash indicator

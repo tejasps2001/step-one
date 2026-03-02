@@ -58,11 +58,11 @@ Group2.nodeLocation=200,210
 ## ------------------------
 ##   APPLICATIONS
 ## ------------------------
-processEngineApp1.type = bpm.BpmEngineApplication
-processEngineApp2.type = bpm.BpmEngineApplication
+#processEngineApp1.type = bpm.BpmEngineApplication
+#processEngineApp2.type = bpm.BpmEngineApplication
 
 
-Group.nrofApplications = 1
+Group.nrofApplications = 0
 Group1.application1 = processEngineApp1
 Group2.application1 = processEngineApp2
 

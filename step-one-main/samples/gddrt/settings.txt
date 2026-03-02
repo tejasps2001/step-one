@@ -9,7 +9,7 @@ Scenario.updateInterval = 1.0
 # time in seconds
 Scenario.endTime = 3600
 
-Scenario.nrofHostGroups = 2
+Scenario.nrofHostGroups = 4 
 
 ## Interface-specific settings:
 # type : which interface class the interface belongs to
@@ -47,6 +47,10 @@ Group1.speed = 0.5,0.5
 
 Group2.groupID = B
 
+
+
+
+
 # Assign same movement model to all node groups, but
 # specify different coordinates for Group1, Group2
 Group.movementModel = StationaryMovement
@@ -61,6 +65,24 @@ Group2.nodeLocation=200,210
 
 
 
+
+
+
+Group3.groupID = c
+Group4.groupID = d
+
+Group3.movementModel = StationaryMovement
+Group3.nodeLocation=90,110
+
+Group4.movementModel = StationaryMovement
+Group4.nodeLocation=200,20
+
+
+
+
+
+
+
 ## ------------------------
 ##   APPLICATIONS
 ## ------------------------
@@ -71,8 +93,6 @@ Group2.nodeLocation=200,210
 # Group.nrofApplications = 1
 # Group1.application1 = processEngineApp1
 # Group2.application1 = processEngineApp2
-
-
 
 ## Movement model settings
 # seed for movement models' pseudo random number generator (default = 0)

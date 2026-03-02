@@ -18,6 +18,7 @@ public class GDRRTMovement extends MovementModel {
     private Coord endLoc;
     private MapBasedMovement mapBasedMM;
     private LinearMovement linearMM;
+    private boolean reachedEnd = false;
 
      /**
      * Creates a new movement model based on a Settings object's settings.
@@ -49,9 +50,11 @@ public class GDRRTMovement extends MovementModel {
     
     @Override
     public Path getPath() {
+        if (reachedEnd) return new Path(0);
         GDRRTPlanner gdrrt = new GDRRTPlanner();
         Path p = gdrrt.generatePath(this.startLoc, this.endLoc);
         System.out.println(p);
+        reachedEnd = true;
         return p;
     }
     
