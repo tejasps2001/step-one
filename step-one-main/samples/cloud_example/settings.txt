@@ -10,6 +10,10 @@ Scenario.endTime = 3600
 
 Scenario.nrofHostGroups = 2
 
+wlanInterface.type = SimpleBroadcastInterface
+wlanInterface.transmitSpeed =999k
+wlanInterface.transmitRange = 800
+
 # Common settings for all groups
 #Group.router = DirectDeliveryRouter
 Group.bufferSize = 512M

@@ -31,7 +31,7 @@ Group1.nrofHosts = 1
 Group1.nrofInterfaces = 1
 Group1.interface1 = wlanInterface
 Group1.movementModel = FogVehicleMovement
-Group1.routeFile = samples/disaster_scenario/fog6.wkt
+Group1.routeFile = step-one-main/samples/disaster_scenario/fog6.wkt
 Group1.routeType = 1
 Group1.routeFirstStop = 1
 Group1.nodeLocation = 150, 150
@@ -44,7 +44,7 @@ Group2.nrofInterfaces = 2
 Group2.interface1 = btInterface
 Group2.interface2 = wlanInterface
 Group2.movementModel = DroneMovement
-Group2.routeFile = samples/disaster_scenario/fog6.wkt
+Group2.routeFile = step-one-main/samples/disaster_scenario/fog6.wkt
 Group2.routeType = 1
 Group2.routeFirstStop = 1
 Group2.nodeLocation = 150, 150
@@ -61,7 +61,7 @@ Group4.nrofHosts = 1
 Group4.nrofInterfaces = 1
 Group4.interface1 = wlanInterface
 Group4.movementModel = FogVehicleMovement
-Group4.routeFile = samples/disaster_scenario/fog7.wkt
+Group4.routeFile = step-one-main/samples/disaster_scenario/fog7.wkt
 Group4.routeType = 1
 Group4.routeFirstStop = 1
 Group4.nodeLocation = 150, 150
@@ -74,7 +74,7 @@ Group5.nrofInterfaces = 2
 Group5.interface1 = btInterface
 Group5.interface2 = wlanInterface
 Group5.movementModel = DroneMovement
-Group5.routeFile = samples/disaster_scenario/fog7.wkt
+Group5.routeFile = step-one-main/samples/disaster_scenario/fog7.wkt
 Group5.routeType = 1
 Group5.routeFirstStop = 1
 Group5.nodeLocation = 150, 150
@@ -86,14 +86,14 @@ Group6.nrofHosts=25
 Group6.nrofInterfaces = 1
 Group6.interface1 = btInterface
 Group6.movementModel=StaticMovement
-Group6.staticLocationFile= samples/disaster_scenario/human_nodes.wkt
+Group6.staticLocationFile= step-one-main/samples/disaster_scenario/human_nodes.wkt
 
 MapBasedMovement.nrofMapFiles = 2
 Events.nrof = 0
 Report.nrofReports = 0
 
-MapBasedMovement.mapFile1 = samples/disaster_scenario/roads_final.wkt
-MapBasedMovement.mapFile2 = samples/disaster_scenario/target_roads_final.wkt
+MapBasedMovement.mapFile1 = step-one-main/samples/disaster_scenario/roads_final.wkt
+MapBasedMovement.mapFile2 = step-one-main/samples/disaster_scenario/target_roads_final.wkt
 MovementModel.worldSize = 100000, 100000
 
 
@@ -130,11 +130,11 @@ Group6.application1 = processEngineApp3
 
 
 
-processEngineApp1.autoDeployedProcesses = samples/disaster_scenario/Fog_model.bpmn20.xml
-processEngineApp2.autoDeployedProcesses = samples/disaster_scenario/Drone_model.bpmn20.xml
+processEngineApp1.autoDeployedProcesses = step-one-main/samples/disaster_scenario/Fog_model.bpmn20.xml
+processEngineApp2.autoDeployedProcesses = step-one-main/samples/disaster_scenario/Drone_model.bpmn20.xml
 processEngineApp1.autoStartedProcessKeys =fog
 processEngineApp2.autoStartedProcessKeys =drone
 processEngineApp2.autoStartedProcessVars=messageContent="Hello World!"
 
-processEngineApp3.autoDeployedProcesses = samples/disaster_scenario/Human.bpmn20.xml
+processEngineApp3.autoDeployedProcesses = step-one-main/samples/disaster_scenario/Human.bpmn20.xml
 processEngineApp3.autoStartedProcessKeys =human
