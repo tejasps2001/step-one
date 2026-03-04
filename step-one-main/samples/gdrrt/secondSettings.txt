@@ -9,7 +9,7 @@ Scenario.updateInterval = 1.0
 # time in seconds
 Scenario.endTime = 3600
 
-Scenario.nrofHostGroups = 4 
+Scenario.nrofHostGroups = 6
 
 ## Interface-specific settings:
 # type : which interface class the interface belongs to
@@ -57,7 +57,7 @@ Group.movementModel = StationaryMovement
 
 Group1.movementModel=GDRRTMovement
 
-Group1.GDRRTMovement.startLocation=10,10
+Group1.GDRRTMovement.startLocation=60,60
 Group1.GDRRTMovement.endLocation=200,210
 
 Group2.movementModel = StationaryMovement
@@ -75,11 +75,15 @@ Group3.movementModel = StationaryMovement
 Group3.nodeLocation=90,110
 
 Group4.movementModel = StationaryMovement
-Group4.nodeLocation=200,20
+Group4.nodeLocation=150,90
 
+Group5.groupID = e
+Group6.groupID = f
 
-
-
+Group5.movementModel = StationaryMovement
+Group5.nodeLocation = 140,100
+Group6.movementModel = StationaryMovement
+Group6.nodeLocation = 75,150
 
 
 
