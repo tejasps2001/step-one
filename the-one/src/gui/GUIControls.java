@@ -170,13 +170,19 @@ public class GUIControls extends JPanel implements ActionListener, ChangeListene
 
 	private ImageIcon createImageIcon(String path) {
 		java.net.URL imgURL = getClass().getResource(PATH_GRAPHICS+path);
-		
-		return new ImageIcon(imgURL);
+		// System.out.println(PATH_GRAPHICS + path);
+		if (imgURL != null) return new ImageIcon(imgURL);
+		return null;
 	}
 
 
 	private JButton addButton(String iconPath, String tooltip) {
-		JButton button = new JButton(createImageIcon(iconPath));
+		// JButton button = new JButton(createImageIcon(iconPath));
+		ImageIcon icon = createImageIcon(iconPath);
+		JButton button = new JButton(icon);
+		if (icon == null) {
+			button.setText(tooltip);
+		}
 		button.setToolTipText(tooltip);
 		button.addActionListener(this);
 		this.add(button);
