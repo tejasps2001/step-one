@@ -1,0 +1,56 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "type": "java",
+            "name": "Debug GDRRT",
+            "request": "launch",
+            "mainClass": "core.DTNSim",
+            "projectName": "step-one-main",
+            "args": "step-one-main/samples/gdrrt/settings.txt",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "java",
+            "name": "Debug Disaster Scenario",
+            "request": "launch",
+            "mainClass": "ee.mass.epm.stepone.StepOneSim",
+            "projectName": "step-one-main",
+            "args": "step-one-main/samples/disaster_scenario/disaster_scenario.txt",
+            "cwd": "${workspaceFolder}"
+        }, 
+        {
+            "type": "java",
+            "name": "Debug Cloud Example",
+            "request": "launch",
+            "mainClass": "ee.mass.epm.stepone.StepOneSim",
+            "projectName": "step-one-main",
+            "args": "step-one-main/samples/cloud_example/settings.txt",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        },
+        {
+            "type": "java",
+            "name": "StepOneSim",
+            "request": "launch",
+            "mainClass": "ee.mass.epm.stepone.StepOneSim",
+            "projectName": "step-one-main"
+        },
+        {
+            "type": "java",
+            "name": "DTNSim",
+            "request": "launch",
+            "mainClass": "core.DTNSim",
+            "projectName": "the-one"
+        }
+    ]
+}
