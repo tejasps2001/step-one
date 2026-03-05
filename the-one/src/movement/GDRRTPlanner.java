@@ -53,7 +53,23 @@ public class GDRRTPlanner {
     private double d = 60.0; // Sampling range diameter
     private double distGlobMin = 20.0; // Threshold for fine-tuning convergence
     private double rNear = 60.0; // Radius for finding neighbor nodes
-    private int maxNodes = 10000; // Maximum node limit
+    // TODO: Must increase maxNodes since sometimes it isn't sufficent
+    private int maxNodes = 1000; // Maximum node limit
+    private static DTNSimGUI gui;
+
+    private String obstacleFilePath;
+    private boolean escaping = false;
+    private int escapeCounter = 3;
+
+    // TODO: Below constructor is the long-term solution
+    public GDRRTPlanner(String obstacleFilePath) {
+        this.obstacleFilePath = obstacleFilePath;
+    }
+
+    // Below const only to see the boundary of obstacles
+    public GDRRTPlanner(DTNSimGUI gui) {
+        GDRRTPlanner.gui = gui;
+    }
 
     /**
      * Implementation of the GDRRT* algorithm [cite: 337]
@@ -81,7 +97,7 @@ public class GDRRTPlanner {
 
             // Line 7: Collision check (Assumed true for this implementation) [cite: 352]
             if (isCollisionFree(xNearest.position, newCoord)) {
-                delta = deltaInit; // Line 8 [cite: 353]
+                if (escapeCounter > 2) delta = deltaInit; // Line 8 [cite: 353]
 
                 double distNew = newCoord.distance(xGoal.getLocation());
 
@@ -103,6 +119,9 @@ public class GDRRTPlanner {
                 List<Node> xNearNodes = findNear(tree, xNew.getLocation(), rNear);
                 chooseParent(xNew, xNearNodes);
                 tree.add(xNew);
+                escaping = false;
+                z.addWaypoint(xNew.position);
+                gui.showPath(z);
                 xNearest.children.add(xNew);
                 rewire(tree, xNew, xNearNodes);
 
@@ -113,7 +132,9 @@ public class GDRRTPlanner {
                 }
             } else {
                 // Line 19-21: Obstacle avoidance [cite: 368, 369, 370]
-                delta += 2.0; // k constant
+                delta += 100.0; // k constant
+                escaping = true;
+                escapeCounter = 0;
             }
         }
 
@@ -141,9 +162,10 @@ public class GDRRTPlanner {
 
     private Coord steer(Coord from, Coord to, double stepSize) {
         double dist = from.distance(to);
-        if (dist < stepSize)
+        if (dist < stepSize && escaping == false && escapeCounter < 2)
             return to;
         double theta = Math.atan2(to.getY() - from.getY(), to.getX() - from.getX());
+        escapeCounter += 1;
         return new Coord(from.getX() + stepSize * Math.cos(theta), from.getY() + stepSize * Math.sin(theta));
     }
 

@@ -12,10 +12,12 @@ public class GDRRTMovement extends MovementModel {
     public static final String START_LOCATION_S = "startLocation";
      // per node group setting for defining the cordinate of the target
     public static final String END_LOCATION_S = "endLocation";
+    public static final String OBSTACLE_FILE_S = "obstacleFile";
     // starting location of the node
     private Coord startLoc;
     // ending location of the node
     private Coord endLoc;
+    private String obstacleFilePath;
     private MapBasedMovement mapBasedMM;
     private LinearMovement linearMM;
     private boolean reachedEnd = false;
@@ -33,6 +35,7 @@ public class GDRRTMovement extends MovementModel {
         this.startLoc = new Coord(coords[0], coords[1]);
         coords = s.getCsvInts(GDRRT_MOVEMENT_NS + END_LOCATION_S, 2);
         this.endLoc = new Coord(coords[0], coords[1]);
+        this.obstacleFilePath = s.getSetting(GDRRT_MOVEMENT_NS + OBSTACLE_FILE_S);
         // We need MapRouteMovement for storing the obstacles WKT file
         // mapBasedMM = new MapBasedMovement(s);
     }
@@ -41,6 +44,7 @@ public class GDRRTMovement extends MovementModel {
         super(proto);
         this.startLoc = proto.startLoc.clone();
         this.endLoc = proto.endLoc.clone();
+        this.obstacleFilePath = proto.obstacleFilePath;
         // mapBasedMM = proto.mapBasedMM.replicate();
     }
     
@@ -51,7 +55,7 @@ public class GDRRTMovement extends MovementModel {
     @Override
     public Path getPath() {
         if (reachedEnd) return new Path(0);
-        GDRRTPlanner gdrrt = new GDRRTPlanner();
+        GDRRTPlanner gdrrt = new GDRRTPlanner(this.obstacleFilePath);
         Path p = gdrrt.generatePath(this.startLoc, this.endLoc);
         System.out.println(p);
         reachedEnd = true;
