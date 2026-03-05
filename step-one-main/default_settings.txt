@@ -1,8 +1,7 @@
-#
 # Default settings for the simulation
-#
 
-## Scenario settings
+
+# Scenario settings
 Scenario.name = Tutorial
 Scenario.simulateConnections = true
 Scenario.updateInterval = 1.0
@@ -11,7 +10,7 @@ Scenario.endTime = 3600
 
 Scenario.nrofHostGroups = 2
 
-## Interface-specific settings:
+# Interface-specific settings:
 # type : which interface class the interface belongs to
 # For different types, the sub-parameters are interface-specific
 # For SimpleBroadcastInterface, the parameters are:
@@ -31,7 +30,7 @@ Group.nrofInterfaces = 1
 Group.interface1 = btInterface
 
 
-## Message Router
+# Message Router
 deleteDelivered = true;
 Group.router = DirectDeliveryRouter
 Group.bufferSize = 5M
@@ -55,11 +54,11 @@ Group2.nodeLocation=200,210
 
 
 
-## ------------------------
-##   APPLICATIONS
-## ------------------------
-#processEngineApp1.type = bpm.BpmEngineApplication
-#processEngineApp2.type = bpm.BpmEngineApplication
+# ------------------------
+#   APPLICATIONS
+# ------------------------
+processEngineApp1.type = bpm.BpmEngineApplication
+processEngineApp2.type = bpm.BpmEngineApplication
 
 
 Group.nrofApplications = 0
@@ -68,18 +67,18 @@ Group2.application1 = processEngineApp2
 
 
 
-## Movement model settings
+# Movement model settings
 # seed for movement models' pseudo random number generator (default = 0)
 MovementModel.rngSeed = 1
 # World's size for Movement Models without implicit size (width, height; meters)
 MovementModel.worldSize = 1000, 1000
 
-## messages are handled in-engine
+# messages are handled in-engine
 Events.nrof = 0 
 
 
 
-## Reports - all report names have to be valid report classes
+# Reports - all report names have to be valid report classes
 # how many reports to load
 Report.nrofReports = 0
 Report.reportDir = reports/tutorial
@@ -87,7 +86,7 @@ Report.reportDir = reports/tutorial
 Report.report1 = MessageStatsReport
 
 
-## Optimization settings -- these affect the speed of the simulation
-## see World class for details.
+# Optimization settings -- these affect the speed of the simulation
+# see World class for details.
 Optimization.cellSizeMult = 5
 Optimization.randomizeUpdateOrder = true

@@ -124,7 +124,7 @@ public class GDRRTPlanner {
                 gui.showPath(z);
                 xNearest.children.add(xNew);
                 rewire(tree, xNew, xNearNodes);
-
+               
                 // Check if goal is reached
                 if (xNew.getLocation().distance(xGoal.getLocation()) < delta) {
                     xGoal.parent = xNew;
@@ -204,49 +204,48 @@ public class GDRRTPlanner {
         }
     }
 
-   private boolean isCollisionFree(Coord nearest, Coord newNode) {
-
-    String pythonPath = "python";  // or full path
-    
-    String script="D:/Practice/Drone Fight/step-one/step-one/the-one/src/util/WKT.py";
-    String obstacle ="D:/Practice/Drone Fight/step-one/step-one/step-one-main/samples/gddrt/obstacles.wkt";
-
-    String edge = "LINESTRING (" + nearest.getX() + " " + nearest.getY()
-            + ", " + newNode.getX() + " " + newNode.getY() + ")";
-
-    int exitCode = -1;
-
-    try {
-        ProcessBuilder pb = new ProcessBuilder(
-                pythonPath,
-                script,
-                obstacle,
-                edge
-        );
-
+    private boolean isCollisionFree(Coord nearest, Coord newNode) {
+        String filePath = "./src/main/python/WKT.py";
+        int exitCode = 0;
+        String nearest_newNode = "LINESTRING (" + nearest.getX() + " " + nearest.getY() +
+                ", " + newNode.getX() + " " + newNode.getY() + ")";
+        ProcessBuilder pb = new ProcessBuilder("python", filePath,
+                this.obstacleFilePath, nearest_newNode);
+        // Merge standard error into standard output stream
         pb.redirectErrorStream(true);
 
-        Process process = pb.start();
+        try {
+            Process process = pb.start();
+            // Read the output of the python code to draw the obstacle's boundaries
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line);
+                }
+            }
 
-        BufferedReader reader =
-                new BufferedReader(new InputStreamReader(process.getInputStream()));
-
-        String line;
-        while ((line = reader.readLine()) != null) {
-            System.out.println("[PYTHON] " + line);
+            String outputStr = output.toString();
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile("\\((-?[0-9.]+),\\s*(-?[0-9.]+)\\)");
+            java.util.regex.Matcher m = p.matcher(outputStr);
+            List<Coord> coords = new ArrayList<>();
+            while (m.find()) {
+                coords.add(new Coord(Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2))));
+            }
+            Coord[] obsArray = coords.toArray(new Coord[0]);
+            Path q = new Path();
+            for (Coord c : obsArray) {
+                q.addWaypoint(c);
+            }
+            if (gui != null && obsArray.length > 0) {
+                gui.showPath(q);
+            }
+            exitCode = process.waitFor();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
-        exitCode = process.waitFor();
-
-    } catch (Exception e) {
-        e.printStackTrace();
+        return (exitCode != 0);
     }
-
-    System.out.println("    Exit code: " + exitCode);
-
-    return exitCode == 1;  // true if collision-free
-}
-    
 
     private Node[] constructPath(Node goalNode) {
         List<Node> path = new ArrayList<>();
