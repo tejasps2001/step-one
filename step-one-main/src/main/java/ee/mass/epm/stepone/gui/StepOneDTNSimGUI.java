@@ -11,6 +11,7 @@ import gui.GUIControls;
 import gui.MainWindow;
 import gui.playfield.PlayField;
 import org.apache.commons.lang3.reflect.FieldUtils;
+import movement.GDRRTPlanner;
 
 import javax.swing.*;
 import java.awt.*;
@@ -124,6 +125,8 @@ public class StepOneDTNSimGUI extends DTNSimGUI {
             //        this.infoPanel = new InfoPanel(this);
             StepOneInfoPanel stepOneInfoPanel = new StepOneInfoPanel(this);
             FieldUtils.writeField(this, "infoPanel", stepOneInfoPanel, true);
+
+            new GDRRTPlanner(this);
 
             //        this.main = new MainWindow(this.scen.getName(), world, field,
             //                guiControls, infoPanel, eventLogPanel, this);

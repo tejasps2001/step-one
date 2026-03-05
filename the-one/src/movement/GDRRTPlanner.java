@@ -1,11 +1,10 @@
 package movement;
 
 import core.Coord;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStreamReader;
 import java.util.*;
+import java.io.*;
+
+import gui.DTNSimGUI;
 
 class Node {
     Set<Node> children;
@@ -68,6 +67,7 @@ public class GDRRTPlanner {
         double distMin = xInit.getLocation().distance(xGoal.getLocation());
 
         Random rand = new Random();
+        Path z = new Path();
 
         for (int i = 0; i < maxNodes; i++) {
             // Line 14: Smart sampling based on posTemp and range d [cite: 361]
@@ -105,7 +105,6 @@ public class GDRRTPlanner {
                 tree.add(xNew);
                 xNearest.children.add(xNew);
                 rewire(tree, xNew, xNearNodes);
-               
 
                 // Check if goal is reached
                 if (xNew.getLocation().distance(xGoal.getLocation()) < delta) {

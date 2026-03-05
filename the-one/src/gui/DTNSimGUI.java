@@ -15,11 +15,13 @@ import java.lang.reflect.InvocationTargetException;
 
 import javax.swing.*;
 
+import movement.GDRRTPlanner;
 import movement.Path;
 import ui.DTNSimUI;
 import core.Coord;
 import core.DTNHost;
 import core.SimClock;
+import movement.GDRRTPlanner;
 
 /**
  * Graphical User Interface for simulator
@@ -30,6 +32,7 @@ public class DTNSimGUI extends DTNSimUI {
 	private GUIControls guiControls;
 	private EventLogPanel eventLogPanel;
 	private InfoPanel infoPanel;
+	private GDRRTPlanner gdrrtPlanner;
 
 	private void startGUI() {
 		try {
@@ -63,6 +66,7 @@ public class DTNSimGUI extends DTNSimUI {
 		this.guiControls = new GUIControls(this,this.field);
 		this.eventLogPanel = new EventLogPanel(this);
 		this.infoPanel = new InfoPanel(this);
+		this.gdrrtPlanner = new GDRRTPlanner(this);
 		this.main = new MainWindow(this.scen.getName(), world, field,
 				guiControls, infoPanel, eventLogPanel, this);
 

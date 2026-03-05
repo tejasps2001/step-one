@@ -252,6 +252,7 @@ public class Settings {
 				props = new Properties(defProperties);
 			}
 			else {
+				System.err.println("Warning: '" + DEF_SETTINGS_FILE + "' not found.");
 				props = new Properties();
 			}
 			if (propFile != null) {
