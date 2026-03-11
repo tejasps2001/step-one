@@ -47,14 +47,14 @@ class Node {
 public class GDRRTPlanner {
 
     // Parameters based on the study settings [cite: 547]
-    private double delta = 24.0; // Tree extension distance (δ)
-    private double deltaInit = 24.0; // Initial extension value
+    private double delta;// Tree extension distance (δ)
+    private double deltaInit = 20.0; // Initial extension value
     private double deltaMin = 5.0; // Minimum extension value for convergence
-    private double d = 60.0; // Sampling range diameter
-    private double distGlobMin = 20.0; // Threshold for fine-tuning convergence
-    private double rNear = 60.0; // Radius for finding neighbor nodes
+    private double d = 25.0; // Sampling range diameter
+    private double distGlobMin = 5.0; // Threshold for fine-tuning convergence
+    private double rNear = 25.0; // Radius for finding neighbor nodes
     // TODO: Must increase maxNodes since sometimes it isn't sufficent
-    private int maxNodes = 1000; // Maximum node limit
+    private int maxNodes = 3000; // Maximum node limit
     private static DTNSimGUI gui;
 
     private String obstacleFilePath;
@@ -77,7 +77,7 @@ public class GDRRTPlanner {
     private Node[] planPath(Node xInit, Node xGoal) {
         List<Node> tree = new ArrayList<>();
         tree.add(xInit); // Line 2: Initialize tree with root [cite: 340]
-
+        delta = deltaInit;
         Node xCurrent = xInit;
         Coord posTemp = xInit.getLocation(); // Line 3: Temp position for smart sampling [cite: 341]
         double distMin = xInit.getLocation().distance(xGoal.getLocation());
@@ -87,24 +87,30 @@ public class GDRRTPlanner {
 
         for (int i = 0; i < maxNodes; i++) {
             // Line 14: Smart sampling based on posTemp and range d [cite: 361]
-            Coord xRand = smartSample(posTemp, d, rand);
+            Coord xRand = smartSample(posTemp, delta, rand);
 
             // Line 5: Find nearest node in tree [cite: 350]
             Node xNearest = findNearest(tree, xRand);
 
             // Line 6: Create new node via Steer function [cite: 351]
+            
+
+            
             Coord newCoord = steer(xNearest.getLocation(), xRand, delta);
+            
 
             // Line 7: Collision check (Assumed true for this implementation) [cite: 352]
             if (isCollisionFree(xNearest.position, newCoord)) {
-                if (escapeCounter > 2) delta = deltaInit; // Line 8 [cite: 353]
-
+                if (escapeCounter > 2)
+                    delta = deltaInit; // Line 8 [cite: 353]
+            
                 double distNew = newCoord.distance(xGoal.getLocation());
 
                 // Lines 9-11: Update closest node to goal [cite: 354, 355, 357]
-                if (distNew < distMin) {
+                if (distNew < distMin || escapeCounter < 3) {
                     posTemp = newCoord;
                     distMin = distNew;
+
                 }
 
                 // Lines 12-13: Reduce step size if very close to target [cite: 359, 360]
@@ -124,7 +130,7 @@ public class GDRRTPlanner {
                 gui.showPath(z);
                 xNearest.children.add(xNew);
                 rewire(tree, xNew, xNearNodes);
-               
+
                 // Check if goal is reached
                 if (xNew.getLocation().distance(xGoal.getLocation()) < delta) {
                     xGoal.parent = xNew;
@@ -132,9 +138,10 @@ public class GDRRTPlanner {
                 }
             } else {
                 // Line 19-21: Obstacle avoidance [cite: 368, 369, 370]
-                delta += 100.0; // k constant
+                delta += 30.0; // k constant
                 escaping = true;
                 escapeCounter = 0;
+                
             }
         }
 
@@ -157,15 +164,16 @@ public class GDRRTPlanner {
         // Equation 2: x_rand = (pos_temp - d/2) + rand * d [cite: 318]
         double rx = (posTemp.getX() - d / 2) + rand.nextDouble() * d;
         double ry = (posTemp.getY() - d / 2) + rand.nextDouble() * d;
+        // System.out.println("rx is "+rx + "  & ry is"+ ry);
         return new Coord(rx, ry);
     }
 
     private Coord steer(Coord from, Coord to, double stepSize) {
         double dist = from.distance(to);
-        if (dist < stepSize && escaping == false && escapeCounter < 2)
+        escapeCounter += 1;
+        if (dist < stepSize)
             return to;
         double theta = Math.atan2(to.getY() - from.getY(), to.getX() - from.getX());
-        escapeCounter += 1;
         return new Coord(from.getX() + stepSize * Math.cos(theta), from.getY() + stepSize * Math.sin(theta));
     }
 
@@ -186,8 +194,11 @@ public class GDRRTPlanner {
         for (Node near : nearNodes) {
             double newCost = near.getCost() + near.getLocation().distance(xNew.getLocation());
             if (newCost < xNew.getCost()) {
-                xNew.parent = near;
-                xNew.cost = newCost;
+                if (isCollisionFree(xNew.position, near.position)) {
+                    xNew.parent = near;
+                    xNew.cost = newCost;
+
+                }
             }
         }
     }
@@ -195,7 +206,8 @@ public class GDRRTPlanner {
     private void rewire(List<Node> tree, Node xNew, List<Node> nearNodes) {
         for (Node near : nearNodes) {
             double newCost = xNew.getCost() + xNew.getLocation().distance(near.getLocation());
-            if (newCost < near.getCost()) {
+            if (newCost < near.getCost() && isCollisionFree(xNew.position, near.position)) {
+
                 near.parent.children.remove(near);
                 near.parent = xNew;
                 near.cost = newCost;
@@ -203,49 +215,58 @@ public class GDRRTPlanner {
             }
         }
     }
+private boolean isCollisionFree(Coord nearest, Coord newNode) {
+    String filePath = "./src/main/python/WKT.py";
+    int exitCode = 0;
+    String nearest_newNode = "LINESTRING (" + nearest.getX() + " " + nearest.getY() +
+            ", " + newNode.getX() + " " + newNode.getY() + ")";
+    ProcessBuilder pb = new ProcessBuilder("python", filePath,
+            this.obstacleFilePath, nearest_newNode);
+    pb.redirectErrorStream(true);
 
-    private boolean isCollisionFree(Coord nearest, Coord newNode) {
-        String filePath = "./src/main/python/WKT.py";
-        int exitCode = 0;
-        String nearest_newNode = "LINESTRING (" + nearest.getX() + " " + nearest.getY() +
-                ", " + newNode.getX() + " " + newNode.getY() + ")";
-        ProcessBuilder pb = new ProcessBuilder("python", filePath,
-                this.obstacleFilePath, nearest_newNode);
-        // Merge standard error into standard output stream
-        pb.redirectErrorStream(true);
-
-        try {
-            Process process = pb.start();
-            // Read the output of the python code to draw the obstacle's boundaries
-            StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line);
-                }
+    try {
+        Process process = pb.start();
+        StringBuilder output = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line);
             }
-
-            String outputStr = output.toString();
-            java.util.regex.Pattern p = java.util.regex.Pattern.compile("\\((-?[0-9.]+),\\s*(-?[0-9.]+)\\)");
-            java.util.regex.Matcher m = p.matcher(outputStr);
-            List<Coord> coords = new ArrayList<>();
-            while (m.find()) {
-                coords.add(new Coord(Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2))));
-            }
-            Coord[] obsArray = coords.toArray(new Coord[0]);
-            Path q = new Path();
-            for (Coord c : obsArray) {
-                q.addWaypoint(c);
-            }
-            if (gui != null && obsArray.length > 0) {
-                gui.showPath(q);
-            }
-            exitCode = process.waitFor();
-        } catch (Exception e) {
-            e.printStackTrace();
         }
-        return (exitCode != 0);
+
+        renderObstacleBoundaries(output.toString());
+
+        exitCode = process.waitFor();
+    } catch (Exception e) {
+        e.printStackTrace();
     }
+    return (exitCode != 0);
+}
+
+private void renderObstacleBoundaries(String outputStr) {
+    // Split output by separator to get each obstacle separately
+    String[] obstacleGroups = outputStr.split("---");
+
+    for (String group : obstacleGroups) {
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("\\((-?[0-9.]+),\\s*(-?[0-9.]+)\\)");
+        java.util.regex.Matcher m = p.matcher(group);
+        List<Coord> coords = new ArrayList<>();
+
+        while (m.find()) {
+            coords.add(new Coord(Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2))));
+        }
+
+        Coord[] obsArray = coords.toArray(new Coord[0]);
+        Path q = new Path();
+        for (Coord c : obsArray) {
+            q.addWaypoint(c);
+        }
+
+        if (gui != null && obsArray.length > 0) {
+            gui.showPath(q);
+        }
+    }
+}
 
     private Node[] constructPath(Node goalNode) {
         List<Node> path = new ArrayList<>();

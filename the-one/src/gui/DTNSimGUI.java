@@ -251,8 +251,10 @@ public class DTNSimGUI extends DTNSimUI {
      * @param path The path to show
      */
     public void showPath(Path path) {
-	field.addPath(path);
+		field.addPath(path);
     }
+
+	
 
     /**
      * Returns the world coordinates that are currently in the center

@@ -9,7 +9,7 @@ Scenario.updateInterval = 1.0
 # time in seconds
 Scenario.endTime = 3600
 
-Scenario.nrofHostGroups = 5
+Scenario.nrofHostGroups = 3
 
 ## Interface-specific settings:
 # type : which interface class the interface belongs to
@@ -56,31 +56,23 @@ Group2.groupID = B
 Group.movementModel = MapBasedMovement
 
 Group1.movementModel=GDRRTMovement
-Group1.GDRRTMovement.obstacleFile = C:\\Users\\tejas\\Documents\\Class_14\\Project\\Case_Study\\step-one\\step-one-main\\samples\\gdrrt\\obstacles.wkt
+Group1.GDRRTMovement.obstacleFile = .\\samples\\gdrrt\\obstacles.wkt
 
-Group1.GDRRTMovement.startLocation=10,10
-Group1.GDRRTMovement.endLocation=200,210
+Group1.GDRRTMovement.startLocation=200,210
+Group1.GDRRTMovement.endLocation=800,210
 
 Group2.movementModel = StationaryMovement
-Group2.nodeLocation=200,210
+Group2.nodeLocation=800,210
 
 
 
 
 
 
-Group3.groupID = c
-Group4.groupID = d
 
-Group3.movementModel = StationaryMovement
-Group3.nodeLocation=90,200
-
-Group4.movementModel = StationaryMovement
-Group4.nodeLocation=200,20
-
-Group5.groupID = e
-Group5.movementModel = MapBasedMovement
-Group5.nrofHosts = 0
+Group3.groupID = Map
+Group3.movementModel = MapBasedMovement
+Group3.nrofHosts = 0
 
 
 MapBasedMovement.nrofMapFiles = 11

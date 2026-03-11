@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+
 /**
  * The canvas where node graphics and message visualizations are drawn.
  *
@@ -226,10 +227,12 @@ public class PlayField extends JPanel {
 	 * @param path Path to add
 	 */
 	public void addPath(Path path) {
-		autoClear();
+		// autoClear();
 		this.overlayGraphics.add(new PathGraphic(path));
 		this.updateField();
 	}
+
+	
 
 	/**
 	 * Clears overlay graphics if autoclear is requested
