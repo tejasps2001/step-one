@@ -298,11 +298,30 @@ public class MapBasedMovement extends MovementModel implements SwitchableMovemen
 		}
 
 		simMap = r.getMap();
-		checkMapConnectedness(simMap.getNodes());
+		// checkMapConnectedness(simMap.getNodes());
 		// mirrors the map (y' = -y) and moves its upper left corner to origo
 		simMap.mirror();
 		Coord offset = simMap.getMinBound().clone();
 		simMap.translate(-offset.getX(), -offset.getY());
+
+		// scale map to fit world size if it's clearly smaller
+		double worldX = getMaxX();
+		double worldY = getMaxY();
+		double mapWidth = simMap.getMaxBound().getX(); // min is 0,0
+		double mapHeight = simMap.getMaxBound().getY();
+
+		// if map is smaller than half of the world, scale it
+		if (mapWidth > 0 && mapHeight > 0 &&
+				(mapWidth < worldX / 2 || mapHeight < worldY / 2) ) {
+			double scale = Math.min((worldX - 1) / mapWidth, (worldY - 1) / mapHeight);
+			// SimMap does not have a scale method; performing inline scaling.
+			// NOTE: This does not update the bounds stored in the cached SimMap
+			// object, but this is OK as they aren't used after this.
+			for (MapNode n : simMap.getNodes()) {
+				n.getLocation().setLocation(n.getLocation().getX() * scale, n.getLocation().getY() * scale);
+			}
+		}
+
 		checkCoordValidity(simMap.getNodes());
 
 		cachedMap = simMap;

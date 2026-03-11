@@ -9,7 +9,7 @@ Scenario.updateInterval = 1.0
 # time in seconds
 Scenario.endTime = 3600
 
-Scenario.nrofHostGroups = 4 
+Scenario.nrofHostGroups = 5
 
 ## Interface-specific settings:
 # type : which interface class the interface belongs to
@@ -53,7 +53,7 @@ Group2.groupID = B
 
 # Assign same movement model to all node groups, but
 # specify different coordinates for Group1, Group2
-Group.movementModel = StationaryMovement
+Group.movementModel = MapBasedMovement
 
 Group1.movementModel=GDRRTMovement
 Group1.GDRRTMovement.obstacleFile = C:\\Users\\tejas\\Documents\\Class_14\\Project\\Case_Study\\step-one\\step-one-main\\samples\\gdrrt\\obstacles.wkt
@@ -78,11 +78,26 @@ Group3.nodeLocation=90,200
 Group4.movementModel = StationaryMovement
 Group4.nodeLocation=200,20
 
+Group5.groupID = e
+Group5.movementModel = MapBasedMovement
+Group5.nrofHosts = 0
 
 
+MapBasedMovement.nrofMapFiles = 11
+Events.nrof = 0
+Report.nrofReports = 0
 
-
-
+MapBasedMovement.mapFile1 = samples/gdrrt/buildings.wkt 
+MapBasedMovement.mapFile2 = samples/gdrrt/waterway.wkt 
+MapBasedMovement.mapFile3 = samples/gdrrt/facilities.wkt 
+MapBasedMovement.mapFile4 = samples/gdrrt/uoh_map.wkt 
+MapBasedMovement.mapFile5 = samples/gdrrt/to_combine_buildings.wkt 
+MapBasedMovement.mapFile6 = samples/gdrrt/sportslakes.wkt 
+MapBasedMovement.mapFile7 = samples/gdrrt/manmadepowerlines.wkt 
+MapBasedMovement.mapFile8 = samples/gdrrt/land_use_and_nature_lines.wkt 
+MapBasedMovement.mapFile9 = samples/gdrrt/highwaysways.wkt 
+MapBasedMovement.mapFile10 = samples/gdrrt/highwaysstreets.wkt 
+MapBasedMovement.mapFile11 = samples/gdrrt/highwaysbarriers.wkt
 
 ## ------------------------
 ##   APPLICATIONS
