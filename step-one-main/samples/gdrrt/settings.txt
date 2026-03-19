@@ -56,7 +56,7 @@ Group2.groupID = B
 Group.movementModel = MapBasedMovement
 
 Group1.movementModel=GDRRTMovement
-Group1.GDRRTMovement.obstacleFile = .\\samples\\gdrrt\\obstacles.wkt
+Group1.GDRRTMovement.obstacleFile = samples/gdrrt/obstacles.wkt
 
 Group1.GDRRTMovement.startLocation=200,210
 Group1.GDRRTMovement.endLocation=800,210
@@ -82,7 +82,7 @@ Report.nrofReports = 0
 MapBasedMovement.mapFile1 = samples/gdrrt/buildings.wkt 
 MapBasedMovement.mapFile2 = samples/gdrrt/waterway.wkt 
 MapBasedMovement.mapFile3 = samples/gdrrt/facilities.wkt 
-MapBasedMovement.mapFile4 = samples/gdrrt/uoh_map.wkt 
+MapBasedMovement.mapFile4 = samples/gdrrt/uoh_map.wkt
 MapBasedMovement.mapFile5 = samples/gdrrt/to_combine_buildings.wkt 
 MapBasedMovement.mapFile6 = samples/gdrrt/sportslakes.wkt 
 MapBasedMovement.mapFile7 = samples/gdrrt/manmadepowerlines.wkt 

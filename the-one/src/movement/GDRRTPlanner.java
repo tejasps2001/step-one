@@ -60,6 +60,13 @@ public class GDRRTPlanner {
     private String obstacleFilePath;
     private boolean escaping = false;
     private int escapeCounter = 3;
+    
+    private List<Node> tree = new ArrayList<>();
+    private Node root;
+    private Coord goal;
+    private boolean isInitialized = false;
+    private Coord posTemp;
+    private double distMin;
 
     // TODO: Below constructor is the long-term solution
     public GDRRTPlanner(String obstacleFilePath) {
@@ -71,93 +78,118 @@ public class GDRRTPlanner {
         GDRRTPlanner.gui = gui;
     }
 
-    /**
-     * Implementation of the GDRRT* algorithm [cite: 337]
-     */
-    private Node[] planPath(Node xInit, Node xGoal) {
-        List<Node> tree = new ArrayList<>();
-        tree.add(xInit); // Line 2: Initialize tree with root [cite: 340]
-        delta = deltaInit;
-        Node xCurrent = xInit;
-        Coord posTemp = xInit.getLocation(); // Line 3: Temp position for smart sampling [cite: 341]
-        double distMin = xInit.getLocation().distance(xGoal.getLocation());
+public boolean isInitialized() {
+        return isInitialized;
+    }
 
+    public void init(Coord start, Coord goal) {
+        this.tree.clear();
+        this.root = new Node(start, 0);
+        this.tree.add(root);
+        this.goal = goal;
+        this.posTemp = start;
+        this.distMin = start.distance(goal);
+        this.delta = deltaInit;
+        this.escapeCounter = 3;
+        this.isInitialized = true;
+    }
+
+    public Path getNextPath() {
+        if (!isInitialized) return null;
+        
         Random rand = new Random();
         Path z = new Path();
 
-        for (int i = 0; i < maxNodes; i++) {
+        int batchSize = 20; // Time devoted to planning phase (nodes per commit)
+
+
+        int nodesInBatch = 0;
+        boolean goalReached = false;
+        Node finalGoalNode = null;
+
+        // Expansion Phase
+        while (nodesInBatch < batchSize) {
             // Line 14: Smart sampling based on posTemp and range d [cite: 361]
             Coord xRand = smartSample(posTemp, delta, rand);
-
             // Line 5: Find nearest node in tree [cite: 350]
             Node xNearest = findNearest(tree, xRand);
-
             // Line 6: Create new node via Steer function [cite: 351]
-            
-
-            
             Coord newCoord = steer(xNearest.getLocation(), xRand, delta);
-            
 
-            // Line 7: Collision check (Assumed true for this implementation) [cite: 352]
+            // Line 7: Collision check
             if (isCollisionFree(xNearest.position, newCoord)) {
-                if (escapeCounter > 2)
-                    delta = deltaInit; // Line 8 [cite: 353]
-            
-                double distNew = newCoord.distance(xGoal.getLocation());
+                if (escapeCounter > 2) delta = deltaInit;
 
-                // Lines 9-11: Update closest node to goal [cite: 354, 355, 357]
+                double distNew = newCoord.distance(goal);
+                // Lines 9-11: Update closest node to goal
                 if (distNew < distMin || escapeCounter < 3) {
                     posTemp = newCoord;
                     distMin = distNew;
-
                 }
+                // Lines 12-13: Reduce step size if very close to target
+                if (distMin < distGlobMin) delta = deltaMin;
 
-                // Lines 12-13: Reduce step size if very close to target [cite: 359, 360]
-                if (distMin < distGlobMin) {
-                    delta = deltaMin;
-                }
+                Node xNew = new Node(newCoord, xNearest.getCost() + xNearest.getLocation().distance(newCoord), xNearest);
 
-                Node xNew = new Node(newCoord, xNearest.getCost() + xNearest.getLocation().distance(newCoord),
-                        xNearest);
-
-                // Lines 15-17: RRT* Rewiring and parent selection [cite: 362, 363, 366]
+                // Lines 15-17: RRT* Rewiring and parent selection
                 List<Node> xNearNodes = findNear(tree, xNew.getLocation(), rNear);
                 chooseParent(xNew, xNearNodes);
                 tree.add(xNew);
+                nodesInBatch++;
                 escaping = false;
                 z.addWaypoint(xNew.position);
-                gui.showPath(z);
-                xNearest.children.add(xNew);
+                if (gui != null) gui.showPath(z);
+
+                if (xNew.parent != null) xNew.parent.children.add(xNew);
                 rewire(tree, xNew, xNearNodes);
 
                 // Check if goal is reached
-                if (xNew.getLocation().distance(xGoal.getLocation()) < delta) {
-                    xGoal.parent = xNew;
-                    return constructPath(xGoal);
-                }
+                if (xNew.getLocation().distance(goal) < delta) {
+                    finalGoalNode = new Node(goal, xNew.getCost() + xNew.getLocation().distance(goal), xNew);
+                    goalReached = true;
+                    break;
+                }    
             } else {
                 // Line 19-21: Obstacle avoidance [cite: 368, 369, 370]
                 delta += 30.0; // k constant
                 escaping = true;
                 escapeCounter = 0;
-                
             }
         }
 
-        return new Node[0]; // No path found
-    }
+        if (goalReached && finalGoalNode != null) {
+            Path p = constructPathObject(finalGoalNode);
+            isInitialized = false; // Goal reached, reset
+            return p;
+        }
 
-    public Path generatePath(Coord xInit1, Coord xGoal1) {
-        Node xInit = new Node(xInit1, 0);
-        Node xGoal = new Node(xGoal1, Integer.MAX_VALUE);
-        Path p = new Path(0.5);
-        Node[] pathArray = new Node[1000];
-        // Backtrack from xnearest to root using parent pointers
-        pathArray = planPath(xInit, xGoal);
-        for (Node waypoint : pathArray)
-            p.addWaypoint(waypoint.position);
-        return p;
+        // Commit Phase: Pick best path and commit to initial portion
+        Node bestNode = findNearest(tree, goal);
+        if (bestNode == root) {
+            return null;
+        }
+
+        List<Node> pathSegment = constructPathList(bestNode);
+        if (pathSegment.size() > 1) {
+            Node committedNode = pathSegment.get(1); // First step after root
+            
+            Path segment = new Path(0.5); // assuming constant speed
+            segment.addWaypoint(root.getLocation());
+            segment.addWaypoint(committedNode.getLocation());
+
+            // Prune Phase
+            root = committedNode;
+            root.parent = null;
+            tree = getSubTree(root);
+
+            // Update heuristics based on surviving tree
+            Node nearest = findNearest(tree, goal);
+            posTemp = nearest.getLocation();
+            distMin = posTemp.distance(goal);
+            return segment;
+        }
+
+        return null;
     }
 
     private Coord smartSample(Coord posTemp, double d, Random rand) {
@@ -215,6 +247,16 @@ public class GDRRTPlanner {
             }
         }
     }
+    
+    private Path constructPathObject(Node endNode) {
+        Path p = new Path(0.5);
+        List<Node> list = constructPathList(endNode);
+        for(Node n : list) {
+            p.addWaypoint(n.getLocation());
+        }
+        return p;
+    }
+    
 private boolean isCollisionFree(Coord nearest, Coord newNode) {
     String filePath = "./src/main/python/WKT.py";
     int exitCode = 0;
@@ -268,7 +310,21 @@ private void renderObstacleBoundaries(String outputStr) {
     }
 }
 
-    private Node[] constructPath(Node goalNode) {
+    private List<Node> getSubTree(Node root) {
+        List<Node> subTree = new ArrayList<>();
+        Queue<Node> q = new LinkedList<>();
+        q.add(root);
+        while (!q.isEmpty()) {
+            Node n = q.poll();
+            subTree.add(n);
+            for (Node child : n.children) {
+                q.add(child);
+            }
+        }
+        return subTree;
+    }
+
+    private List<Node> constructPathList(Node goalNode) {
         List<Node> path = new ArrayList<>();
         Node curr = goalNode;
         while (curr != null) {
@@ -276,6 +332,6 @@ private void renderObstacleBoundaries(String outputStr) {
             curr = curr.parent;
         }
         Collections.reverse(path);
-        return path.toArray(new Node[0]);
+        return path;
     }
 }
