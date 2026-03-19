@@ -11,8 +11,8 @@
             "request": "launch",
             "mainClass": "core.DTNSim",
             "projectName": "step-one-main",
-            "args": "step-one-main/samples/gdrrt/settings.txt",
-            "cwd": "${workspaceFolder}"
+            "args": "samples/gdrrt/settings.txt",
+            "cwd": "${workspaceFolder}/step-one-main"
         },
         {
             "type": "java",
@@ -20,8 +20,8 @@
             "request": "launch",
             "mainClass": "ee.mass.epm.stepone.StepOneSim",
             "projectName": "step-one-main",
-            "args": "step-one-main/samples/disaster_scenario/disaster_scenario.txt",
-            "cwd": "${workspaceFolder}"
+            "args": "samples/disaster_scenario/disaster_scenario.txt",
+            "cwd": "${workspaceFolder}/step-one-main"
         }, 
         {
             "type": "java",
@@ -29,8 +29,8 @@
             "request": "launch",
             "mainClass": "ee.mass.epm.stepone.StepOneSim",
             "projectName": "step-one-main",
-            "args": "step-one-main/samples/cloud_example/settings.txt",
-            "cwd": "${workspaceFolder}"
+            "args": "samples/cloud_example/settings.txt",
+            "cwd": "${workspaceFolder}/step-one-main"
         },
         {
             "type": "java",

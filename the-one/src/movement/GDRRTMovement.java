@@ -28,10 +28,10 @@ public class GDRRTMovement extends MovementModel {
     // ending location of the node
     private Coord endLoc;
     private String obstacleFilePath;
-    private MapBasedMovement mapBasedMM;
-    private LinearMovement linearMM;
     private boolean reachedEnd = false;
     // private String drone_route;
+    private GDRRTPlanner gdrrt;
+    private Path nextPath;
 
     /**
      * Creates a new movement model based on a Settings object's settings.
@@ -50,6 +50,7 @@ public class GDRRTMovement extends MovementModel {
         // this.drone_route = s.getSetting(GDRRT_MOVEMENT_NS + DRONE_ROUTE);
         // We need MapRouteMovement for storing the obstacles WKT file
         // mapBasedMM = new MapBasedMovement(s);
+        this.gdrrt = new GDRRTPlanner(this.obstacleFilePath);
     }
 
     public GDRRTMovement(GDRRTMovement proto) {
@@ -59,6 +60,7 @@ public class GDRRTMovement extends MovementModel {
         this.obstacleFilePath = proto.obstacleFilePath;
         // this.drone_route=proto.drone_route;
         // mapBasedMM = proto.mapBasedMM.replicate();
+        this.gdrrt = new GDRRTPlanner(this.obstacleFilePath);
     }
 
     public GDRRTMovement replicate() {
@@ -68,13 +70,28 @@ public class GDRRTMovement extends MovementModel {
     @Override
     public Path getPath() {
         if (reachedEnd)
-            return new Path(0);
-        GDRRTPlanner gdrrt = new GDRRTPlanner(this.obstacleFilePath);
-        Path p = gdrrt.generatePath(this.startLoc, this.endLoc);
-        appendPath(p, obstacleFilePath);
+            return null;
 
-        System.out.println(p);
-        reachedEnd = true;
+        if (gdrrt == null) {
+            gdrrt = new GDRRTPlanner(this.obstacleFilePath);
+        }
+
+        if (!gdrrt.isInitialized()) {
+            gdrrt.init(getHost().getLocation(), endLoc);
+        }
+
+        Path p = gdrrt.getNextPath();
+        nextPath = p;
+
+        
+        if (p == null) {
+            reachedEnd = true;
+            return null;
+        }
+
+        if (!gdrrt.isInitialized()) {
+            reachedEnd = true;
+        }
         return p;
     }
 
@@ -86,51 +103,54 @@ public class GDRRTMovement extends MovementModel {
 
     @Override
     public double nextPathAvailable() {
+        if(nextPath != null) {
+            return Double.MAX_VALUE; // no new paths available until getPath() is called again
+        }
         return 0;
     }
 
-    public void appendPath(Path p, String droneRouteFile) {
-        droneRouteFile = droneRouteFile.replace("obstacles.wkt", "droneRoute.wkt");
-        try {
-            File file = new File(droneRouteFile);
+    // public void appendPath(Path p, String droneRouteFile) {
+    //     droneRouteFile = droneRouteFile.replace("obstacles.wkt", "droneRoute.wkt");
+    //     try {
+    //         File file = new File(droneRouteFile);
 
-            if (file.exists()) {
-                // File exists → append
-                FileWriter writer = new FileWriter(file, true);
-                writer.write(formatPath(p));
-                writer.write(System.lineSeparator());
-                writer.close();
-            } else {
-                // File does not exist → create and write
-                FileWriter writer = new FileWriter(file);
-                writer.write(formatPath(p));
-                writer.write(System.lineSeparator());
-                writer.close();
-            }
+    //         if (file.exists()) {
+    //             // File exists → append
+    //             FileWriter writer = new FileWriter(file, true);
+    //             writer.write(formatPath(p));
+    //             writer.write(System.lineSeparator());
+    //             writer.close();
+    //         } else {
+    //             // File does not exist → create and write
+    //             FileWriter writer = new FileWriter(file);
+    //             writer.write(formatPath(p));
+    //             writer.write(System.lineSeparator());
+    //             writer.close();
+    //         }
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+    //     } catch (IOException e) {
+    //         e.printStackTrace();
+    //     }
+    // }
 
-    public String formatPath(Path p) {
-        Pattern pattern = Pattern.compile("\\(([^,]+),([^\\)]+)\\)");
-        Matcher matcher = pattern.matcher(p.toString());
+    // public String formatPath(Path p) {
+    //     Pattern pattern = Pattern.compile("\\(([^,]+),([^\\)]+)\\)");
+    //     Matcher matcher = pattern.matcher(p.toString());
 
-        List<String> points = new ArrayList<>();
+    //     List<String> points = new ArrayList<>();
 
-        while (matcher.find()) {
-            String x = matcher.group(1).trim();
-            String y = matcher.group(2).trim();
-            points.add(x + " " + y);
-        }
+    //     while (matcher.find()) {
+    //         String x = matcher.group(1).trim();
+    //         String y = matcher.group(2).trim();
+    //         points.add(x + " " + y);
+    //     }
 
-        // remove last coordinate
-        if (!points.isEmpty()) {
-            points.remove(points.size() - 1);
-        }
+    //     // remove last coordinate
+    //     if (!points.isEmpty()) {
+    //         points.remove(points.size() - 1);
+    //     }
 
-        return "LINESTRING (" + String.join(",", points) + ")";
-    }
+    //     return "LINESTRING (" + String.join(",", points) + ")";
+    // }
 
 }
