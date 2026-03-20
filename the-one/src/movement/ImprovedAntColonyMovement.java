@@ -6,9 +6,7 @@
  */
 package movement;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import core.Coord;
 import core.Settings;
@@ -72,6 +70,8 @@ public class ImprovedAntColonyMovement extends MovementModel {
     private static final int[] EVEN_DIRECTIONS = {2, 4, 6, 8};
     private static final double DIST_EVEN = 1.0;
     private static final double DIST_ODD = Math.sqrt(2);
+    
+    private static final int MAX_PATH_LENGTH = 1000;
 
     /** Grid dimensions */
     private int gridWidth;
@@ -119,6 +119,7 @@ public class ImprovedAntColonyMovement extends MovementModel {
     /** Current position in grid coordinates */
     private int currentX, currentY;
     private List<Integer> visitedPath;
+    private Set<Integer> tabuList;
     private int previousDirection;
 
     /** Random generator */
@@ -229,6 +230,7 @@ public class ImprovedAntColonyMovement extends MovementModel {
         this.destY = proto.destY;
 
         this.random = new Random();
+        this.tabuList = new HashSet<>();
         this.visitedPath = new ArrayList<>();
         this.plannedPath = new ArrayList<>();
         this.currentPathIndex = 0;
@@ -236,7 +238,9 @@ public class ImprovedAntColonyMovement extends MovementModel {
         // Set initial position for this ant
         this.currentX = startX;
         this.currentY = startY;
-        this.visitedPath.add(gridToIndex(currentX, currentY));
+        int startIndex = gridToIndex(currentX, currentY);
+        this.visitedPath.add(startIndex);
+        this.tabuList.add(startIndex);
         this.previousDirection = -1;
 
         // Find optimal path using improved ant colony algorithm
@@ -281,9 +285,6 @@ public class ImprovedAntColonyMovement extends MovementModel {
 
         this.startCoord = new Coord(startX * cellSize, startY * cellSize);
         this.destCoord = new Coord(destX * cellSize, destY * cellSize);
-
-        System.out.println("start:" + startCoord);
-        System.out.println("dest: " + destCoord);
 
         // Add some random obstacles (20% of grid)
         int obstacleCount = (int)(gridWidth * gridHeight * 0.2);
@@ -513,9 +514,13 @@ public class ImprovedAntColonyMovement extends MovementModel {
             int[] offset = DIRECTION_OFFSETS[dir - 1];
             int adjX = x + offset[0];
             int adjY = y + offset[1];
-            sum += Math.pow(pheromone[adjX][adjY], alpha) *
-                   Math.pow(heuristicFunction(x, y, adjX, adjY, dir, prevDir), beta) *
-                   adaptiveHeuristicFactor(adjX, adjY);
+            int adjIndex = gridToIndex(adjX, adjY);
+            
+            if (!tabuList.contains(adjIndex)) {
+                sum += Math.pow(pheromone[adjX][adjY], alpha) *
+                    Math.pow(heuristicFunction(x, y, adjX, adjY, dir, prevDir), beta) *
+                    adaptiveHeuristicFactor(adjX, adjY);
+            }
         }
 
         if (sum == 0) return 0;
@@ -529,7 +534,15 @@ public class ImprovedAntColonyMovement extends MovementModel {
         List<Integer> allowed = new ArrayList<>();
         for (int dir = 1; dir <= 8; dir++) {
             if (isDirectionAllowed(x, y, dir)) {
-                allowed.add(dir);
+                int[] offset = DIRECTION_OFFSETS[dir - 1];
+                int nextX = x + offset[0];
+                int nextY = y + offset[1];
+
+                int nextIndex = gridToIndex(nextX, nextY);
+
+                if (!tabuList.contains(nextIndex)) {
+                    allowed.add(dir);
+                }
             }
         }
         return allowed;
@@ -587,61 +600,135 @@ public class ImprovedAntColonyMovement extends MovementModel {
      */
     private void findOptimalPath() {
         int maxIterations = 50;
-        int numAnts = 30;
-
+        int numAnts = 100;
+        
         // Reset pheromone to initial value
         for (int i = 0; i < gridWidth; i++) {
             for (int j = 0; j < gridHeight; j++) {
                 pheromone[i][j] = tauInit;
             }
         }
-
+        
         List<List<Integer>> bestPaths = new ArrayList<>();
         List<Double> bestPathLengths = new ArrayList<>();
-
+        
         for (int iter = 0; iter < maxIterations; iter++) {
             List<List<Integer>> antPaths = new ArrayList<>();
             List<Double> pathLengths = new ArrayList<>();
             List<Integer> pathTurns = new ArrayList<>();
             List<Double> pathHeights = new ArrayList<>();
-
+            
             // Each ant finds a path
             for (int ant = 0; ant < numAnts; ant++) {
                 List<Integer> path = new ArrayList<>();
+                Set<Integer> antTabu = new HashSet<>();  // Individual ant's tabu list
                 int cx = startX;
                 int cy = startY;
                 int prevDir = -1;
                 int turnCount = 0;
-                double heightVariance = 0;
-
-                path.add(gridToIndex(cx, cy));
-
-                while (cx != destX || cy != destY) {
-                    int direction = selectNextDirection(cx, cy, prevDir);
-                    if (direction == -1) {
-                        break; // No path found
+                
+                int startIndex = gridToIndex(cx, cy);
+                path.add(startIndex);
+                antTabu.add(startIndex);
+                
+                int steps = 0;
+                boolean reachedDestination = false;
+                
+                while (steps < MAX_PATH_LENGTH && !reachedDestination) {
+                    // Get allowed directions (excluding tabu)
+                    List<Integer> allowed = new ArrayList<>();
+                    for (int dir = 1; dir <= 8; dir++) {
+                        if (isDirectionAllowed(cx, cy, dir)) {
+                            int[] offset = DIRECTION_OFFSETS[dir - 1];
+                            int nextX = cx + offset[0];
+                            int nextY = cy + offset[1];
+                            int nextIndex = gridToIndex(nextX, nextY);
+                            
+                            // Don't revisit nodes
+                            if (!antTabu.contains(nextIndex)) {
+                                allowed.add(dir);
+                            }
+                        }
                     }
-
-                    if (prevDir != -1 && prevDir != direction) {
-                        turnCount++;
+                    
+                    if (allowed.isEmpty()) {
+                        break;  // Dead end - can't proceed
                     }
-
-                    int[] offset = DIRECTION_OFFSETS[direction - 1];
+                    
+                    // Calculate probabilities for allowed directions
+                    double[] probs = new double[allowed.size()];
+                    double sum = 0;
+                    
+                    for (int i = 0; i < allowed.size(); i++) {
+                        int dir = allowed.get(i);
+                        int[] offset = DIRECTION_OFFSETS[dir - 1];
+                        int nextX = cx + offset[0];
+                        int nextY = cy + offset[1];
+                        
+                        double tau = pheromone[nextX][nextY];
+                        double eta = heuristicFunction(cx, cy, nextX, nextY, dir, prevDir);
+                        double mu = adaptiveHeuristicFactor(nextX, nextY);
+                        
+                        probs[i] = Math.pow(tau, alpha) * Math.pow(eta, beta) * mu;
+                        sum += probs[i];
+                    }
+                    
+                    // Normalize or handle zero sum
+                    if (sum > 0) {
+                        for (int i = 0; i < probs.length; i++) {
+                            probs[i] /= sum;
+                        }
+                    } else {
+                        // Uniform distribution if all zero
+                        for (int i = 0; i < probs.length; i++) {
+                            probs[i] = 1.0 / allowed.size();
+                        }
+                    }
+                    
+                    // Select direction
+                    double r = random.nextDouble();
+                    double cumulative = 0;
+                    int selectedDir = allowed.get(allowed.size() - 1);
+                    
+                    for (int i = 0; i < probs.length; i++) {
+                        cumulative += probs[i];
+                        if (r <= cumulative) {
+                            selectedDir = allowed.get(i);
+                            break;
+                        }
+                    }
+                    
+                    // Move to next cell
+                    int[] offset = DIRECTION_OFFSETS[selectedDir - 1];
                     cx += offset[0];
                     cy += offset[1];
-                    prevDir = direction;
-
-                    path.add(gridToIndex(cx, cy));
+                    
+                    // Check for turns
+                    if (prevDir != -1 && prevDir != selectedDir) {
+                        turnCount++;
+                    }
+                    prevDir = selectedDir;
+                    
+                    int currentIndex = gridToIndex(cx, cy);
+                    path.add(currentIndex);
+                    antTabu.add(currentIndex);  // Mark as visited
+                    steps++;
+                    
+                    // Check if reached destination
+                    if (cx == destX && cy == destY) {
+                        reachedDestination = true;
+                        break;
+                    }
                 }
-
-                if (cx == destX && cy == destY) {
+                
+                if (reachedDestination) {
                     antPaths.add(path);
-
+                    
                     // Calculate path length
                     double length = calculatePathLength(path);
                     pathLengths.add(length);
                     pathTurns.add(turnCount);
-
+                    
                     // Calculate height mean square deviation
                     double heightSum = 0;
                     for (int idx : path) {
@@ -657,26 +744,26 @@ public class ImprovedAntColonyMovement extends MovementModel {
                     pathHeights.add(Math.sqrt(heightVar / path.size()));
                 }
             }
-
-            // Update pheromones
+            
+            // Update pheromones (only for successful paths)
             for (int i = 0; i < antPaths.size(); i++) {
                 List<Integer> path = antPaths.get(i);
                 double length = pathLengths.get(i);
                 double heightSD = pathHeights.get(i);
                 int turns = pathTurns.get(i);
-
+                
                 // Calculate comprehensive indicator S_k(t)
                 double S = xCoef * length + yCoef * heightSD + zCoef * turns;
-
+                
                 // Calculate pheromone delta
                 double deltaTau = q / S;
-
+                
                 // Update pheromones along the path
                 for (int idx : path) {
                     int[] coords = indexToGrid(idx);
                     pheromone[coords[0]][coords[1]] += deltaTau;
-
-                    // Apply pheromone bounds (Equations 10 and 11)
+                    
+                    // Apply pheromone bounds
                     if (pheromone[coords[0]][coords[1]] < tauMin) {
                         pheromone[coords[0]][coords[1]] = tauMin;
                     }
@@ -685,20 +772,16 @@ public class ImprovedAntColonyMovement extends MovementModel {
                     }
                 }
             }
-
-            // Evaporate pheromones (Equation 9)
-            double currentRho = rho;
-            if (currentRho < rhoMin) {
-                currentRho = rhoMin;
-            }
-
+            
+            // Evaporate pheromones
+            double currentRho = Math.max(rho, rhoMin);
             for (int i = 0; i < gridWidth; i++) {
                 for (int j = 0; j < gridHeight; j++) {
                     pheromone[i][j] = (1 - currentRho) * pheromone[i][j];
                 }
             }
-
-            // Track the best path of this iteration
+            
+            // Track best path
             if (!pathLengths.isEmpty()) {
                 int bestIdx = 0;
                 for (int i = 1; i < pathLengths.size(); i++) {
@@ -710,8 +793,8 @@ public class ImprovedAntColonyMovement extends MovementModel {
                 bestPathLengths.add(pathLengths.get(bestIdx));
             }
         }
-
-        // Select overall best path
+        
+        // Select overall best path and convert to coordinates
         if (!bestPathLengths.isEmpty()) {
             int overallBestIdx = 0;
             for (int i = 1; i < bestPathLengths.size(); i++) {
@@ -719,31 +802,43 @@ public class ImprovedAntColonyMovement extends MovementModel {
                     overallBestIdx = i;
                 }
             }
-
-            // Convert the best path to coordinates
+            
             List<Integer> bestPath = bestPaths.get(overallBestIdx);
             plannedPath.clear();
-
+            
+            // Verify path has no cycles (optional check)
+            Set<Integer> pathSet = new HashSet<>();
+            boolean hasCycle = false;
+            for (int idx : bestPath) {
+                if (pathSet.contains(idx)) {
+                    hasCycle = true;
+                    System.err.println("Warning: Path contains cycle at node " + idx);
+                }
+                pathSet.add(idx);
+            }
+            
+            if (!hasCycle) {
+                System.out.println("Valid path found with no revisits, length: " + 
+                                   bestPath.size() + " nodes");
+            }
+            
             for (int idx : bestPath) {
                 int[] coords = indexToGrid(idx);
-                plannedPath.add(new Coord(coords[0] * cellSize + cellSize/2,
+                plannedPath.add(new Coord(coords[0] * cellSize + cellSize/2, 
                                           coords[1] * cellSize + cellSize/2));
             }
-
+            
             // Create path for movement
             nextPath = new Path(generateSpeed());
-            System.out.println();
             for (Coord c : plannedPath) {
-                System.out.print(c + " -> ");
                 nextPath.addWaypoint(c);
             }
         } else {
-            // Fallback: direct line if no path found
+            // Fallback: direct line
+            System.err.println("No valid path found, using direct line");
             nextPath = new Path(generateSpeed());
             nextPath.addWaypoint(startCoord);
             nextPath.addWaypoint(destCoord);
-            plannedPath.add(startCoord);
-            plannedPath.add(destCoord);
         }
     }
 
