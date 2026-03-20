@@ -1,0 +1,133 @@
+
+Scenario.name = aco_uav_scenario
+Scenario.simulateConnections = true
+Scenario.updateInterval = 0.5
+Scenario.endTime = 360000
+
+Scenario.nrofHostGroups = 1
+
+# Interface configurations
+btInterface.type = SimpleBroadcastInterface
+btInterface.transmitSpeed = 250k
+btInterface.transmitRange = 200
+
+wlanInterface.type = SimpleBroadcastInterface
+wlanInterface.transmitSpeed = 999k
+# Longer range for UAVs
+wlanInterface.transmitRange = 1000
+
+# Group configuration template
+Group.nrofInterfaces = 2
+Group.interface1 = btInterface
+Group.interface2 = wlanInterface
+Group.router = EpidemicRouter
+Group.bufferSize = 50M
+
+# ============================================
+# GROUP 1: UAVs using Improved Ant Colony Algorithm
+# ============================================
+Group1.groupID = UAV_ACO
+Group1.nrofHosts = 1
+Group1.nrofInterfaces = 0
+Group1.interface1 = btInterface
+Group1.interface2 = wlanInterface
+Group1.movementModel = ImprovedAntColonyMovement
+Group1.router = EpidemicRouter
+Group1.bufferSize = 50M
+Group1.speed = 15, 25
+
+# Improved Ant Colony Algorithm Parameters
+# Grid settings
+Group1.ImprovedAntColony.gridWidth = 50
+Group1.ImprovedAntColony.gridHeight = 50
+Group1.ImprovedAntColony.cellSize = 50
+
+# Pheromone parameters (Section 4.1.2)
+# Pheromone importance factor
+Group1.ImprovedAntColony.alpha = 1.0
+# Heuristic importance factor
+Group1.ImprovedAntColony.beta = 2.0
+# Pheromone evaporation factor
+Group1.ImprovedAntColony.rho = 0.3
+# Minimum evaporation factor
+Group1.ImprovedAntColony.rhoMin = 0.2
+# Pheromone constant
+Group1.ImprovedAntColony.q = 100
+# Minimum pheromone (Eq. 10)
+Group1.ImprovedAntColony.tauMin = 10
+# Maximum pheromone (Eq. 11)
+Group1.ImprovedAntColony.tauMax = 400
+# Initial pheromone
+Group1.ImprovedAntColony.tauInit = 20
+
+# Comprehensive indicator coefficients (Equation 9)
+Group1.ImprovedAntColony.xCoef = 10
+Group1.ImprovedAntColony.yCoef = 0.1
+Group1.ImprovedAntColony.zCoef = 1
+
+# Multi-heuristic parameters
+# Distance correction function (Equation 2)
+Group1.ImprovedAntColony.gamma1 = 1
+Group1.ImprovedAntColony.g1 = 1
+
+# Smoothness function (Equation 4)
+Group1.ImprovedAntColony.gamma2 = 1
+Group1.ImprovedAntColony.g2 = 1
+
+# Safety function (Equation 3)
+Group1.ImprovedAntColony.u = 1
+Group1.ImprovedAntColony.theta = 0.5
+
+# Adaptive heuristic factor (Equation 5)
+Group1.ImprovedAntColony.a = 0.5
+Group1.ImprovedAntColony.b = 0.5
+
+# Start and destination coordinates (grid coordinates)
+Group1.ImprovedAntColony.startX = 0
+Group1.ImprovedAntColony.startY = 0
+Group1.ImprovedAntColony.destX = 45
+Group1.ImprovedAntColony.destY = 45
+
+# Optional: Load obstacle map from file
+# Group1.ImprovedAntColony.obstacleFile = samples/aco_scenario/obstacles.wkt
+
+# Applications (if needed)
+Group1.nrofApplications = 0
+
+# ============================================
+# GROUP 2: Ground nodes (static/rescuers) for comparison
+# ============================================
+Group2.groupID = Ground
+Group2.nrofHosts = 10
+Group2.nrofInterfaces = 1
+Group2.interface1 = btInterface
+Group2.movementModel = StaticMovement
+Group2.router = EpidemicRouter
+Group2.bufferSize = 10M
+Group2.nrofApplications = 0
+
+# Static locations for ground nodes
+# Group2.staticLocationFile = samples/aco_scenario/ground_nodes.txt
+
+# ============================================
+# MAP FILES
+# ============================================
+MapBasedMovement.nrofMapFiles = 0
+
+MovementModel.worldSize = 10000, 10000
+
+# ============================================
+# EVENTS (Optional: create obstacles dynamically)
+# ============================================
+Events.nrof = 0
+
+# ============================================
+# REPORTS
+# ============================================
+Report.nrofReports = 0
+Report.report1 = MessageStatsReport
+Report.report2 = MessageDelayReport
+Report.report3 = ConnectivityReport
+Report.report4 = MovementReport
+
+Report.movementReport.interval = 60
