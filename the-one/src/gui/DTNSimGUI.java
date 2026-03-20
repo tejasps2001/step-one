@@ -6,6 +6,7 @@ package gui;
 
 import gui.playfield.PlayField;
 
+import java.awt.Color;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelListener;
@@ -254,7 +255,14 @@ public class DTNSimGUI extends DTNSimUI {
 		field.addPath(path);
     }
 
-	
+    /**
+     * Shows a path on the playfield with a specified color
+     * @param path The path to show
+     * @param color The color of the path
+     */
+    public void showPath(Path path, Color color) {
+        field.addPath(path, color);
+    }
 
     /**
      * Returns the world coordinates that are currently in the center

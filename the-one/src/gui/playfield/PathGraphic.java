@@ -16,7 +16,7 @@ import core.Coord;
  *
  */
 public class PathGraphic extends PlayFieldGraphic {
-	private final static Color PATH_COLOR = Color.RED;
+	private Color PATH_COLOR = Color.RED;
 	private List<Coord> coords;
 
 	public PathGraphic(Path path) {
@@ -28,6 +28,17 @@ public class PathGraphic extends PlayFieldGraphic {
 			assert this.coords != null && this.coords.size() > 0 :
 			"No coordinates in the path (" + path + ")";
 		}
+	}
+
+	public PathGraphic(Path path, Color color) {
+		this(path);
+		if (color != null) {
+			this.setColor(color);
+		}
+	}
+
+	private void setColor(Color color) {
+		this.PATH_COLOR = color;
 	}
 
 	/**
