@@ -3,6 +3,7 @@ package movement;
 import core.Coord;
 import java.util.*;
 import java.io.*;
+import java.awt.Color;
 
 import gui.DTNSimGUI;
 
@@ -67,6 +68,7 @@ public class GDRRTPlanner {
     private boolean isInitialized = false;
     private Coord posTemp;
     private double distMin;
+    private List<java.awt.geom.Line2D.Double> obstacleLines = null;
 
     // TODO: Below constructor is the long-term solution
     public GDRRTPlanner(String obstacleFilePath) {
@@ -100,7 +102,7 @@ public boolean isInitialized() {
         Random rand = new Random();
         Path z = new Path();
 
-        int batchSize = 20; // Time devoted to planning phase (nodes per commit)
+        int batchSize = 100; // Time devoted to planning phase (nodes per commit)
 
 
         int nodesInBatch = 0;
@@ -180,7 +182,9 @@ public boolean isInitialized() {
             // Prune Phase
             root = committedNode;
             root.parent = null;
-            tree = getSubTree(root);
+            z.addWaypoint(committedNode.position);
+            tree = getSubTree(root, z);
+            if (gui != null) gui.showPath(z, Color.BLUE);
 
             // Update heuristics based on surviving tree
             Node nearest = findNearest(tree, goal);
@@ -273,7 +277,38 @@ private boolean isCollisionFree(Coord nearest, Coord newNode) {
             String line;
             while ((line = reader.readLine()) != null) {
                 output.append(line);
+    private void loadObstacles() {
+        obstacleLines = new ArrayList<>();
+        if (this.obstacleFilePath == null) return;
+        
+        try (BufferedReader reader = new BufferedReader(new FileReader(obstacleFilePath))) {
+            String lineStr;
+            // Matches coordinates in WKT formatting, e.g., "100.0 200.0"
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile("(-?[0-9.]+)\\s+(-?[0-9.]+)");
+            while ((lineStr = reader.readLine()) != null) {
+                java.util.regex.Matcher m = p.matcher(lineStr);
+                List<Coord> points = new ArrayList<>();
+                while (m.find()) {
+                    points.add(new Coord(Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2))));
+                }
+                
+                if (points.isEmpty()) continue;
+                
+                Path q = new Path();
+                for (int i = 0; i < points.size() - 1; i++) {
+                    Coord p1 = points.get(i);
+                    Coord p2 = points.get(i + 1);
+                    obstacleLines.add(new java.awt.geom.Line2D.Double(p1.getX(), p1.getY(), p2.getX(), p2.getY()));
+                    q.addWaypoint(p1);
+                }
+                q.addWaypoint(points.get(points.size() - 1));
+                
+                if (gui != null) {
+                    gui.showPath(q);
+                }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         renderObstacleBoundaries(output.toString());
@@ -296,27 +331,40 @@ private void renderObstacleBoundaries(String outputStr) {
 
         while (m.find()) {
             coords.add(new Coord(Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2))));
+    private boolean isCollisionFree(Coord nearest, Coord newNode) {
+        if (obstacleLines == null) {
+            loadObstacles();
         }
 
         Coord[] obsArray = coords.toArray(new Coord[0]);
         Path q = new Path();
         for (Coord c : obsArray) {
             q.addWaypoint(c);
+        
+        java.awt.geom.Line2D.Double pathSegment = new java.awt.geom.Line2D.Double(
+                nearest.getX(), nearest.getY(), newNode.getX(), newNode.getY());
+                
+        for (java.awt.geom.Line2D.Double obsLine : obstacleLines) {
+            if (pathSegment.intersectsLine(obsLine)) {
+                return false; // Collision detected
+            }
         }
 
         if (gui != null && obsArray.length > 0) {
             gui.showPath(q);
         }
+        return true; // No collision
     }
 }
 
-    private List<Node> getSubTree(Node root) {
+    private List<Node> getSubTree(Node root, Path z) {
         List<Node> subTree = new ArrayList<>();
         Queue<Node> q = new LinkedList<>();
         q.add(root);
         while (!q.isEmpty()) {
             Node n = q.poll();
             subTree.add(n);
+            z.addWaypoint(n.position);
             for (Node child : n.children) {
                 q.add(child);
             }

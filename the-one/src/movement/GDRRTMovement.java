@@ -92,6 +92,7 @@ public class GDRRTMovement extends MovementModel {
         if (!gdrrt.isInitialized()) {
             reachedEnd = true;
         }
+        System.out.print(p);
         return p;
     }
 
@@ -103,7 +104,7 @@ public class GDRRTMovement extends MovementModel {
 
     @Override
     public double nextPathAvailable() {
-        if(nextPath != null) {
+        if(reachedEnd) {
             return Double.MAX_VALUE; // no new paths available until getPath() is called again
         }
         return 0;

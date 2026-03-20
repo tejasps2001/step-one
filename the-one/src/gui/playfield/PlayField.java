@@ -232,7 +232,16 @@ public class PlayField extends JPanel {
 		this.updateField();
 	}
 
-	
+	/**
+	 * Adds a path to the overlay graphics with a specified color
+	 * @param path Path to add
+	 * @param color Color of the path
+	 */
+	public void addPath(Path path, Color color) {
+		autoClear();
+		this.overlayGraphics.add(new PathGraphic(path, color));
+		this.updateField();
+	}
 
 	/**
 	 * Clears overlay graphics if autoclear is requested
