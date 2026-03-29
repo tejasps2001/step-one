@@ -223,13 +223,13 @@ public class ExternalMovement extends MovementModel {
 	}
 
 	@Override
-	public int getMaxX() {
-		return (int)(reader.getMaxX() - reader.getMinX()) + 1;
+	public double getMaxX() {
+		return (reader.getMaxX() - reader.getMinX()) + 1;
 	}
 
 	@Override
-	public int getMaxY() {
-		return (int)(reader.getMaxY() - reader.getMinY()) + 1;
+	public double getMaxY() {
+		return (reader.getMaxY() - reader.getMinY()) + 1;
 	}
 
 

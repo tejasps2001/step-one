@@ -79,6 +79,7 @@ class LawnmowerMovement extends MovementModel implements SwitchableMovement {
     horizontalShiftSum = 0;
     while (horizontalShiftSum <= fogRange) {
       if (turning == true) {
+        System.out.println("Direction: " + direction);
         endLoc.translate(horizontalShift * direction, 0);
         horizontalShiftSum += Math.abs(horizontalShift);
         turning = !turning;

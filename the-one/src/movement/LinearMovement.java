@@ -208,13 +208,13 @@ public class LinearMovement extends MovementModel {
 	}
 
 	@Override
-	public int getMaxX() {
-		return (int) (endLoc.getX() > startLoc.getX() ? endLoc.getX() : startLoc.getX());
+	public double getMaxX() {
+		return (endLoc.getX() > startLoc.getX() ? endLoc.getX() : startLoc.getX());
 	}
 
 	@Override
-	public int getMaxY() {
-		return (int) (endLoc.getY() > startLoc.getY() ? endLoc.getY() : startLoc.getY());
+	public double getMaxY() {
+		return (endLoc.getY() > startLoc.getY() ? endLoc.getY() : startLoc.getY());
 	}
 
 	@Override

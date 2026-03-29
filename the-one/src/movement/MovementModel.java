@@ -58,8 +58,8 @@ public abstract class MovementModel {
 	protected double minWaitTime;
 	protected double maxWaitTime;
 
-	private int maxX;
-	private int maxY;
+	private double maxX;
+	private double maxY;
 
 	protected ModuleCommunicationBus comBus;
 
@@ -128,7 +128,7 @@ public abstract class MovementModel {
 		checkMinAndMaxSetting(WAIT_TIME,minWaitTime,maxWaitTime);
 
 		settings.setNameSpace(MOVEMENT_MODEL_NS);
-		int [] worldSize = settings.getCsvInts(WORLD_SIZE,2);
+		double [] worldSize = settings.getCsvDoubles(WORLD_SIZE,2);
 		this.maxX = worldSize[0];
 		this.maxY = worldSize[1];
 
@@ -155,7 +155,7 @@ public abstract class MovementModel {
 	 * Returns the largest X coordinate value this model uses
 	 * @return Maximum of X coordinate values
 	 */
-	public int getMaxX() {
+	public double getMaxX() {
 		return this.maxX;
 	}
 
@@ -163,7 +163,7 @@ public abstract class MovementModel {
 	 * Returns the largest Y coordinate value this model uses
 	 * @return Maximum of Y coordinate values
 	 */
-	public int getMaxY() {
+	public double getMaxY() {
 		return this.maxY;
 	}
 

@@ -22,9 +22,9 @@ public class StationaryMovement extends MovementModel {
 	 */
 	public StationaryMovement(Settings s) {
 		super(s);
-		int coords[];
+		double coords[];
 
-		coords = s.getCsvInts(LOCATION_S, 2);
+		coords = s.getCsvDoubles(LOCATION_S, 2);
 		this.loc = new Coord(coords[0],coords[1]);
 	}
 

@@ -56,13 +56,13 @@ public class ClusterMovement extends RandomWaypoint {
 	}
 
 	@Override
-	public int getMaxX() {
-		return (int)Math.ceil(this.p_x_center + this.p_range);
+	public double getMaxX() {
+		return Math.ceil(this.p_x_center + this.p_range);
 	}
 
 	@Override
-	public int getMaxY() {
-		return (int)Math.ceil(this.p_y_center + this.p_range);
+	public double getMaxY() {
+		return Math.ceil(this.p_y_center + this.p_range);
 	}
 
 	@Override
