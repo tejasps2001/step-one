@@ -69,6 +69,9 @@ public class GDRRTPlanner {
     private Coord posTemp;
     private double distMin;
     private List<java.awt.geom.Line2D.Double> obstacleLines = null;
+    private List<Path> obstaclePaths = null;
+    private List<Color> pathColors = null;
+    private double droneBuffer = 0.5; // Radius of the drone's boundary
 
     // TODO: Below constructor is the long-term solution
     public GDRRTPlanner(String obstacleFilePath) {
@@ -89,6 +92,7 @@ public boolean isInitialized() {
         this.root = new Node(start, 0);
         this.tree.add(root);
         this.goal = goal;
+        System.out.println("Initialized GDRRT with start: " + start + " and goal: " + goal);
         this.posTemp = start;
         this.distMin = start.distance(goal);
         this.delta = deltaInit;
@@ -175,7 +179,7 @@ public boolean isInitialized() {
         if (pathSegment.size() > 1) {
             Node committedNode = pathSegment.get(1); // First step after root
             
-            Path segment = new Path(0.5); // assuming constant speed
+            Path segment = new Path(0.5); // scaled constant speed
             segment.addWaypoint(root.getLocation());
             segment.addWaypoint(committedNode.getLocation());
 
@@ -184,7 +188,10 @@ public boolean isInitialized() {
             root.parent = null;
             z.addWaypoint(committedNode.position);
             tree = getSubTree(root, z);
-            if (gui != null) gui.showPath(z, Color.BLUE);
+            if (gui != null) {
+                gui.showPath(z, Color.BLUE);
+                drawObstacles(); // Redraw obstacles to prevent them from disappearing
+            }
 
             // Update heuristics based on surviving tree
             Node nearest = findNearest(tree, goal);
@@ -196,11 +203,18 @@ public boolean isInitialized() {
         return null;
     }
 
+    private void drawObstacles() {
+        if (gui != null && obstaclePaths != null && pathColors != null) {
+            for (int i = 0; i < obstaclePaths.size(); i++) {
+                gui.showPath(obstaclePaths.get(i), pathColors.get(i));
+            }
+        }
+    }
+
     private Coord smartSample(Coord posTemp, double d, Random rand) {
         // Equation 2: x_rand = (pos_temp - d/2) + rand * d [cite: 318]
         double rx = (posTemp.getX() - d / 2) + rand.nextDouble() * d;
         double ry = (posTemp.getY() - d / 2) + rand.nextDouble() * d;
-        // System.out.println("rx is "+rx + "  & ry is"+ ry);
         return new Coord(rx, ry);
     }
 
@@ -261,101 +275,89 @@ public boolean isInitialized() {
         return p;
     }
     
-private boolean isCollisionFree(Coord nearest, Coord newNode) {
-    String filePath = "./src/main/python/WKT.py";
-    int exitCode = 0;
-    String nearest_newNode = "LINESTRING (" + nearest.getX() + " " + nearest.getY() +
-            ", " + newNode.getX() + " " + newNode.getY() + ")";
-    ProcessBuilder pb = new ProcessBuilder("python", filePath,
-            this.obstacleFilePath, nearest_newNode);
-    pb.redirectErrorStream(true);
-
-    try {
-        Process process = pb.start();
-        StringBuilder output = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line);
     private void loadObstacles() {
         obstacleLines = new ArrayList<>();
+        obstaclePaths = new ArrayList<>();
+        pathColors = new ArrayList<>();
         if (this.obstacleFilePath == null) return;
         
-        try (BufferedReader reader = new BufferedReader(new FileReader(obstacleFilePath))) {
-            String lineStr;
-            // Matches coordinates in WKT formatting, e.g., "100.0 200.0"
-            java.util.regex.Pattern p = java.util.regex.Pattern.compile("(-?[0-9.]+)\\s+(-?[0-9.]+)");
-            while ((lineStr = reader.readLine()) != null) {
-                java.util.regex.Matcher m = p.matcher(lineStr);
-                List<Coord> points = new ArrayList<>();
-                while (m.find()) {
-                    points.add(new Coord(Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2))));
-                }
-                
-                if (points.isEmpty()) continue;
-                
-                Path q = new Path();
-                for (int i = 0; i < points.size() - 1; i++) {
-                    Coord p1 = points.get(i);
-                    Coord p2 = points.get(i + 1);
-                    obstacleLines.add(new java.awt.geom.Line2D.Double(p1.getX(), p1.getY(), p2.getX(), p2.getY()));
-                    q.addWaypoint(p1);
-                }
-                q.addWaypoint(points.get(points.size() - 1));
-                
-                if (gui != null) {
-                    gui.showPath(q);
-                }
+        String[] files = this.obstacleFilePath.split(",");
+        for (String file : files) {
+            String filePath = file.trim();
+            if (filePath.isEmpty()) continue;
+            
+            Color pathColor = Color.BLACK; // Default for other map files
+            if (filePath.contains("facilities.wkt") || 
+                filePath.contains("building") || 
+                filePath.contains("facility") ||
+                filePath.contains("sl_") ||
+                filePath.contains("buildings.wkt")) {
+                pathColor = Color.RED; // Obstacles in one color
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+            
+            try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+                String lineStr;
+                // Matches coordinates in WKT formatting, e.g., "100.0 200.0"
+                java.util.regex.Pattern p = java.util.regex.Pattern.compile("(-?[0-9.]+)\\s+(-?[0-9.]+)");
+                while ((lineStr = reader.readLine()) != null) {
+                    java.util.regex.Matcher m = p.matcher(lineStr);
+                    List<Coord> points = new ArrayList<>();
+                    while (m.find()) {
+                        double lon = Double.parseDouble(m.group(1));
+                        double lat = Double.parseDouble(m.group(2));
+                        points.add(new Coord((lon - 78.300) * 100000.0, (17.480 - lat) * 100000.0));
+                    }
+                    
+                    if (points.isEmpty()) continue;
+                    
+                    Path q = new Path();
+                    for (int i = 0; i < points.size() - 1; i++) {
+                        Coord p1 = points.get(i);
+                        Coord p2 = points.get(i + 1);
+                        obstacleLines.add(new java.awt.geom.Line2D.Double(p1.getX(), p1.getY(), p2.getX(), p2.getY()));
+                        q.addWaypoint(p1);
+                    }
+                    q.addWaypoint(points.get(points.size() - 1));
+                    
+                    obstaclePaths.add(q);
+                    pathColors.add(pathColor);
+                    
+                    if (gui != null) {
+                        gui.showPath(q, pathColor);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
-
-        renderObstacleBoundaries(output.toString());
-
-        exitCode = process.waitFor();
-    } catch (Exception e) {
-        e.printStackTrace();
     }
-    return (exitCode != 0);
-}
 
-private void renderObstacleBoundaries(String outputStr) {
-    // Split output by separator to get each obstacle separately
-    String[] obstacleGroups = outputStr.split("---");
+    private double getSegmentToSegmentDistance(java.awt.geom.Line2D.Double l1, java.awt.geom.Line2D.Double l2) {
+        if (l1.intersectsLine(l2)) return 0.0;
+        
+        double d1 = l1.ptSegDist(l2.getP1());
+        double d2 = l1.ptSegDist(l2.getP2());
+        double d3 = l2.ptSegDist(l1.getP1());
+        double d4 = l2.ptSegDist(l1.getP2());
+        
+        return Math.min(Math.min(d1, d2), Math.min(d3, d4));
+    }
 
-    for (String group : obstacleGroups) {
-        java.util.regex.Pattern p = java.util.regex.Pattern.compile("\\((-?[0-9.]+),\\s*(-?[0-9.]+)\\)");
-        java.util.regex.Matcher m = p.matcher(group);
-        List<Coord> coords = new ArrayList<>();
-
-        while (m.find()) {
-            coords.add(new Coord(Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2))));
     private boolean isCollisionFree(Coord nearest, Coord newNode) {
         if (obstacleLines == null) {
             loadObstacles();
         }
-
-        Coord[] obsArray = coords.toArray(new Coord[0]);
-        Path q = new Path();
-        for (Coord c : obsArray) {
-            q.addWaypoint(c);
         
         java.awt.geom.Line2D.Double pathSegment = new java.awt.geom.Line2D.Double(
                 nearest.getX(), nearest.getY(), newNode.getX(), newNode.getY());
                 
         for (java.awt.geom.Line2D.Double obsLine : obstacleLines) {
-            if (pathSegment.intersectsLine(obsLine)) {
+            if (getSegmentToSegmentDistance(pathSegment, obsLine) <= droneBuffer) {
                 return false; // Collision detected
             }
         }
-
-        if (gui != null && obsArray.length > 0) {
-            gui.showPath(q);
-        }
         return true; // No collision
     }
-}
 
     private List<Node> getSubTree(Node root, Path z) {
         List<Node> subTree = new ArrayList<>();

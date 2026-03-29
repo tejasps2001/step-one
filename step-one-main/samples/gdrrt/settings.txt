@@ -7,7 +7,7 @@ Scenario.name = GDRRT
 Scenario.simulateConnections = true
 Scenario.updateInterval = 1.0
 # time in seconds
-Scenario.endTime = 3600
+Scenario.endTime = 4200
 
 Scenario.nrofHostGroups = 3
 
@@ -56,41 +56,30 @@ Group2.groupID = B
 Group.movementModel = MapBasedMovement
 
 Group1.movementModel=GDRRTMovement
-Group1.GDRRTMovement.obstacleFile = samples/gdrrt/obstacles.wkt
+Group1.GDRRTMovement.obstacleFile = samples/gdrrt/uoh_map.wkt,samples/gdrrt/buildings.wkt,samples/gdrrt/building1.wkt,samples/gdrrt/building2.wkt,samples/gdrrt/building3.wkt,samples/gdrrt/building4.wkt,samples/gdrrt/building5.wkt,samples/gdrrt/building6.wkt,samples/gdrrt/building7.wkt,samples/gdrrt/building8.wkt,samples/gdrrt/building9.wkt,samples/gdrrt/building10.wkt,samples/gdrrt/building11.wkt,samples/gdrrt/building12.wkt,samples/gdrrt/building13.wkt,samples/gdrrt/building14.wkt,samples/gdrrt/building15.wkt,samples/gdrrt/building16.wkt,samples/gdrrt/building17.wkt,samples/gdrrt/building18.wkt,samples/gdrrt/building19.wkt,samples/gdrrt/building20.wkt,samples/gdrrt/building21.wkt,samples/gdrrt/building22.wkt,samples/gdrrt/building23.wkt,samples/gdrrt/building24.wkt,samples/gdrrt/building25.wkt,samples/gdrrt/building26.wkt,samples/gdrrt/building27.wkt,samples/gdrrt/building28.wkt,samples/gdrrt/facility1.wkt,samples/gdrrt/facility2.wkt,samples/gdrrt/facility3.wkt,samples/gdrrt/facility4.wkt,samples/gdrrt/facility5.wkt,samples/gdrrt/facility6.wkt,samples/gdrrt/facility7.wkt,samples/gdrrt/facility8.wkt,samples/gdrrt/facility9.wkt,samples/gdrrt/facility10.wkt,samples/gdrrt/facility11.wkt,samples/gdrrt/facility11.wkt,samples/gdrrt/facility12.wkt,samples/gdrrt/facility13.wkt,samples/gdrrt/facility14.wkt,samples/gdrrt/facility15.wkt,samples/gdrrt/facility16.wkt,samples/gdrrt/sl_1.wkt,samples/gdrrt/sl_2.wkt,samples/gdrrt/sl_3.wkt,samples/gdrrt/sl_4.wkt,samples/gdrrt/sl_5.wkt,samples/gdrrt/sl_6.wkt,samples/gdrrt/sl_7.wkt,samples/gdrrt/sl_8.wkt,samples/gdrrt/sl_9.wkt,samples/gdrrt/sl_10.wkt,samples/gdrrt/sl_11.wkt,samples/gdrrt/sl_12.wkt,samples/gdrrt/sl_13.wkt,samples/gdrrt/sl_14.wkt,samples/gdrrt/sl_15.wkt,samples/gdrrt/sl_16.wkt
 
-Group1.GDRRTMovement.startLocation=200,210
-Group1.GDRRTMovement.endLocation=800,210
+Group1.GDRRTMovement.startLocation=3500.0,3000.0
+Group1.GDRRTMovement.endLocation=2500.0,2000.0
 
 Group2.movementModel = StationaryMovement
-Group2.nodeLocation=800,210
-
-
-
-
-
-
+Group2.nodeLocation=2500.0,2000.0
 
 Group3.groupID = Map
 Group3.movementModel = MapBasedMovement
 Group3.nrofHosts = 0
 
 
-MapBasedMovement.nrofMapFiles = 11
+MapBasedMovement.nrofMapFiles = 7
 Events.nrof = 0
 Report.nrofReports = 0
 
-MapBasedMovement.mapFile1 = samples/gdrrt/buildings.wkt 
+MapBasedMovement.mapFile1 = samples/gdrrt/highwaysbarriers.wkt
 MapBasedMovement.mapFile2 = samples/gdrrt/waterway.wkt 
-MapBasedMovement.mapFile3 = samples/gdrrt/facilities.wkt 
+MapBasedMovement.mapFile3 = samples/gdrrt/highwaysstreets.wkt  
 MapBasedMovement.mapFile4 = samples/gdrrt/uoh_map.wkt
-MapBasedMovement.mapFile5 = samples/gdrrt/to_combine_buildings.wkt 
-MapBasedMovement.mapFile6 = samples/gdrrt/sportslakes.wkt 
+MapBasedMovement.mapFile5 = samples/gdrrt/highwaysways.wkt
+MapBasedMovement.mapFile6 = samples/gdrrt/land_use_and_nature_lines.wkt
 MapBasedMovement.mapFile7 = samples/gdrrt/manmadepowerlines.wkt 
-MapBasedMovement.mapFile8 = samples/gdrrt/land_use_and_nature_lines.wkt 
-MapBasedMovement.mapFile9 = samples/gdrrt/highwaysways.wkt 
-MapBasedMovement.mapFile10 = samples/gdrrt/highwaysstreets.wkt 
-MapBasedMovement.mapFile11 = samples/gdrrt/highwaysbarriers.wkt
-
 ## ------------------------
 ##   APPLICATIONS
 ## ------------------------
@@ -106,7 +95,7 @@ MapBasedMovement.mapFile11 = samples/gdrrt/highwaysbarriers.wkt
 # seed for movement models' pseudo random number generator (default = 0)
 #MovementModel.rngSeed = 1
 # World's size for Movement Models without implicit size (width, height; meters)
-MovementModel.worldSize = 1000, 1000
+MovementModel.worldSize = 10000, 10000
 
 ## messages are handled in-engine
 Events.nrof = 0 

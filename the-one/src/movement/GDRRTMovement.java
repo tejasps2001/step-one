@@ -40,11 +40,11 @@ public class GDRRTMovement extends MovementModel {
      */
     public GDRRTMovement(Settings s) {
         super(s);
-        int coords[];
+        double coords[];
 
-        coords = s.getCsvInts(GDRRT_MOVEMENT_NS + START_LOCATION_S, 2);
+        coords = s.getCsvDoubles(GDRRT_MOVEMENT_NS + START_LOCATION_S, 2);
         this.startLoc = new Coord(coords[0], coords[1]);
-        coords = s.getCsvInts(GDRRT_MOVEMENT_NS + END_LOCATION_S, 2);
+        coords = s.getCsvDoubles(GDRRT_MOVEMENT_NS + END_LOCATION_S, 2);
         this.endLoc = new Coord(coords[0], coords[1]);
         this.obstacleFilePath = s.getSetting(GDRRT_MOVEMENT_NS + OBSTACLE_FILE_S);
         // this.drone_route = s.getSetting(GDRRT_MOVEMENT_NS + DRONE_ROUTE);
@@ -92,7 +92,6 @@ public class GDRRTMovement extends MovementModel {
         if (!gdrrt.isInitialized()) {
             reachedEnd = true;
         }
-        System.out.print(p);
         return p;
     }
 

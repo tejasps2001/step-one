@@ -131,7 +131,7 @@ public class PlayField extends JPanel {
 	 */
 	public void setMap(SimMap simMap) {
 		this.mapGraphic = new MapGraphic(simMap);
-		this.showMapGraphic = false;
+		// this.showMapGraphic = false;
 	}
 
 	/**
@@ -192,8 +192,12 @@ public class PlayField extends JPanel {
 		}
 
 		// draw overlay graphics
-		for (int i=0, n=overlayGraphics.size(); i<n; i++) {
-			overlayGraphics.get(i).draw(g2);
+		// synchronized to avoid concurrent modification exceptions 
+		// if graphics are added while drawingField is called
+		synchronized (overlayGraphics) {
+			for (int i=0, n=overlayGraphics.size(); i<n; i++) {
+				overlayGraphics.get(i).draw(g2);
+			}
 		}
 
 		// TODO: Use some listener
@@ -238,7 +242,7 @@ public class PlayField extends JPanel {
 	 * @param color Color of the path
 	 */
 	public void addPath(Path path, Color color) {
-		autoClear();
+		// autoClear();
 		this.overlayGraphics.add(new PathGraphic(path, color));
 		this.updateField();
 	}
