@@ -113,6 +113,7 @@ public class ImprovedAntColonyMovement extends MovementModel {
     /** Start and destination coordinates */
     private Coord startCoord;
     private Coord destCoord;
+    private Coord initLoc;
     private int startX, startY;
     private int destX, destY;
 
@@ -179,6 +180,8 @@ public class ImprovedAntColonyMovement extends MovementModel {
             }
         }
 
+        this.startCoord = new Coord(0, 0);
+
         // Initialize height map (simulated terrain)
         this.heightMap = new double[gridWidth][gridHeight];
         generateHeightMap();
@@ -186,6 +189,7 @@ public class ImprovedAntColonyMovement extends MovementModel {
         // Initialize obstacles
         this.obstacles = new boolean[gridWidth][gridHeight];
         initializeObstacles(s);
+        this.initLoc = startCoord.clone();
     }
 
     /**
@@ -222,8 +226,9 @@ public class ImprovedAntColonyMovement extends MovementModel {
         this.heightMap = proto.heightMap;
         this.obstacles = proto.obstacles;
 
-        this.startCoord = proto.startCoord;
-        this.destCoord = proto.destCoord;
+        this.startCoord = proto.startCoord.clone();
+        this.destCoord = proto.destCoord.clone();
+        this.initLoc = proto.initLoc.clone();
         this.startX = proto.startX;
         this.startY = proto.startY;
         this.destX = proto.destX;
@@ -600,7 +605,7 @@ public class ImprovedAntColonyMovement extends MovementModel {
      */
     private void findOptimalPath() {
         int maxIterations = 50;
-        int numAnts = 100;
+        int numAnts = 200;
         
         // Reset pheromone to initial value
         for (int i = 0; i < gridWidth; i++) {
@@ -816,9 +821,9 @@ public class ImprovedAntColonyMovement extends MovementModel {
                 }
                 pathSet.add(idx);
             }
-            
+
             if (!hasCycle) {
-                System.out.println("Valid path found with no revisits, length: " + 
+                System.out.println("Valid path found with no revisits, length: " +
                                    bestPath.size() + " nodes");
             }
             
@@ -834,11 +839,8 @@ public class ImprovedAntColonyMovement extends MovementModel {
                 nextPath.addWaypoint(c);
             }
         } else {
-            // Fallback: direct line
-            System.err.println("No valid path found, using direct line");
-            nextPath = new Path(generateSpeed());
-            nextPath.addWaypoint(startCoord);
-            nextPath.addWaypoint(destCoord);
+            System.err.println("No valid path found");
+            nextPath = null;        
         }
     }
 
@@ -857,10 +859,7 @@ public class ImprovedAntColonyMovement extends MovementModel {
 
     @Override
     public Coord getInitialLocation() {
-        if (!initialized && startCoord != null) {
-            return startCoord;
-        }
-        return startCoord;
+        return this.initLoc;
     }
 
     @Override

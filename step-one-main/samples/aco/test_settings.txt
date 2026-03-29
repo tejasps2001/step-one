@@ -4,7 +4,7 @@ Scenario.simulateConnections = true
 Scenario.updateInterval = 0.5
 Scenario.endTime = 360000
 
-Scenario.nrofHostGroups = 2
+Scenario.nrofHostGroups = 1
 
 # Interface configurations
 btInterface.type = SimpleBroadcastInterface
@@ -27,7 +27,7 @@ Group.bufferSize = 50M
 # GROUP 1: UAVs using Improved Ant Colony Algorithm
 # ============================================
 Group1.groupID = UAV_ACO
-Group1.nrofHosts = 1
+Group1.nrofHosts = 2
 Group1.nrofInterfaces = 0
 Group1.interface1 = btInterface
 Group1.interface2 = wlanInterface
@@ -93,90 +93,6 @@ Group1.ImprovedAntColony.destY = 45
 
 # Applications (if needed)
 Group1.nrofApplications = 0
-
-# ============================================
-# GROUP 2: Ground nodes (static/rescuers) for comparison
-# ============================================
-# Group2.groupID = Ground
-# Group2.nrofHosts = 10
-# Group2.nrofInterfaces = 1
-# Group2.interface1 = btInterface
-# Group2.movementModel = StaticMovement
-# Group2.router = EpidemicRouter
-# Group2.bufferSize = 10M
-# Group2.nrofApplications = 0
-
-# Static locations for ground nodes
-# Group2.staticLocationFile = samples/aco_scenario/ground_nodes.txt
-
-
-Group2.groupID = UAV_ACO
-Group2.nrofHosts = 1
-Group2.nrofInterfaces = 0
-Group2.interface1 = btInterface
-Group2.interface2 = wlanInterface
-Group2.movementModel = ImprovedAntColonyMovement
-Group2.router = EpidemicRouter
-Group2.bufferSize = 50M
-Group2.speed = 5, 5
-
-# Improved Ant Colony Algorithm Parameters
-# Grid settings
-Group2.ImprovedAntColony.gridWidth = 50
-Group2.ImprovedAntColony.gridHeight = 50
-Group2.ImprovedAntColony.cellSize = 50
-
-# Pheromone parameters (Section 4.1.2)
-# Pheromone importance factor
-Group2.ImprovedAntColony.alpha = 1.0
-# Heuristic importance factor
-Group2.ImprovedAntColony.beta = 2.0
-# Pheromone evaporation factor
-Group2.ImprovedAntColony.rho = 0.3
-# Minimum evaporation factor
-Group2.ImprovedAntColony.rhoMin = 0.2
-# Pheromone constant
-Group2.ImprovedAntColony.q = 100
-# Minimum pheromone (Eq. 10)
-Group2.ImprovedAntColony.tauMin = 10
-# Maximum pheromone (Eq. 11)
-Group2.ImprovedAntColony.tauMax = 400
-# Initial pheromone
-Group2.ImprovedAntColony.tauInit = 20
-
-# Comprehensive indicator coefficients (Equation 9)
-Group2.ImprovedAntColony.xCoef = 10
-Group2.ImprovedAntColony.yCoef = 0.1
-Group2.ImprovedAntColony.zCoef = 1
-
-# Multi-heuristic parameters
-# Distance correction function (Equation 2)
-Group2.ImprovedAntColony.gamma1 = 1
-Group2.ImprovedAntColony.g1 = 1
-
-# Smoothness function (Equation 4)
-Group2.ImprovedAntColony.gamma2 = 1
-Group2.ImprovedAntColony.g2 = 1
-
-# Safety function (Equation 3)
-Group2.ImprovedAntColony.u = 1
-Group2.ImprovedAntColony.theta = 0.5
-
-# Adaptive heuristic factor (Equation 5)
-Group2.ImprovedAntColony.a = 0.5
-Group2.ImprovedAntColony.b = 0.5
-
-# Start and destination coordinates (grid coordinates)
-Group2.ImprovedAntColony.startX = 0
-Group2.ImprovedAntColony.startY = 0
-Group2.ImprovedAntColony.destX = 45
-Group2.ImprovedAntColony.destY = 45
-
-# Optional: Load obstacle map from file
-# Group2.ImprovedAntColony.obstacleFile = samples/aco_scenario/obstacles.wkt
-
-# Applications (if needed)
-Group2.nrofApplications = 0
 
 # ============================================
 # MAP FILES
