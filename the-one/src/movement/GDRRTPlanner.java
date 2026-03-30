@@ -47,6 +47,13 @@ class Node {
 
 public class GDRRTPlanner {
 
+    // New inner class to hold planning results before committing
+    class PlannedSegment {
+        Path path;
+        Node nodeToCommit;
+        boolean isFinalPath = false;
+    }
+
     // Parameters based on the study settings [cite: 547]
     private double delta;// Tree extension distance (δ)
     private double deltaInit = 20.0; // Initial extension value
@@ -100,14 +107,12 @@ public boolean isInitialized() {
         this.isInitialized = true;
     }
 
-    public Path getNextPath() {
+    public PlannedSegment planNextSegment() {
         if (!isInitialized) return null;
         
         Random rand = new Random();
-        Path z = new Path();
 
         int batchSize = 10; // Time devoted to planning phase (nodes per commit)
-
 
         int nodesInBatch = 0;
         boolean goalReached = false;
@@ -143,8 +148,6 @@ public boolean isInitialized() {
                 tree.add(xNew);
                 nodesInBatch++;
                 escaping = false;
-                z.addWaypoint(xNew.position);
-                if (gui != null) gui.showPath(z);
 
                 if (xNew.parent != null) xNew.parent.children.add(xNew);
                 rewire(tree, xNew, xNearNodes);
@@ -163,44 +166,62 @@ public boolean isInitialized() {
             }
         }
 
+        PlannedSegment plannedSegment = new PlannedSegment();
+
         if (goalReached && finalGoalNode != null) {
-            Path p = constructPathObject(finalGoalNode);
-            isInitialized = false; // Goal reached, reset
-            return p;
+            plannedSegment.path = constructPathObject(finalGoalNode);
+            plannedSegment.nodeToCommit = finalGoalNode;
+            plannedSegment.isFinalPath = true;
+            return plannedSegment;
         }
 
-        // Commit Phase: Pick best path and commit to initial portion
+        // Find best path segment
         Node bestNode = findNearest(tree, goal);
         if (bestNode == root) {
             return null;
         }
 
-        List<Node> pathSegment = constructPathList(bestNode);
-        if (pathSegment.size() > 1) {
-            Node committedNode = pathSegment.get(1); // First step after root
+        List<Node> pathSegmentNodes = constructPathList(bestNode);
+        if (pathSegmentNodes.size() > 1) {
+            Node committedNode = pathSegmentNodes.get(1);
             
             Path segment = new Path(0.5); // scaled constant speed
             segment.addWaypoint(root.getLocation());
             segment.addWaypoint(committedNode.getLocation());
 
-            // Prune Phase
-            root = committedNode;
-            root.parent = null;
-            z.addWaypoint(committedNode.position);
-            tree = getSubTree(root, z);
-            if (gui != null) {
-                gui.showPath(z, Color.BLUE);
-                drawObstacles(); // Redraw obstacles to prevent them from disappearing
-            }
-
-            // Update heuristics based on surviving tree
-            Node nearest = findNearest(tree, goal);
-            posTemp = nearest.getLocation();
-            distMin = posTemp.distance(goal);
-            return segment;
+            plannedSegment.path = segment;
+            plannedSegment.nodeToCommit = committedNode;
+            return plannedSegment;
         }
 
         return null;
+    }
+
+    public void commit(PlannedSegment segment) {
+        if (segment == null || segment.nodeToCommit == null) return;
+
+        if (segment.isFinalPath) {
+            isInitialized = false; // Goal reached, reset for next time
+            return;
+        }
+
+        Node committedNode = segment.nodeToCommit;
+
+        // Prune Phase
+        root = committedNode;
+        root.parent = null;
+        Path z = new Path(); // for drawing
+        z.addWaypoint(committedNode.position);
+        tree = getSubTree(root, z);
+        if (gui != null) {
+            gui.showPath(z, Color.BLUE);
+            drawObstacles();
+        }
+
+        // Update heuristics
+        Node nearest = findNearest(tree, goal);
+        posTemp = nearest.getLocation();
+        distMin = posTemp.distance(goal);
     }
 
     private void drawObstacles() {

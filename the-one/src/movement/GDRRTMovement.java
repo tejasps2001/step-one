@@ -2,9 +2,7 @@ package movement;
 
 import core.Coord;
 import core.Settings;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import core.SettingsError;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.*;
@@ -21,17 +19,20 @@ public class GDRRTMovement extends MovementModel {
     // per node group setting for defining the cordinate of the target
     public static final String END_LOCATION_S = "endLocation";
     public static final String OBSTACLE_FILE_S = "obstacleFile";
-    // store the generated path in file
-    // private static String DRONE_ROUTE = "droneRoute";
+
+    // For prototype to handle multiple hosts
+    private List<Coord> startLocs;
+    private List<Coord> endLocs;
+    private static int nextHostIndex = 0;
+
     // starting location of the node
     private Coord startLoc;
     // ending location of the node
     private Coord endLoc;
     private String obstacleFilePath;
     private boolean reachedEnd = false;
-    // private String drone_route;
     private GDRRTPlanner gdrrt;
-    private Path nextPath;
+    private boolean isWaiting = false;
 
     /**
      * Creates a new movement model based on a Settings object's settings.
@@ -40,37 +41,60 @@ public class GDRRTMovement extends MovementModel {
      */
     public GDRRTMovement(Settings s) {
         super(s);
-        double coords[];
+        // Read arrays of coordinates for multiple drones
+        this.startLocs = parseCoords(s, GDRRT_MOVEMENT_NS + START_LOCATION_S);
+        this.endLocs = parseCoords(s, GDRRT_MOVEMENT_NS + END_LOCATION_S);
 
-        coords = s.getCsvDoubles(GDRRT_MOVEMENT_NS + START_LOCATION_S, 2);
-        this.startLoc = new Coord(coords[0], coords[1]);
-        coords = s.getCsvDoubles(GDRRT_MOVEMENT_NS + END_LOCATION_S, 2);
-        this.endLoc = new Coord(coords[0], coords[1]);
+        if (startLocs.size() != endLocs.size()) {
+            throw new SettingsError("Start and end location arrays must have the same size");
+        }
+        
+        int nrofHosts = s.getInt(core.SimScenario.NROF_HOSTS_S);
+        if (startLocs.size() < nrofHosts) {
+            throw new SettingsError("Not enough start/end locations for all hosts in the group");
+        }
+
         this.obstacleFilePath = s.getSetting(GDRRT_MOVEMENT_NS + OBSTACLE_FILE_S);
-        // this.drone_route = s.getSetting(GDRRT_MOVEMENT_NS + DRONE_ROUTE);
-        // We need MapRouteMovement for storing the obstacles WKT file
-        // mapBasedMM = new MapBasedMovement(s);
         this.gdrrt = new GDRRTPlanner(this.obstacleFilePath);
+        nextHostIndex = 0; // Reset for each new group prototype
+    }
+
+    // Helper to parse coordinate arrays like "[x1,y1; x2,y2]"
+    private List<Coord> parseCoords(Settings s, String key) {
+        String raw = s.getSetting(key);
+        raw = raw.replace("[", "").replace("]", "");
+        String[] pairs = raw.split(";");
+        List<Coord> coords = new ArrayList<>();
+        for (String pair : pairs) {
+            String[] values = pair.split(",");
+            if (values.length != 2) {
+                throw new SettingsError("Invalid coordinate pair: " + pair + " in setting " + key);
+            }
+            coords.add(new Coord(Double.parseDouble(values[0].trim()), Double.parseDouble(values[1].trim())));
+        }
+        return coords;
     }
 
     public GDRRTMovement(GDRRTMovement proto) {
         super(proto);
-        this.startLoc = proto.startLoc.clone();
-        this.endLoc = proto.endLoc.clone();
+        // Assign a unique start/end location to this instance
+        this.startLoc = proto.startLocs.get(nextHostIndex);
+        this.endLoc = proto.endLocs.get(nextHostIndex);
+        nextHostIndex++;
+
         this.obstacleFilePath = proto.obstacleFilePath;
-        // this.drone_route=proto.drone_route;
-        // mapBasedMM = proto.mapBasedMM.replicate();
         this.gdrrt = new GDRRTPlanner(this.obstacleFilePath);
     }
 
     public GDRRTMovement replicate() {
         return new GDRRTMovement(this);
     }
-
+    
     @Override
     public Path getPath() {
-        if (reachedEnd)
+        if (reachedEnd) {
             return null;
+        }
 
         if (gdrrt == null) {
             gdrrt = new GDRRTPlanner(this.obstacleFilePath);
@@ -80,19 +104,36 @@ public class GDRRTMovement extends MovementModel {
             gdrrt.init(getHost().getLocation(), endLoc);
         }
 
-        Path p = gdrrt.getNextPath();
-        nextPath = p;
+        // 1. Plan the next move without committing
+        GDRRTPlanner.PlannedSegment proposedSegment = gdrrt.planNextSegment();
 
-        
-        if (p == null) {
+        if (proposedSegment == null) { // Planner couldn't find a path
             reachedEnd = true;
+            DronePathManager.setStationary(getHost().getAddress());
             return null;
         }
 
-        if (!gdrrt.isInitialized()) {
-            reachedEnd = true;
+        // 2. Request permission from the path manager
+        if (DronePathManager.requestPath(getHost().getAddress(), proposedSegment.path)) {
+            // 3a. Permission granted: commit and move
+            isWaiting = false;
+            gdrrt.commit(proposedSegment);
+            
+            if (proposedSegment.isFinalPath) {
+                reachedEnd = true;
+            }
+            
+            return proposedSegment.path;
+        } else {
+            // 3b. Permission denied: wait
+            isWaiting = true;
+            DronePathManager.setStationary(getHost().getAddress());
+            
+            // Return a path that keeps the drone stationary
+            Path waitingPath = new Path(0);
+            waitingPath.addWaypoint(getHost().getLocation());
+            return waitingPath;
         }
-        return p;
     }
 
     @Override
@@ -103,54 +144,13 @@ public class GDRRTMovement extends MovementModel {
 
     @Override
     public double nextPathAvailable() {
-        if(reachedEnd) {
-            return Double.MAX_VALUE; // no new paths available until getPath() is called again
+        if (reachedEnd) {
+            return Double.MAX_VALUE;
+        }
+        if (isWaiting) {
+            // If waiting, try again after a short delay to see if the path is clear.
+            return core.SimClock.getTime() + 1.0;
         }
         return 0;
     }
-
-    // public void appendPath(Path p, String droneRouteFile) {
-    //     droneRouteFile = droneRouteFile.replace("obstacles.wkt", "droneRoute.wkt");
-    //     try {
-    //         File file = new File(droneRouteFile);
-
-    //         if (file.exists()) {
-    //             // File exists → append
-    //             FileWriter writer = new FileWriter(file, true);
-    //             writer.write(formatPath(p));
-    //             writer.write(System.lineSeparator());
-    //             writer.close();
-    //         } else {
-    //             // File does not exist → create and write
-    //             FileWriter writer = new FileWriter(file);
-    //             writer.write(formatPath(p));
-    //             writer.write(System.lineSeparator());
-    //             writer.close();
-    //         }
-
-    //     } catch (IOException e) {
-    //         e.printStackTrace();
-    //     }
-    // }
-
-    // public String formatPath(Path p) {
-    //     Pattern pattern = Pattern.compile("\\(([^,]+),([^\\)]+)\\)");
-    //     Matcher matcher = pattern.matcher(p.toString());
-
-    //     List<String> points = new ArrayList<>();
-
-    //     while (matcher.find()) {
-    //         String x = matcher.group(1).trim();
-    //         String y = matcher.group(2).trim();
-    //         points.add(x + " " + y);
-    //     }
-
-    //     // remove last coordinate
-    //     if (!points.isEmpty()) {
-    //         points.remove(points.size() - 1);
-    //     }
-
-    //     return "LINESTRING (" + String.join(",", points) + ")";
-    // }
-
 }
