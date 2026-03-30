@@ -131,7 +131,7 @@ public class PlayField extends JPanel {
 	 */
 	public void setMap(SimMap simMap) {
 		this.mapGraphic = new MapGraphic(simMap);
-		// this.showMapGraphic = false;
+		this.showMapGraphic = true;
 	}
 
 	/**
