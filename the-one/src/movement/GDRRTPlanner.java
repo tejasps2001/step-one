@@ -106,7 +106,7 @@ public boolean isInitialized() {
         Random rand = new Random();
         Path z = new Path();
 
-        int batchSize = 100; // Time devoted to planning phase (nodes per commit)
+        int batchSize = 10; // Time devoted to planning phase (nodes per commit)
 
 
         int nodesInBatch = 0;
