@@ -122,6 +122,9 @@ public class GDRRTMovement extends MovementModel {
             
             if (proposedSegment.isFinalPath) {
                 reachedEnd = true;
+                // This drone has now reached its final destination and is stationary.
+                // Its path should be cleared from the manager so it doesn't block others.
+                DronePathManager.setStationary(getHost().getAddress());
             }
             
             return proposedSegment.path;

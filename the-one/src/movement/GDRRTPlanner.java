@@ -214,7 +214,7 @@ public boolean isInitialized() {
         z.addWaypoint(committedNode.position);
         tree = getSubTree(root, z);
         if (gui != null) {
-            gui.showPath(z, Color.BLUE);
+            gui.showPath(z, Color.PINK);
             drawObstacles();
         }
 
