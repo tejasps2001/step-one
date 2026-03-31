@@ -86,7 +86,6 @@ public class DronePathManager {
     private static Line2D.Double createLineFromPath(Path path) {
         Coord start = path.getCoords().get(0);
         Coord end = path.getCoords().get(path.getCoords().size() - 1);
-        // TODO: Comment below lines and read gemini's output!!!
         return new Line2D.Double(start.getX(), start.getY(), end.getX(), end.getY());
     }
 }

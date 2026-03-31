@@ -395,7 +395,6 @@ public class Settings {
 		}
 		fullPropName = getFullPropertyName(name, false);
 		String value = props.getProperty(fullPropName);
-
 		if (value != null) { // found value, check if run setting can be parsed
 			value = parseRunSetting(value.trim());
 		}
@@ -416,6 +415,43 @@ public class Settings {
 					getPropertyNamesString(name));
 		}
 
+		outputSetting(fullPropName + " = " + value);
+		return value;
+	}
+
+	/**
+	 * Returns a String-valued setting without applying run-specific parsing.
+	 * This is useful for settings where the entire string content (including
+	 * array delimiters like '[' and ';') needs to be processed by custom logic,
+	 * rather than having {@code parseRunSetting} extract a single element.
+	 * Setting is first looked from the namespace that is set (if any) and then
+	 * from the secondary namespace (if any).
+	 * @param name Name of the setting to get
+	 * @return The raw contents of the setting in a String
+	 * @throws SettingsError if the setting is not found from either one of
+	 * the namespaces
+	 */
+	public String getRawSetting(String name) {
+		String fullPropName;
+		if (props == null) {
+			init(null);
+		}
+		fullPropName = getFullPropertyName(name, false);
+		String value = props.getProperty(fullPropName);
+
+		if ((value == null || value.length() == 0) &&
+				this.secondaryNamespace != null) {
+			// try secondary namespace if the value wasn't found from primary
+			fullPropName = getFullPropertyName(name, true);
+			value = props.getProperty(fullPropName);
+		}
+
+		if (value == null || value.length() == 0) {
+			throw new SettingsError("Can't find setting " +
+					getPropertyNamesString(name));
+		}
+
+		// Still output the raw setting to the log if configured, as it's being read
 		outputSetting(fullPropName + " = " + value);
 		return value;
 	}
