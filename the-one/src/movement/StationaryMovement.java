@@ -17,6 +17,8 @@ import core.Settings;
 public class StationaryMovement extends MovementModel {
 	/** Per node group setting for setting the location ({@value}) */
 	public static final String LOCATION_S = "nodeLocation";
+	/** Per node group setting for setting multiple locations for hosts in a group ({@value}) */
+	public static final String LOCATIONS_S = "nodeLocations";
 	private Coord loc; /** The location of the nodes */
 	
 	// Support for assigning multiple locations to a group of stationary nodes
@@ -29,22 +31,22 @@ public class StationaryMovement extends MovementModel {
 	 */
 	public StationaryMovement(Settings s) {
 		super(s);
-		String raw = s.getSetting(LOCATION_S);
-		if (raw.contains("[")) {
+		if (s.contains(LOCATIONS_S)) {
+			String raw = s.getRawSetting(LOCATIONS_S);
 			this.locations = new ArrayList<>();
 			raw = raw.replace("[", "").replace("]", "");
 			String[] pairs = raw.split(";");
 			for (String pair : pairs) {
 				String[] values = pair.split(",");
 				if (values.length != 2) {
-					throw new SettingsError("Invalid coordinate pair: " + pair + " in setting " + LOCATION_S);
+					throw new SettingsError("Invalid coordinate pair: " + pair + " in setting " + LOCATIONS_S);
 				}
 				locations.add(new Coord(Double.parseDouble(values[0].trim()), Double.parseDouble(values[1].trim())));
 			}
 			nextHostIndex_sm = 0;
 			this.loc = locations.get(0); // Default for prototype
 		} else {
-			double coords[] = s.getCsvDoubles(LOCATION_S, 2);
+			double[] coords = s.getCsvDoubles(LOCATION_S, 2);
 			this.loc = new Coord(coords[0],coords[1]);
 			this.locations = null;
 		}
@@ -56,7 +58,6 @@ public class StationaryMovement extends MovementModel {
 	 */
 	public StationaryMovement(StationaryMovement sm) {
 		super(sm);
-		this.loc = sm.loc;
 		if (sm.locations != null && nextHostIndex_sm < sm.locations.size()) {
 			this.loc = sm.locations.get(nextHostIndex_sm++);
 		} else {

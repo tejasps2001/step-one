@@ -60,8 +60,9 @@ public class GDRRTMovement extends MovementModel {
     }
 
     // Helper to parse coordinate arrays like "[x1,y1; x2,y2]"
-    private List<Coord> parseCoords(Settings s, String key) {
-        String raw = s.getSetting(key);
+    private List<Coord> parseCoords(Settings s, String key) { // Changed to private visibility
+        // Use getRawSetting to bypass run-index parsing and get the full string
+        String raw = s.getRawSetting(key); 
         raw = raw.replace("[", "").replace("]", "");
         String[] pairs = raw.split(";");
         List<Coord> coords = new ArrayList<>();
