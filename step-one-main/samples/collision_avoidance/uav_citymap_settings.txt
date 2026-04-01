@@ -1,0 +1,194 @@
+## ============================================================
+##  Scenario 2 — Narrow-Corridor Maze
+##  Single drone navigates a 800 × 800 m world containing three
+##  successive gate barriers, two dead-end alcoves, and a
+##  point-obstacle cluster.  The drone must find and thread each
+##  gate opening without human guidance.
+##
+##  Layout (x increases west → east):
+##
+##   spawn                                           target
+##   (40,400)                                     (760,400)
+##      │                                             │
+##      │   Gate-1     Gate-2     Gate-3   cluster    │
+##      │   x=200      x=400      x=580    x=620-740  │
+##      │                                             │
+##   ───┼── ══│══ ─── ══│══ ─── ══│══ ─── ●●●●● ───┼───
+##
+##  Gate gaps (vertical, nominal):
+##    Gate-1: y = 360 – 440   width = 80 m  (effective clear ~64 m)
+##    Gate-2: y = 300 – 420   width = 120 m (effective clear ~104 m)
+##    Gate-3: y = 350 – 430   width = 80 m  (effective clear ~64 m)
+##
+##  The gaps are intentionally offset from each other in y so a
+##  single straight horizontal path cannot thread all three; the
+##  planner must steer to each opening in turn.
+##
+##  Dead-end alcoves (open-top U-shapes) are located off the
+##  main corridor to test local-optima rejection:
+##    Alcove A: near (300,  80–200) — above the main path
+##    Alcove B: near (490, 580–700) — below the main path
+##
+##  The point-obstacle cluster (x=620–740, y≈360–460) in the
+##  final open zone requires fine-grained DWA weaving.
+##
+##  Key stress parameters:
+##    gridCellM             = 10   — finer grid for narrow gaps
+##    lineObstacleHalfWidth = 6    — walls thin enough to leave
+##                                   the 64 m gap fully navigable
+##    dwaSteps              = 14   — enough candidates to weave
+##                                   through the point cluster
+##    distAlert             = 25   — tight alert zone (dense env.)
+##    distRisk              = 15   — tight danger zone
+##    voWeight              = 1.0  — VO off (single drone)
+##    uavSeparationM        = 0    — no peer separation needed
+##
+##  What to observe:
+##    1. A* correctly identifies each gate opening and routes
+##       through it rather than treating the wall as impassable.
+##    2. DWA does NOT enter either dead-end alcove.
+##    3. The drone threads the point-cluster in the final zone
+##       without stopping or large lateral detours.
+##    4. Path length and computation time vs. baseline (no obstacles).
+## ============================================================
+
+# ── Scenario ───────────────────────────────────────────────────
+Scenario.name                = UAV_NarrowCorridorMaze
+Scenario.simulateConnections = false
+Scenario.updateInterval      = 0.1
+Scenario.endTime             = 36000
+
+# ── World ──────────────────────────────────────────────────────
+MovementModel.worldSize = 5000,5000
+MovementModel.rngSeed   = 2025
+
+# ── Host groups: 1 UAV ─────────────────────────────────────────
+Scenario.nrofHostGroups = 2
+
+# ================================================================
+#  SHARED DEFAULTS
+# ================================================================
+
+UAVWaypointMovement.obstacleWktFile       = samples/gdrrt/uoh_map.wkt,samples/gdrrt/buildings/building1.wkt,samples/gdrrt/buildings/building2.wkt,samples/gdrrt/buildings/building3.wkt,samples/gdrrt/buildings/building4.wkt,samples/gdrrt/buildings/building5.wkt,samples/gdrrt/buildings/building6.wkt,samples/gdrrt/buildings/building7.wkt,samples/gdrrt/buildings/building8.wkt,samples/gdrrt/buildings/building9.wkt,samples/gdrrt/buildings/building10.wkt,samples/gdrrt/buildings/building11.wkt,samples/gdrrt/buildings/building12.wkt,samples/gdrrt/buildings/building13.wkt,samples/gdrrt/buildings/building14.wkt,samples/gdrrt/buildings/building15.wkt,samples/gdrrt/buildings/building16.wkt,samples/gdrrt/buildings/building17.wkt,samples/gdrrt/buildings/building18.wkt,samples/gdrrt/buildings/building19.wkt,samples/gdrrt/buildings/building20.wkt,samples/gdrrt/buildings/building21.wkt,samples/gdrrt/buildings/building22.wkt,samples/gdrrt/buildings/building23.wkt,samples/gdrrt/buildings/building24.wkt,samples/gdrrt/buildings/building25.wkt,samples/gdrrt/buildings/building26.wkt,samples/gdrrt/buildings/building27.wkt,samples/gdrrt/buildings/building28.wkt,samples/gdrrt/facilities/facility1.wkt,samples/gdrrt/facilities/facility2.wkt,samples/gdrrt/facilities/facility3.wkt,samples/gdrrt/facilities/facility4.wkt,samples/gdrrt/facilities/facility5.wkt,samples/gdrrt/facilities/facility6.wkt,samples/gdrrt/facilities/facility7.wkt,samples/gdrrt/facilities/facility8.wkt,samples/gdrrt/facilities/facility9.wkt,samples/gdrrt/facilities/facility10.wkt,samples/gdrrt/facilities/facility11.wkt,samples/gdrrt/facilities/facility12.wkt,samples/gdrrt/facilities/facility13.wkt,samples/gdrrt/facilities/facility14.wkt,samples/gdrrt/facilities/facility15.wkt,samples/gdrrt/facilities/facility16.wkt,samples/gdrrt/sports_lakes/sl_1.wkt,samples/gdrrt/sports_lakes/sl_2.wkt,samples/gdrrt/sports_lakes/sl_3.wkt,samples/gdrrt/sports_lakes/sl_4.wkt,samples/gdrrt/sports_lakes/sl_5.wkt,samples/gdrrt/sports_lakes/sl_6.wkt,samples/gdrrt/sports_lakes/sl_7.wkt,samples/gdrrt/sports_lakes/sl_8.wkt,samples/gdrrt/sports_lakes/sl_9.wkt,samples/gdrrt/sports_lakes/sl_10.wkt,samples/gdrrt/sports_lakes/sl_11.wkt,samples/gdrrt/sports_lakes/sl_12.wkt,samples/gdrrt/sports_lakes/sl_13.wkt,samples/gdrrt/sports_lakes/sl_14.wkt,samples/gdrrt/sports_lakes/sl_15.wkt,samples/gdrrt/sports_lakes/sl_16.wkt
+UAVWaypointMovement.gridCellM             = 5
+UAVWaypointMovement.pointObstacleRadius   = 5
+UAVWaypointMovement.lineObstacleHalfWidth = 3
+UAVWaypointMovement.snapLocationsToGrid   = true
+UAVWaypointMovement.showPlanningGrid      = true
+
+# ── DWA — fine-grained sampling for tight manoeuvring
+UAVWaypointMovement.dwaSteps              = 14
+UAVWaypointMovement.distAlert             = 25
+UAVWaypointMovement.distRisk              = 15
+
+# ── FIX 1: Goal-stopping tolerance (metres)
+# Drone stops permanently when within this distance of the final target.
+# Smaller than gridCellM (5m) for precise stopping without overshoot.
+# Per-group override also supported: Group1.finalGoalTolerance = 1.5
+UAVWaypointMovement.finalGoalTolerance    = 2.0
+
+# ── VO — disabled (single drone; no peers)
+UAVWaypointMovement.uavSeparationM        = 0
+UAVWaypointMovement.voWeight              = 0.0
+UAVWaypointMovement.launchStaggerS        = 0
+UAVWaypointMovement.spawnStrideM          = 0
+
+# ── Speed — slower to allow finer path decisions in tight gaps
+UAVWaypointMovement.speedMin              = 0.6
+UAVWaypointMovement.speedMax              = 0.9
+UAVWaypointMovement.dwellMin              = 2
+UAVWaypointMovement.dwellMax              = 4
+UAVWaypointMovement.cruiseAlt             = 30
+UAVWaypointMovement.poiGridCols           = 0
+UAVWaypointMovement.poiGridRows           = 0
+
+# ================================================================
+#  GROUP 1 — single drone: west → east through all three gates
+#
+#  Spawn at (40, 400): left edge, vertically centred.
+#  Target at (760, 400): right edge, vertically centred.
+#
+#  The straight-line path y=400 threads Gate-1 (gap centred 400)
+#  and passes near Gate-2 (gap centre 360) and Gate-3 (centre 390),
+#  so the planner must make small vertical adjustments at each gate.
+# ================================================================
+Group1.groupID        = UAV1
+Group1.nrofHosts      = 1
+Group1.movementModel  = UAVWaypointMovement
+Group1.router         = PassiveRouter
+Group1.bufferSize     = 1M
+Group1.nrofInterfaces = 0
+
+Group1.spawn  = 3500.0,3000.0
+Group1.target = 2500.0,2000.0
+
+
+Group2.groupID = Map
+Group2.movementModel = MapBasedMovement
+Group2.nrofHosts = 0
+
+
+MapBasedMovement.nrofMapFiles = 7
+
+
+MapBasedMovement.mapFile1 = samples/gdrrt/highwaysbarriers.wkt
+MapBasedMovement.mapFile2 = samples/gdrrt/waterway.wkt 
+MapBasedMovement.mapFile3 = samples/gdrrt/highwaysstreets.wkt  
+MapBasedMovement.mapFile4 = samples/gdrrt/uoh_map.wkt
+MapBasedMovement.mapFile5 = samples/gdrrt/highwaysways.wkt
+MapBasedMovement.mapFile6 = samples/gdrrt/land_use_and_nature_lines.wkt
+MapBasedMovement.mapFile7 = samples/gdrrt/manmadepowerlines.wkt 
+
+
+
+
+# ================================================================
+#  Events / Reports
+# ================================================================
+Events.nrof = 0
+
+Report.nrofReports  = 1
+Report.reportDir    = reports/scenario2_corridor/
+
+Report1.class       = MovementNoBorderReport
+Report1.reportName  = Scenario2_Corridor_Path
+
+# ================================================================
+#  TUNING NOTES
+# ================================================================
+#
+#  Symptom: drone cannot find path through a gate (A* reports failure)
+#    → Decrease gridCellM to 8 (finer grid resolves the gap)
+#    → Decrease lineObstacleHalfWidth to 5
+#    → Verify gap width in WKT: effective = nominal - 2*halfWidth
+#      must exceed gridCellM * 2 for A* to see a free corridor
+#
+#  Symptom: drone enters a dead-end alcove and oscillates
+#    → Increase distAlert to 30 (wider obstacle awareness)
+#    → Increase dwaSteps to 18 (more escape angles sampled)
+#    → The stall counter (STALL_LIMIT=12) should trigger A* replan
+#      automatically — if it does not, lower STALL_LIMIT in code
+#
+#  Symptom: drone stops inside the point cluster
+#    → Increase dwaSteps to 18
+#    → Decrease pointObstacleRadius to 8 (thinner disc footprint)
+#    → Increase speedMin to 0.7 (maintain forward momentum)
+#
+#  To increase difficulty (tighter gates):
+#    Gate-1: shrink gap to 60 m → change WKT walls to y=370/y=430
+#    Gate-2: shrink gap to 80 m → change WKT walls to y=320/y=400
+#    Gate-3: shrink gap to 60 m → change WKT walls to y=365/y=425
+#    Then re-verify: effective_clear = gap - 2*lineObstacleHalfWidth > gridCellM*2
+#
+#  To increase difficulty (denser cluster):
+#    Add more POINT entries to obstacles.wkt in x=620–740 range
+#    Space them at least 2*pointObstacleRadius apart so A* can
+#    still find a path between them.
+#
+#  Baseline run (no obstacles — measure straight-line time):
+#    1. Comment out the obstacleWktFile line
+#    2. Record endTime of drone reaching target
+#    3. Re-enable obstacles and compare: ratio = maze_time / baseline_time
+#       A well-tuned planner should score < 1.5× on this layout.
+#
+## ============================================================
