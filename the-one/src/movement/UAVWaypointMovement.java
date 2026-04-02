@@ -348,10 +348,50 @@ public class UAVWaypointMovement extends MovementModel {
     private static final ConcurrentHashMap<Integer, double[]> PEER_REGISTRY
             = new ConcurrentHashMap<>();
 
+    /**
+     * Shared registry of per-UAV trail paths for GUI rendering.
+     * Key = uavId, Value = the live accumulated trail Path object.
+     *
+     * PlayField clears its internal path list on every updateField() call,
+     * so a path pushed from getPath() (sim thread, between GUI frames) is
+     * wiped before it is ever rendered.  DTNSimGUI.updateView() polls this
+     * registry every repaint and re-pushes all trails to PlayField, matching
+     * the frequency at which PlayField actually renders them.
+     */
+    private static final ConcurrentHashMap<Integer, Path> TRAIL_REGISTRY
+            = new ConcurrentHashMap<>();
+
+    /**
+     * Returns an unmodifiable view of all live UAV trail paths.
+     * Called by DTNSimGUI.updateView() on every repaint cycle.
+     */
+    public static Map<Integer, Path> getTrailRegistry() {
+        return Collections.unmodifiableMap(TRAIL_REGISTRY);
+    }
+
     private static final AtomicInteger ID_COUNTER = new AtomicInteger(0);
 
     private int    uavId = -1;  // -1 = prototype; live IDs start at 0
     private double lastVx = 0.0, lastVy = 0.0;
+
+    // ── GUI reference for path rendering — mirrors GDRRTPlanner pattern ──────
+    /**
+     * Set once by DTNSimGUI.initGUI() via {@link #setGui(gui.DTNSimGUI)}.
+     * {@code null} when running headless (batch mode) — all gui.showPath()
+     * calls are guarded with a null-check so headless runs are unaffected.
+     */
+    private static gui.DTNSimGUI gui = null;
+
+    /**
+     * Called by DTNSimGUI.initGUI() to register the GUI instance so that
+     * getPath() can push the live trail to the PlayField renderer.
+     * Identical pattern to GDRRTPlanner.setGui().
+     *
+     * @param g the running DTNSimGUI instance; {@code null} to detach
+     */
+    public static void setGui(gui.DTNSimGUI g) {
+        gui = g;
+    }
 
     // ================================================================ //
     //  Planning-grid snapshot  (GUI obstacle overlay)
@@ -502,6 +542,13 @@ public class UAVWaypointMovement extends MovementModel {
      * tour-restart jitter present in the original code.
      */
     private boolean reachedFinalGoal = false;
+
+    /**
+     * Accumulates every position the drone visits so the full traversed
+     * trail can be rendered in the GUI as a single connected path.
+     * Reset in getInitialLocation() on each new run.
+     */
+    private Path trailPath = null;
 
     // ================================================================ //
     //  Two-level settings helpers
@@ -739,6 +786,15 @@ public class UAVWaypointMovement extends MovementModel {
         String geoExtRaw = readRawObstacleFileSetting(s, cfg, GEO_EXTENT_FILES_S);
         geoExtentFiles = parseObstacleFilePaths(geoExtRaw);
 
+        // ── MapBasedMovement-identical transform constants ─────────────────
+        // These must match the hard-coded values in your MapBasedMovement.java:
+        //   world_x = (lon  - geoOriginLon) * geoScale
+        //   world_y = (geoOriginLat - lat)  * geoScale
+        // Defaults mirror the provided MapBasedMovement.java (78.300, 17.480, 100000).
+        geoOriginLon = readDouble(s, cfg, GEO_ORIGIN_LON_S, DEF_GEO_ORIGIN_LON);
+        geoOriginLat = readDouble(s, cfg, GEO_ORIGIN_LAT_S, DEF_GEO_ORIGIN_LAT);
+        geoScale     = readDouble(s, cfg, GEO_SCALE_S,       DEF_GEO_SCALE);
+
         // NOTE: do NOT write planningGridSnapshot here (see FIX 2 above).
     }
 
@@ -778,6 +834,9 @@ public class UAVWaypointMovement extends MovementModel {
         this.geoExtentFiles        = new ArrayList<>(proto.geoExtentFiles);
         this.explicitGeoExtents    = proto.explicitGeoExtents != null
                                      ? proto.explicitGeoExtents.clone() : null;
+        this.geoOriginLon          = proto.geoOriginLon;
+        this.geoOriginLat          = proto.geoOriginLat;
+        this.geoScale              = proto.geoScale;
 
         // FIX 1: each replicated host gets its own independent stopped-flag
         this.finalGoalTolerance    = proto.finalGoalTolerance;
@@ -819,6 +878,8 @@ public class UAVWaypointMovement extends MovementModel {
         replanNeeded = false;
         stallCount   = 0;
         reachedFinalGoal = false;   // FIX 1: reset per-run so re-runs work
+        trailPath    = new Path(sampleSpeed()); // reset trail on each new run
+        trailPath.addWaypoint(uavPos.clone());
         planToNextPoi();
         hovering   = false;
         hoverUntil = 0;
@@ -850,6 +911,7 @@ public class UAVWaypointMovement extends MovementModel {
         if (reachedFinalGoal) {
             Path path = new Path(0);
             path.addWaypoint(uavPos.clone());
+            path.addWaypoint(uavPos.clone());
             return path;
         }
 
@@ -866,6 +928,7 @@ public class UAVWaypointMovement extends MovementModel {
                 PEER_REGISTRY.put(uavId,
                     new double[]{ uavPos.getX(), uavPos.getY(), 0.0, 0.0 });
             Path path = new Path(0);
+            path.addWaypoint(uavPos.clone());
             path.addWaypoint(uavPos.clone());
             return path;
         }
@@ -914,6 +977,7 @@ public class UAVWaypointMovement extends MovementModel {
                                 new double[]{ uavPos.getX(), uavPos.getY(), 0.0, 0.0 });
                         Path path = new Path(0);
                         path.addWaypoint(uavPos.clone());
+                        path.addWaypoint(uavPos.clone());
                         return path;
                     } else {
                         // Intermediate goal reached but not at final destination —
@@ -934,8 +998,29 @@ public class UAVWaypointMovement extends MovementModel {
             PEER_REGISTRY.put(uavId,
                 new double[]{ uavPos.getX(), uavPos.getY(), lastVx, lastVy });
 
+        // Accumulate the traversed trail for GUI rendering.
+        if (trailPath == null) {
+            trailPath = new Path(sampleSpeed());
+            trailPath.addWaypoint(new Coord(prevX, prevY));
+        }
+        trailPath.addWaypoint(uavPos.clone());
+
+        // Return a two-waypoint segment: previous → current.
+        // ONE's PlayField renderer draws a line between consecutive waypoints,
+        // so a single-waypoint path (the old code) produced nothing visible.
         Path path = new Path(sampleSpeed());
+        path.addWaypoint(new Coord(prevX, prevY));
         path.addWaypoint(uavPos.clone());
+
+        // Register trail in shared registry.
+        // DTNSimGUI.updateView() re-pushes all trails to PlayField on every
+        // repaint — necessary because PlayField clears its path list each
+        // updateField() call, so a one-shot push from the sim thread (here)
+        // is wiped before it is ever rendered.
+        if (uavId >= 0 && trailPath != null) {
+            TRAIL_REGISTRY.put(uavId, trailPath);
+        }
+
         return path;
     }
 
@@ -1510,30 +1595,69 @@ public class UAVWaypointMovement extends MovementModel {
 
     /**
      * Detects whether the extracted coordinates appear to be geographic (lon/lat)
-     * and transforms them to world meters using THE SAME formula as MapBasedMovement.
+     * and transforms them to world simulation metres using the IDENTICAL formula
+     * that ONE's MapBasedMovement uses in its {@code readMap()} method:
      *
-     * <h3>CRITICAL FIX — Match MapBasedMovement.java Transformation</h3>
-     * <p>MapBasedMovement.java (lines 305-306) converts GPS coordinates like this:
      * <pre>
-     *   X_meters = (lon - 78.300) * 100000.0
-     *   Y_meters = (17.480 - lat) * 100000.0
+     *   world_x = (lon  - GEO_ORIGIN_LON) * GEO_SCALE
+     *   world_y = (GEO_ORIGIN_LAT - lat)  * GEO_SCALE    // Y-axis flipped
      * </pre>
-     * This is a simple GPS-to-meters conversion with:
-     * <ul>
-     *   <li>Origin: (78.300°E, 17.480°N) — approximately the center of the map area</li>
-     *   <li>Scale: 100,000 — roughly converts degrees to meters at this latitude</li>
-     *   <li>Y-flip: (17.480 - lat) — ensures north points UP on screen</li>
-     * </ul>
      *
-     * <p>We must use THE EXACT SAME transformation here so obstacles align perfectly
-     * with the base map layer rendered by MapBasedMovement.
+     * <h3>Root cause of the previous misalignment</h3>
+     * <p>MapBasedMovement hard-codes a fixed geographic origin and a single
+     * uniform scale factor, and it <strong>flips the Y axis</strong>
+     * (latitude is subtracted FROM the origin constant, not added to it).
+     * The previous implementation used two independent scale factors
+     * ({@code worldW/lonSpan} and {@code worldH/latSpan}) with no Y flip,
+     * producing three simultaneous errors:
+     * <ol>
+     *   <li>Wrong origin — obstacles shifted relative to the base map.</li>
+     *   <li>Wrong / non-uniform scale — obstacles stretched or squashed.</li>
+     *   <li>Missing Y flip — obstacles mirrored vertically.</li>
+     * </ol>
      *
-     * <h3>Why the previous approach failed</h3>
-     * <p>The old code used a normalized world coordinate system (lon→[0,worldW],
-     * lat→[0,worldH]) with dynamically computed bounding boxes and scale factors.
-     * This produced a DIFFERENT coordinate space than MapBasedMovement's absolute
-     * GPS→meters conversion, causing misalignment.
+     * <h3>Fix</h3>
+     * <p>Mirror MapBasedMovement exactly.  The two constants below
+     * ({@link #GEO_ORIGIN_LON}, {@link #GEO_ORIGIN_LAT}, {@link #GEO_SCALE})
+     * must match the values hard-coded in your project's MapBasedMovement.java:
+     * <pre>
+     *   world_x = (lon  - 78.300) * 100000
+     *   world_y = (17.480 - lat)  * 100000
+     * </pre>
+     * Override them via the config keys {@code UAVWaypointMovement.geoOriginLon},
+     * {@code UAVWaypointMovement.geoOriginLat}, and {@code UAVWaypointMovement.geoScale}
+     * if your MapBasedMovement uses different constants.
      */
+
+    // ── Constants that mirror MapBasedMovement.readMap() ─────────────────────
+    // Default values match the hard-coded transform in the provided
+    // MapBasedMovement.java:
+    //   world_x = (lon  - 78.300) * 100000.0
+    //   world_y = (17.480 - lat)  * 100000.0
+    //
+    // If your MapBasedMovement uses different values, override via config:
+    //   UAVWaypointMovement.geoOriginLon = 78.300
+    //   UAVWaypointMovement.geoOriginLat = 17.480
+    //   UAVWaypointMovement.geoScale     = 100000.0
+    private static final double DEF_GEO_ORIGIN_LON = 78.300;
+    private static final double DEF_GEO_ORIGIN_LAT = 17.480;
+    private static final double DEF_GEO_SCALE       = 100000.0;
+
+    /** Config key for the longitude subtracted in MapBasedMovement (default 78.300). */
+    public static final String GEO_ORIGIN_LON_S = "geoOriginLon";
+    /** Config key for the latitude subtracted FROM in MapBasedMovement (default 17.480). */
+    public static final String GEO_ORIGIN_LAT_S = "geoOriginLat";
+    /** Config key for the uniform scale multiplier in MapBasedMovement (default 100000). */
+    public static final String GEO_SCALE_S       = "geoScale";
+
+    /**
+     * Per-instance values read from config in the constructor (or set to defaults).
+     * Stored as instance fields so the copy-constructor propagates them correctly.
+     */
+    private double geoOriginLon = DEF_GEO_ORIGIN_LON;
+    private double geoOriginLat = DEF_GEO_ORIGIN_LAT;
+    private double geoScale     = DEF_GEO_SCALE;
+
     private void normaliseCoordinatesIfGeographic(List<double[]>       points,
                                                    List<List<double[]>> linestrings,
                                                    List<List<double[]>> polygons) {
@@ -1561,46 +1685,40 @@ public class UAVWaypointMovement extends MovementModel {
         double spanX = fileMaxX - fileMinX, spanY = fileMaxY - fileMinY;
 
         // ── Geographic detection heuristic ────────────────────────────────
+        // Both span dimensions ≤ 5 degrees AND coordinates are in valid lon/lat
+        // ranges.  Pure-metre simulation files always span hundreds of metres
+        // in at least one axis, so false positives are essentially impossible.
         boolean isGeographic = (spanX <= 5.0 && spanY <= 5.0)
                 && (fileMinX >= -180.0 && fileMinX <= 180.0)
                 && (fileMinY >= -90.0  && fileMinY <= 90.0);
         if (!isGeographic) return;
 
-        // ── Apply MapBasedMovement GPS-to-Meters Transformation ──────────────
-        // Constants from MapBasedMovement.java line 306:
-        //   final double GPS_ORIGIN_LON = 78.300;  // degrees East
-        //   final double GPS_ORIGIN_LAT = 17.480;  // degrees North
-        //   final double GPS_TO_METERS  = 100000.0;
-        //
-        // Transform formula (MUST match MapBasedMovement exactly):
-        //   world X = (lon - 78.300) * 100000.0
-        //   world Y = (17.480 - lat) * 100000.0
-        //
-        // This places obstacles in the SAME absolute meter coordinate space
-        // as the base map, ensuring perfect alignment.
+        if (!geoScaleInitialised) {
+            geoScaleInitialised = true;
+            System.out.printf("[UAVWaypointMovement] Using MapBasedMovement-identical transform:"
+                + " world_x=(lon-%.3f)*%.0f  world_y=(%.3f-lat)*%.0f%n",
+                geoOriginLon, geoScale, geoOriginLat, geoScale);
+        }
 
-        final double GPS_ORIGIN_LON = 78.300;
-        final double GPS_ORIGIN_LAT = 17.480;
-        final double GPS_TO_METERS  = 100000.0;
-
-        
-
+        // ── Apply the SAME transform as MapBasedMovement.readMap() ────────
+        //   world_x = (lon  - geoOriginLon) * geoScale
+        //   world_y = (geoOriginLat - lat)  * geoScale   ← Y flipped, matches MapBasedMovement
         for (double[] p : points) {
             double lon = p[0], lat = p[1];
-            p[0] = (lon - GPS_ORIGIN_LON) * GPS_TO_METERS;
-            p[1] = (GPS_ORIGIN_LAT - lat) * GPS_TO_METERS;
+            p[0] = (lon - geoOriginLon) * geoScale;
+            p[1] = (geoOriginLat - lat) * geoScale;
         }
         for (List<double[]> ls : linestrings)
             for (double[] p : ls) {
                 double lon = p[0], lat = p[1];
-                p[0] = (lon - GPS_ORIGIN_LON) * GPS_TO_METERS;
-                p[1] = (GPS_ORIGIN_LAT - lat) * GPS_TO_METERS;
+                p[0] = (lon - geoOriginLon) * geoScale;
+                p[1] = (geoOriginLat - lat) * geoScale;
             }
         for (List<double[]> pg : polygons)
             for (double[] p : pg) {
                 double lon = p[0], lat = p[1];
-                p[0] = (lon - GPS_ORIGIN_LON) * GPS_TO_METERS;
-                p[1] = (GPS_ORIGIN_LAT - lat) * GPS_TO_METERS;
+                p[0] = (lon - geoOriginLon) * geoScale;
+                p[1] = (geoOriginLat - lat) * geoScale;
             }
     }
 
@@ -2133,6 +2251,16 @@ public class UAVWaypointMovement extends MovementModel {
     public int     getStallCount()   { return stallCount; }
     public Coord   getUavPos()       { return uavPos==null ? null : uavPos.clone(); }
     public int     getUavId()        { return uavId; }
+
+    /**
+     * Returns the full accumulated traversal trail as a Path object.
+     * Every position visited since getInitialLocation() is included.
+     * Useful for GUI renderers that want to draw the complete flight path.
+     * Returns null if the drone has not yet started moving.
+     */
+    public Path getTrailPath() {
+        return trailPath;
+    }
 
     public static Map<Integer,double[]> getPeerRegistry() {
         return Collections.unmodifiableMap(PEER_REGISTRY);

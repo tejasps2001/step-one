@@ -68,6 +68,7 @@ public class DTNSimGUI extends DTNSimUI {
 		this.eventLogPanel = new EventLogPanel(this);
 		this.infoPanel = new InfoPanel(this);
 		this.gdrrtPlanner = new GDRRTPlanner(this);
+		movement.UAVWaypointMovement.setGui(this); // Register GUI for UAV path rendering
 		this.main = new MainWindow(this.scen.getName(), world, field,
 				guiControls, infoPanel, eventLogPanel, this);
 
@@ -227,6 +228,16 @@ public class DTNSimGUI extends DTNSimUI {
 	guiControls.setSimTime(simTime); //update time to control panel
 
 	this.field.updateField();
+
+	// Re-push UAV trails every repaint.
+	// PlayField clears its internal path list on each updateField() call,
+	// so trails must be re-added here (inside the EDT, after updateField)
+	// to be visible in the same repaint cycle.
+	for (movement.Path trail : movement.UAVWaypointMovement.getTrailRegistry().values()) {
+	    if (trail != null) {
+		this.field.addPath(trail, java.awt.Color.BLUE);
+	    }
+	}
     }
 
     /**
