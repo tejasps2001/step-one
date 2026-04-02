@@ -1,0 +1,315 @@
+## ============================================================
+##  Scenario — Multi-Drone Collision Test (5 UAVs)
+##  Five drones navigate through a complex urban environment with
+##  overlapping paths designed to maximize collision probability.
+##
+##  Layout Strategy:
+##    • Cross-traffic patterns: drones moving in perpendicular directions
+##    • Converging paths: multiple drones targeting nearby destinations
+##    • Shared corridor navigation: forcing close encounters
+##    • Varied speeds to create overtaking scenarios
+##
+##  Environment: University of Hyderabad campus map (uoh_map.wkt)
+##               + buildings, facilities, sports/lakes obstacles
+##
+##  World coordinate system: 5000 × 5000 m simulation space
+##  
+##  Drone Deployment Pattern:
+##    UAV1: Northwest → Southeast (diagonal crossing)
+##    UAV2: Northeast → Southwest (diagonal crossing, intersects UAV1)
+##    UAV3: West → East (horizontal, high traffic corridor)
+##    UAV4: South → North (vertical, intersects UAV3)
+##    UAV5: Central spiral (starts center, goes to perimeter, back to center)
+##
+##  Expected Collision Hotspots:
+##    • Center region (2500, 2500): all paths converge here
+##    • Building clusters: force drones into narrow passages
+##    • Simultaneous goal approach: UAV2 & UAV5 have nearby targets
+##
+##  Key Testing Features:
+##    ✓ Inter-drone collision avoidance (VO active)
+##    ✓ Obstacle avoidance in constrained spaces
+##    ✓ Dynamic re-planning under peer interference
+##    ✓ Head-on encounter resolution
+##    ✓ Overtaking in corridors
+##    ✓ Multi-way intersection navigation
+## ============================================================
+
+# ── Scenario ───────────────────────────────────────────────────
+Scenario.name                = UAV_MultiDrone_CollisionTest
+Scenario.simulateConnections = false
+Scenario.updateInterval      = 0.1
+Scenario.endTime             = 36000
+
+# ── World ──────────────────────────────────────────────────────
+MovementModel.worldSize = 5000,5000
+MovementModel.rngSeed   = 2025
+
+# ── Host groups: 5 UAVs + 1 Map group ──────────────────────────
+Scenario.nrofHostGroups = 6
+
+# ================================================================
+#  SHARED DEFAULTS — Applied to all UAV groups
+# ================================================================
+
+# ── Obstacle Environment ────────────────────────────────────────
+# All obstacle files from UoH campus: boundary, buildings, facilities, sports/lakes
+UAVWaypointMovement.obstacleWktFile = samples/gdrrt/uoh_map.wkt,samples/gdrrt/buildings/building1.wkt,samples/gdrrt/buildings/building2.wkt,samples/gdrrt/buildings/building3.wkt,samples/gdrrt/buildings/building4.wkt,samples/gdrrt/buildings/building5.wkt,samples/gdrrt/buildings/building6.wkt,samples/gdrrt/buildings/building7.wkt,samples/gdrrt/buildings/building8.wkt,samples/gdrrt/buildings/building9.wkt,samples/gdrrt/buildings/building10.wkt,samples/gdrrt/buildings/building11.wkt,samples/gdrrt/buildings/building12.wkt,samples/gdrrt/buildings/building13.wkt,samples/gdrrt/buildings/building14.wkt,samples/gdrrt/buildings/building15.wkt,samples/gdrrt/buildings/building16.wkt,samples/gdrrt/buildings/building17.wkt,samples/gdrrt/buildings/building18.wkt,samples/gdrrt/buildings/building19.wkt,samples/gdrrt/buildings/building20.wkt,samples/gdrrt/buildings/building21.wkt,samples/gdrrt/buildings/building22.wkt,samples/gdrrt/buildings/building23.wkt,samples/gdrrt/buildings/building24.wkt,samples/gdrrt/buildings/building25.wkt,samples/gdrrt/buildings/building26.wkt,samples/gdrrt/buildings/building27.wkt,samples/gdrrt/buildings/building28.wkt,samples/gdrrt/facilities/facility1.wkt,samples/gdrrt/facilities/facility2.wkt,samples/gdrrt/facilities/facility3.wkt,samples/gdrrt/facilities/facility4.wkt,samples/gdrrt/facilities/facility5.wkt,samples/gdrrt/facilities/facility6.wkt,samples/gdrrt/facilities/facility7.wkt,samples/gdrrt/facilities/facility8.wkt,samples/gdrrt/facilities/facility9.wkt,samples/gdrrt/facilities/facility10.wkt,samples/gdrrt/facilities/facility11.wkt,samples/gdrrt/facilities/facility12.wkt,samples/gdrrt/facilities/facility13.wkt,samples/gdrrt/facilities/facility14.wkt,samples/gdrrt/facilities/facility15.wkt,samples/gdrrt/facilities/facility16.wkt,samples/gdrrt/sports_lakes/sl_1.wkt,samples/gdrrt/sports_lakes/sl_2.wkt,samples/gdrrt/sports_lakes/sl_3.wkt,samples/gdrrt/sports_lakes/sl_4.wkt,samples/gdrrt/sports_lakes/sl_5.wkt,samples/gdrrt/sports_lakes/sl_6.wkt,samples/gdrrt/sports_lakes/sl_7.wkt,samples/gdrrt/sports_lakes/sl_8.wkt,samples/gdrrt/sports_lakes/sl_9.wkt,samples/gdrrt/sports_lakes/sl_10.wkt,samples/gdrrt/sports_lakes/sl_11.wkt,samples/gdrrt/sports_lakes/sl_12.wkt,samples/gdrrt/sports_lakes/sl_13.wkt,samples/gdrrt/sports_lakes/sl_14.wkt,samples/gdrrt/sports_lakes/sl_15.wkt,samples/gdrrt/sports_lakes/sl_16.wkt
+
+# ── Geographic Bounding Box Fix ─────────────────────────────────
+# CRITICAL: Tell the obstacle loader which map files MapBasedMovement uses.
+# This locks the geographic bbox to the SAME extents as ONE's base map layer,
+# ensuring obstacle WKT coordinates map to the same world-metre positions.
+# List the same WKT files that appear in MapBasedMovement.mapFile* below.
+UAVWaypointMovement.geoExtentFiles = samples/gdrrt/uoh_map.wkt,samples/gdrrt/highwaysbarriers.wkt,samples/gdrrt/waterway.wkt,samples/gdrrt/highwaysstreets.wkt,samples/gdrrt/highwaysways.wkt,samples/gdrrt/land_use_and_nature_lines.wkt,samples/gdrrt/manmadepowerlines.wkt
+
+# ── A* Planning Grid ────────────────────────────────────────────
+UAVWaypointMovement.gridCellM             = 30
+UAVWaypointMovement.pointObstacleRadius   = 30
+UAVWaypointMovement.lineObstacleHalfWidth = 20
+UAVWaypointMovement.snapLocationsToGrid   = true
+UAVWaypointMovement.showPlanningGrid      = true
+
+# ── DWA Local Planner ───────────────────────────────────────────
+# Higher dwaSteps for better collision avoidance decision-making
+UAVWaypointMovement.dwaSteps              = 16
+UAVWaypointMovement.distAlert             = 30
+UAVWaypointMovement.distRisk              = 18
+
+# ── Goal Tolerance ──────────────────────────────────────────────
+# Tight tolerance to ensure drones don't prematurely consider goal reached
+UAVWaypointMovement.finalGoalTolerance    = 2.5
+
+# ── Velocity Obstacle (VO) — CRITICAL for inter-drone collision avoidance ──
+# ENABLED for multi-drone scenario
+UAVWaypointMovement.uavSeparationM        = 25.0
+UAVWaypointMovement.voWeight              = 1.2
+
+# ── Launch Configuration ────────────────────────────────────────
+# Stagger launches slightly to create dynamic encounter scenarios
+UAVWaypointMovement.launchStaggerS        = 2.0
+UAVWaypointMovement.spawnStrideM          = 0
+
+# ── Speed Configuration ─────────────────────────────────────────
+# Varied speeds create overtaking and relative velocity scenarios
+UAVWaypointMovement.speedMin              = 0.8
+UAVWaypointMovement.speedMax              = 1.5
+UAVWaypointMovement.dwellMin              = 1
+UAVWaypointMovement.dwellMax              = 3
+UAVWaypointMovement.cruiseAlt             = 35
+UAVWaypointMovement.poiGridCols           = 0
+UAVWaypointMovement.poiGridRows           = 0
+
+# ================================================================
+#  GROUP 1 — UAV1: Northwest → Southeast (Diagonal Crosser)
+#
+#  Spawn:  (1000, 4000) — Northwest quadrant
+#  Target: (4000, 1000) — Southeast quadrant
+#  
+#  Path crosses center region diagonally, intersecting with UAV2
+# ================================================================
+Group1.groupID        = UAV1
+Group1.nrofHosts      = 1
+Group1.movementModel  = UAVWaypointMovement
+Group1.router         = PassiveRouter
+Group1.bufferSize     = 1M
+Group1.nrofInterfaces = 0
+
+Group1.spawn  = 3500,3000 
+Group1.target = 2000,2000 
+
+
+# Moderate speed
+Group1.speedMin = 0.9
+Group1.speedMax = 1.3
+
+# ================================================================
+#  GROUP 2 — UAV2: Northeast → Southwest (Diagonal Crosser)
+#
+#  Spawn:  (4000, 4000) — Northeast quadrant
+#  Target: (1200, 1200) — Southwest quadrant
+#
+#  Path creates X-pattern intersection with UAV1 near center
+# ================================================================
+Group2.groupID        = UAV2
+Group2.nrofHosts      = 1
+Group2.movementModel  = UAVWaypointMovement
+Group2.router         = PassiveRouter
+Group2.bufferSize     = 1M
+Group2.nrofInterfaces = 0
+
+Group2.spawn  = 2000,2000 
+
+Group2.target = 2750,2550
+
+
+# Slightly faster to create overtaking scenarios
+Group2.speedMin = 1.0
+Group2.speedMax = 1.5
+
+# ================================================================
+#  GROUP 3 — UAV3: West → East (Horizontal Traffic)
+#
+#  Spawn:  (800, 2500) — West edge, center height
+#  Target: (4200, 2600) — East edge, center height
+#
+#  Creates horizontal corridor traffic, intersects UAV4 and
+#  crosses paths with UAV1/UAV2 diagonals
+# ================================================================
+Group3.groupID        = UAV3
+Group3.nrofHosts      = 1
+Group3.movementModel  = UAVWaypointMovement
+Group3.router         = PassiveRouter
+Group3.bufferSize     = 1M
+Group3.nrofInterfaces = 0
+
+Group3.spawn  = 2500,3000 
+
+Group3.target = 4000,2033 
+
+# Medium-slow speed for traffic conflict
+Group3.speedMin = 0.8
+Group3.speedMax = 1.2
+
+# ================================================================
+#  GROUP 4 — UAV4: South → North (Vertical Traffic)
+#
+#  Spawn:  (2400, 800) — South edge, center width
+#  Target: (2500, 4200) — North edge, center width
+#
+#  Perpendicular to UAV3, creates T-intersection scenario
+#  Also crosses diagonal paths of UAV1/UAV2
+# ================================================================
+Group4.groupID        = UAV4
+Group4.nrofHosts      = 1
+Group4.movementModel  = UAVWaypointMovement
+Group4.router         = PassiveRouter
+Group4.bufferSize     = 1M
+Group4.nrofInterfaces = 0
+
+Group4.spawn  = 3426,2016                                               
+
+Group4.target = 3500,2500                                                
+
+
+# Fast speed to create dynamic scenarios
+Group4.speedMin = 1.1
+Group4.speedMax = 1.5
+
+# ================================================================
+#  GROUP 5 — UAV5: Central Spiral (Complex Path)
+#
+#  Spawn:  (2500, 2500) — Exact center (collision hotspot)
+#  Target: (1300, 1300) — Near UAV2's target (convergence test)
+#
+#  Starts at the convergence point, forces immediate multi-way
+#  collision avoidance with all other drones
+# ================================================================
+Group5.groupID        = UAV5
+Group5.nrofHosts      = 1
+Group5.movementModel  = UAVWaypointMovement
+Group5.router         = PassiveRouter
+Group5.bufferSize     = 1M
+Group5.nrofInterfaces = 0
+
+Group5.spawn  = 2000,2500                                                
+
+Group5.target = 3426,2016                                               
+
+# Variable speed for unpredictability
+Group5.speedMin = 0.9
+Group5.speedMax = 1.4
+
+# ================================================================
+#  GROUP 6 — Map visualization (no hosts, just map rendering)
+# ================================================================
+Group6.groupID        = Map
+Group6.movementModel  = MapBasedMovement
+Group6.nrofHosts      = 0
+
+# ── Map Files for Visualization ────────────────────────────────
+MapBasedMovement.nrofMapFiles = 7
+
+MapBasedMovement.mapFile1 = samples/gdrrt/highwaysbarriers.wkt
+MapBasedMovement.mapFile2 = samples/gdrrt/waterway.wkt 
+MapBasedMovement.mapFile3 = samples/gdrrt/highwaysstreets.wkt  
+MapBasedMovement.mapFile4 = samples/gdrrt/uoh_map.wkt
+MapBasedMovement.mapFile5 = samples/gdrrt/highwaysways.wkt
+MapBasedMovement.mapFile6 = samples/gdrrt/land_use_and_nature_lines.wkt
+MapBasedMovement.mapFile7 = samples/gdrrt/manmadepowerlines.wkt
+
+# ================================================================
+#  Events / Reports
+# ================================================================
+Events.nrof = 0
+
+Report.nrofReports  = 0
+Report.reportDir    = reports/multi_drone_collision_test/
+
+# Movement report — tracks all drone paths
+Report1.class       = MovementNoBorderReport
+Report1.reportName  = MultiDrone_Movement_Paths
+
+# Connection report — tracks encounters (if connections enabled later)
+Report2.class       = ContactTimesReport
+Report2.reportName  = MultiDrone_Encounters
+
+# ================================================================
+#  COLLISION SCENARIO ANALYSIS
+# ================================================================
+#
+#  Expected Encounter Sequences:
+#
+#  T=0-50s: UAV5 launches from center, immediately surrounded by
+#           incoming traffic from all directions. First VO activations.
+#
+#  T=50-150s: UAV1 (NW→SE) and UAV2 (NE→SW) cross paths near center,
+#             creating X-intersection with UAV3 (W→E) and UAV4 (S→N).
+#             Peak collision risk window.
+#
+#  T=150-300s: UAV3 and UAV4 maintain perpendicular intersection,
+#              testing T-junction collision avoidance repeatedly.
+#
+#  T=300-500s: UAV2 and UAV5 converge on nearby targets in SW quadrant,
+#              testing goal-approach collision resolution.
+#
+#  Building Interaction Zones:
+#    • Center region (2200-2800, 2200-2800): likely high building density
+#      → Forces all 5 drones into shared narrow corridors
+#      → DWA must balance obstacle avoidance + peer avoidance
+#
+#  Metrics to Monitor:
+#    ✓ Number of VO activations per drone
+#    ✓ Minimum inter-drone distances achieved
+#    ✓ Path re-planning frequency
+#    ✓ Goal arrival times (starvation detection)
+#    ✓ Average speed reduction due to conflicts
+#    ✓ Deadlock occurrences (stall counter triggers)
+#
+# ================================================================
+#  TUNING KNOBS
+# ================================================================
+#
+#  To INCREASE collision probability:
+#    • Decrease uavSeparationM to 15 (tighter safety bubble)
+#    • Increase all drone speeds (speedMin=1.2, speedMax=1.8)
+#    • Reduce dwaSteps to 10 (fewer evasion options)
+#    • Set all launch times to 0 (launchStaggerS=0)
+#
+#  To DECREASE collision probability (test recovery):
+#    • Increase uavSeparationM to 35
+#    • Increase voWeight to 2.0 (stronger avoidance)
+#    • Increase dwaSteps to 20 (more evasion candidates)
+#    • Stagger launches more (launchStaggerS=5.0)
+#
+#  To test EXTREME density:
+#    • Add Group7-Group10 with similar crossing patterns
+#    • Reduce world size to 3000×3000 (same paths, tighter space)
+#    • Set all targets to converge on single point (2500,2500)
+#
+#  To isolate building-avoidance from drone-avoidance:
+#    • Run once with voWeight=1.2 (current)
+#    • Run again with voWeight=0.0 (VO disabled)
+#    • Compare path smoothness and completion times
+#
+## ============================================================
