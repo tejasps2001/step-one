@@ -1,5 +1,5 @@
 Message stats for scenario UAV_NarrowCorridorMaze
-sim_time: 18474.0000
+sim_time: 0.0000
 created: 0
 started: 0
 relayed: 0

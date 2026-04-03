@@ -46,7 +46,7 @@ MovementModel.worldSize = 5000,5000
 MovementModel.rngSeed   = 2025
 
 # ── Host groups: 5 UAVs + 1 Map group ──────────────────────────
-Scenario.nrofHostGroups = 6
+Scenario.nrofHostGroups = 7
 
 # ================================================================
 #  SHARED DEFAULTS — Applied to all UAV groups
@@ -82,8 +82,8 @@ UAVWaypointMovement.finalGoalTolerance    = 2.5
 
 # ── Velocity Obstacle (VO) — CRITICAL for inter-drone collision avoidance ──
 # ENABLED for multi-drone scenario
-UAVWaypointMovement.uavSeparationM        = 25.0
-UAVWaypointMovement.voWeight              = 1.2
+UAVWaypointMovement.uavSeparationM        = 35.0
+UAVWaypointMovement.voWeight              = 3.0
 
 # ── Launch Configuration ────────────────────────────────────────
 # Stagger launches slightly to create dynamic encounter scenarios
@@ -92,8 +92,8 @@ UAVWaypointMovement.spawnStrideM          = 0
 
 # ── Speed Configuration ─────────────────────────────────────────
 # Varied speeds create overtaking and relative velocity scenarios
-UAVWaypointMovement.speedMin              = 0.8
-UAVWaypointMovement.speedMax              = 1.5
+UAVWaypointMovement.speedMin              = 5
+UAVWaypointMovement.speedMax              = 10
 UAVWaypointMovement.dwellMin              = 1
 UAVWaypointMovement.dwellMax              = 3
 UAVWaypointMovement.cruiseAlt             = 35
@@ -163,9 +163,10 @@ Group3.router         = PassiveRouter
 Group3.bufferSize     = 1M
 Group3.nrofInterfaces = 0
 
+
 Group3.spawn  = 2500,3000 
 
-Group3.target = 4000,2033 
+Group3.target = 3000,1400 
 
 # Medium-slow speed for traffic conflict
 Group3.speedMin = 0.8
@@ -238,6 +239,11 @@ MapBasedMovement.mapFile5 = samples/gdrrt/highwaysways.wkt
 MapBasedMovement.mapFile6 = samples/gdrrt/land_use_and_nature_lines.wkt
 MapBasedMovement.mapFile7 = samples/gdrrt/manmadepowerlines.wkt
 
+
+
+Group7.groupID= Uav32Target
+Group7.movementModel= StationaryMovement
+Group7.nodeLocation=3000,1400 
 # ================================================================
 #  Events / Reports
 # ================================================================
