@@ -1,0 +1,24 @@
+Scenario.name = GDRRT_Test
+Scenario.simulateConnections = false
+Scenario.updateInterval = 1.0
+Scenario.endTime = 10000
+Scenario.nrofHostGroups = 2
+
+Events.nrof = 0
+Report.nrofReports = 0
+
+MovementModel.worldSize = 5000, 5000
+MovementModel.rngSeed = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10]
+
+Group1.groupID = Drone
+Group1.nrofHosts = 1
+Group1.speed = 10,10
+Group1.movementModel = GDRRTMovement
+Group1.GDRRTMovement.obstacleFile = C:/Users/tejas/Documents/Class_14/Project/Case_Study/step-one/step-one-main/samples/gdrrt/u_trap.wkt
+Group1.GDRRTMovement.startLocation = 2300, 2000
+Group1.GDRRTMovement.endLocation = 1500, 2000
+
+Group2.groupID = Target
+Group2.nrofHosts = 1
+Group2.movementModel = StationaryMovement
+Group2.nodeLocations = 1500, 2000

@@ -112,14 +112,14 @@ public boolean isInitialized() {
         
         Random rand = new Random();
 
-        int batchSize = 10; // Time devoted to planning phase (nodes per commit)
+        int maxNodesLimit = 1000; // Allow massive expansion if trapped
 
         int nodesInBatch = 0;
         boolean goalReached = false;
         Node finalGoalNode = null;
 
         // Expansion Phase
-        while (nodesInBatch < batchSize) {
+        while (nodesInBatch < maxNodesLimit) {
             // Line 14: Smart sampling based on posTemp and range d [cite: 361]
             Coord xRand = smartSample(posTemp, delta, rand);
             // Line 5: Find nearest node in tree [cite: 350]
@@ -158,6 +158,14 @@ public boolean isInitialized() {
                     goalReached = true;
                     break;
                 }    
+                
+                // If we've sampled a good chunk, check if we broke out of the local minimum
+                if (nodesInBatch >= 25 && nodesInBatch % 25 == 0) {
+                    Node currentBest = findNearest(tree, goal);
+                    if (currentBest != root && currentBest.getLocation().distance(goal) < root.getLocation().distance(goal) - 1.0) {
+                        break; // Progress made! Break out early and move.
+                    }
+                }
             } else {
                 // Line 19-21: Obstacle avoidance [cite: 368, 369, 370]
                 delta += 30.0; // k constant
@@ -178,7 +186,14 @@ public boolean isInitialized() {
         // Find best path segment
         Node bestNode = findNearest(tree, goal);
         if (bestNode == root) {
-            return null;
+            if (tree.size() > 1) {
+                // Local minimum: escape by picking the furthest explored node from the root
+                bestNode = tree.stream()
+                        .max(Comparator.comparingDouble(n -> n.getLocation().distance(root.getLocation())))
+                        .orElse(tree.get(tree.size() - 1));
+            } else {
+                return null;
+            }
         }
 
         List<Node> pathSegmentNodes = constructPathList(bestNode);
@@ -233,6 +248,12 @@ public boolean isInitialized() {
     }
 
     private Coord smartSample(Coord posTemp, double d, Random rand) {
+        // 10% of the time, or if wildly escaping, sample a wide area to clear large obstacles
+        if (rand.nextDouble() < 0.1 || delta > 50.0) {
+            double rx = posTemp.getX() + (rand.nextDouble() - 0.5) * 2000.0;
+            double ry = posTemp.getY() + (rand.nextDouble() - 0.5) * 2000.0;
+            return new Coord(rx, ry);
+        }
         // Equation 2: x_rand = (pos_temp - d/2) + rand * d [cite: 318]
         double rx = (posTemp.getX() - d / 2) + rand.nextDouble() * d;
         double ry = (posTemp.getY() - d / 2) + rand.nextDouble() * d;
@@ -312,7 +333,8 @@ public boolean isInitialized() {
                 filePath.contains("building") || 
                 filePath.contains("facility") ||
                 filePath.contains("sl_") ||
-                filePath.contains("buildings.wkt")) {
+                filePath.contains("buildings.wkt") || 
+                filePath.contains("u_trap")) {
                 pathColor = Color.RED; // Obstacles in one color
             }
             
@@ -326,7 +348,13 @@ public boolean isInitialized() {
                     while (m.find()) {
                         double lon = Double.parseDouble(m.group(1));
                         double lat = Double.parseDouble(m.group(2));
-                        points.add(new Coord((lon - 78.300) * 100000.0, (17.480 - lat) * 100000.0));
+                        // Translate GPS coordinates to meters ONLY if they are near the Hyderabad area.
+                        // Otherwise, assume they are already local Cartesian coordinates.
+                        if (lon > 77.0 && lon < 80.0 && lat > 16.0 && lat < 19.0) {
+                            points.add(new Coord((lon - 78.300) * 100000.0, (17.480 - lat) * 100000.0));
+                        } else {
+                            points.add(new Coord(lon, lat));
+                        }
                     }
                     
                     if (points.isEmpty()) continue;
