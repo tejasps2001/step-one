@@ -48,7 +48,7 @@ public class GDRRTMovement extends MovementModel {
         if (startLocs.size() != endLocs.size()) {
             throw new SettingsError("Start and end location arrays must have the same size");
         }
-        
+
         int nrofHosts = s.getInt(core.SimScenario.NROF_HOSTS_S);
         if (startLocs.size() < nrofHosts) {
             throw new SettingsError("Not enough start/end locations for all hosts in the group");
@@ -62,7 +62,7 @@ public class GDRRTMovement extends MovementModel {
     // Helper to parse coordinate arrays like "[x1,y1; x2,y2]"
     private List<Coord> parseCoords(Settings s, String key) { // Changed to private visibility
         // Use getRawSetting to bypass run-index parsing and get the full string
-        String raw = s.getRawSetting(key); 
+        String raw = s.getRawSetting(key);
         raw = raw.replace("[", "").replace("]", "");
         String[] pairs = raw.split(";");
         List<Coord> coords = new ArrayList<>();
@@ -90,7 +90,7 @@ public class GDRRTMovement extends MovementModel {
     public GDRRTMovement replicate() {
         return new GDRRTMovement(this);
     }
-    
+
     @Override
     public Path getPath() {
         if (reachedEnd) {
@@ -110,6 +110,8 @@ public class GDRRTMovement extends MovementModel {
 
         if (proposedSegment == null) { // Planner couldn't find a path
             reachedEnd = true;
+            System.out.println("Drone " + getHost().getAddress()
+                    + " planner returned null. Setting reachedEnd = true and giving up.");
             DronePathManager.setStationary(getHost().getAddress());
             return null;
         }
@@ -119,20 +121,21 @@ public class GDRRTMovement extends MovementModel {
             // 3a. Permission granted: commit and move
             isWaiting = false;
             gdrrt.commit(proposedSegment);
-            
+
             if (proposedSegment.isFinalPath) {
                 reachedEnd = true;
                 // This drone has now reached its final destination and is stationary.
                 // Its path should be cleared from the manager so it doesn't block others.
                 DronePathManager.setStationary(getHost().getAddress());
+                System.out.println("Drone " + getHost().getAddress() + " successfully reached its goal at " + core.SimClock.getTime() + "s!");
             }
-            
+
             return proposedSegment.path;
         } else {
             // 3b. Permission denied: wait
             isWaiting = true;
             DronePathManager.setStationary(getHost().getAddress());
-            
+
             // Return a path that keeps the drone stationary
             Path waitingPath = new Path(0);
             waitingPath.addWaypoint(getHost().getLocation());

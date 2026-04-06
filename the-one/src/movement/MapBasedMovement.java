@@ -303,7 +303,11 @@ public class MapBasedMovement extends MovementModel implements SwitchableMovemen
 		// Explicitly translate and scale the GPS coordinates to real meters
 		// (17.480 - Y) vertically flips the map so North points UP
 		for (MapNode n : simMap.getNodes()) {
-			n.getLocation().setLocation((n.getLocation().getX() - 78.300) * 100000.0, (17.480 - n.getLocation().getY()) * 100000.0);
+			double x = n.getLocation().getX();
+			double y = n.getLocation().getY();
+			if (x > 77.0 && x < 80.0 && y > 16.0 && y < 19.0) {
+				n.getLocation().setLocation((x - 78.300) * 100000.0, (17.480 - y) * 100000.0);
+			}
 		}
 
 		checkCoordValidity(simMap.getNodes());

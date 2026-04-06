@@ -120,8 +120,8 @@ Report.nrofReports = 0
 # GUI underlay image settings
 # GUI.UnderlayImage.fileName = samples/gdrrt/UOH.png
 # Image offset in pixels (x, y)
-# GUI.UnderlayImage.offset = -330, 25
+# GUI.UnderlayImage.offset = -250, 25
 # Scaling factor for the image
-# GUI.UnderlayImage.scale = 5.75
+# GUI.UnderlayImage.scale = 5
 # Image rotation (radians)
 # GUI.UnderlayImage.rotate = 0
