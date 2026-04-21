@@ -34,7 +34,7 @@ Group1.nrofInterfaces = 1
 Group1.interface1 = btInterface
 Group1.speed = 0.5, 1.5
 Group1.movementModel = FogDeployedGDRRTMovement
-Group1.GDRRTMovement.obstacleFile = samples/gdrrt/uoh_map.wkt,samples/gdrrt/buildings/building1.wkt,samples/gdrrt/buildings/building2.wkt,samples/gdrrt/buildings/building3.wkt,samples/gdrrt/buildings/building4.wkt,samples/gdrrt/buildings/building5.wkt,samples/gdrrt/buildings/building6.wkt,samples/gdrrt/buildings/building7.wkt,samples/gdrrt/buildings/building8.wkt,samples/gdrrt/buildings/building9.wkt,samples/gdrrt/buildings/building10.wkt,samples/gdrrt/buildings/building11.wkt,samples/gdrrt/buildings/building12.wkt,samples/gdrrt/buildings/building13.wkt,samples/gdrrt/buildings/building14.wkt,samples/gdrrt/buildings/building15.wkt,samples/gdrrt/buildings/building16.wkt,samples/gdrrt/buildings/building17.wkt,samples/gdrrt/buildings/building18.wkt,samples/gdrrt/buildings/building19.wkt,samples/gdrrt/buildings/building20.wkt,samples/gdrrt/buildings/building21.wkt,samples/gdrrt/buildings/building22.wkt,samples/gdrrt/buildings/building23.wkt,samples/gdrrt/buildings/building24.wkt,samples/gdrrt/buildings/building25.wkt,samples/gdrrt/buildings/building26.wkt,samples/gdrrt/buildings/building27.wkt,samples/gdrrt/buildings/building28.wkt
+Group1.GDRRTMovement.obstacleFile = samples/milp/uoh_map.wkt,samples/milp/buildings/building1.wkt,samples/milp/buildings/building2.wkt,samples/milp/buildings/building3.wkt,samples/milp/buildings/building4.wkt,samples/milp/buildings/building5.wkt,samples/milp/buildings/building6.wkt,samples/milp/buildings/building7.wkt,samples/milp/buildings/building8.wkt,samples/milp/buildings/building9.wkt,samples/milp/buildings/building10.wkt,samples/milp/buildings/building11.wkt,samples/milp/buildings/building12.wkt,samples/milp/buildings/building13.wkt,samples/milp/buildings/building14.wkt,samples/milp/buildings/building15.wkt,samples/milp/buildings/building16.wkt,samples/milp/buildings/building17.wkt,samples/milp/buildings/building18.wkt,samples/milp/buildings/building19.wkt,samples/milp/buildings/building20.wkt,samples/milp/buildings/building21.wkt,samples/milp/buildings/building22.wkt,samples/milp/buildings/building23.wkt,samples/milp/buildings/building24.wkt,samples/milp/buildings/building25.wkt,samples/milp/buildings/building26.wkt,samples/milp/buildings/building27.wkt,samples/milp/buildings/building28.wkt,samples/milp/facilities/facility1.wkt,samples/milp/facilities/facility2.wkt,samples/milp/facilities/facility3.wkt,samples/milp/facilities/facility4.wkt,samples/milp/facilities/facility5.wkt,samples/milp/facilities/facility6.wkt,samples/milp/facilities/facility7.wkt,samples/milp/facilities/facility8.wkt,samples/milp/facilities/facility9.wkt,samples/milp/facilities/facility10.wkt,samples/milp/facilities/facility11.wkt,samples/milp/facilities/facility12.wkt,samples/milp/facilities/facility13.wkt,samples/milp/facilities/facility14.wkt,samples/milp/facilities/facility15.wkt,samples/milp/facilities/facility16.wkt,samples/milp/sports_lakes/sl_1.wkt,samples/milp/sports_lakes/sl_2.wkt,samples/milp/sports_lakes/sl_3.wkt,samples/milp/sports_lakes/sl_4.wkt,samples/milp/sports_lakes/sl_5.wkt,samples/milp/sports_lakes/sl_6.wkt,samples/milp/sports_lakes/sl_7.wkt,samples/milp/sports_lakes/sl_8.wkt,samples/milp/sports_lakes/sl_9.wkt,samples/milp/sports_lakes/sl_10.wkt,samples/milp/sports_lakes/sl_11.wkt,samples/milp/sports_lakes/sl_12.wkt,samples/milp/sports_lakes/sl_13.wkt,samples/milp/sports_lakes/sl_14.wkt,samples/milp/sports_lakes/sl_15.wkt,samples/milp/sports_lakes/sl_16.wkt
 Group1.GDRRTMovement.startLocation = [3500,3000; 2000,2000; 2750,2550; 2500,3000; 2120,3033; 2306,2574; 2490,2940; 2165,3062]
 Group1.GDRRTMovement.endLocation =   [2500,2000; 2225,2225; 3500,2500; 2000,2500; 3426,2016; 2536,2035; 2621,2606; 2971,2600]
 
@@ -55,7 +55,7 @@ Group3.fogVehicleSystemNr = 1
 
 # Settings for the MILPClusteredFogMovement model
 Group3.MILPClusteredFogMovement.startLocation = 2500,2500
-Group3.MILPClusteredFogMovement.obstacleFile = samples/gdrrt/uoh_map.wkt,samples/gdrrt/buildings/building1.wkt,samples/gdrrt/buildings/building2.wkt,samples/gdrrt/buildings/building3.wkt,samples/gdrrt/buildings/building4.wkt,samples/gdrrt/buildings/building5.wkt,samples/gdrrt/buildings/building6.wkt,samples/gdrrt/buildings/building7.wkt,samples/gdrrt/buildings/building8.wkt,samples/gdrrt/buildings/building9.wkt,samples/gdrrt/buildings/building10.wkt,samples/gdrrt/buildings/building11.wkt,samples/gdrrt/buildings/building12.wkt,samples/gdrrt/buildings/building13.wkt,samples/gdrrt/buildings/building14.wkt,samples/gdrrt/buildings/building15.wkt,samples/gdrrt/buildings/building16.wkt,samples/gdrrt/buildings/building17.wkt,samples/gdrrt/buildings/building18.wkt,samples/gdrrt/buildings/building19.wkt,samples/gdrrt/buildings/building20.wkt,samples/gdrrt/buildings/building21.wkt,samples/gdrrt/buildings/building22.wkt,samples/gdrrt/buildings/building23.wkt,samples/gdrrt/buildings/building24.wkt,samples/gdrrt/buildings/building25.wkt,samples/gdrrt/buildings/building26.wkt,samples/gdrrt/buildings/building27.wkt,samples/gdrrt/buildings/building28.wkt
+Group3.MILPClusteredFogMovement.obstacleFile = samples/milp/uoh_map.wkt,samples/milp/buildings/building1.wkt,samples/milp/buildings/building2.wkt,samples/milp/buildings/building3.wkt,samples/milp/buildings/building4.wkt,samples/milp/buildings/building5.wkt,samples/milp/buildings/building6.wkt,samples/milp/buildings/building7.wkt,samples/milp/buildings/building8.wkt,samples/milp/buildings/building9.wkt,samples/milp/buildings/building10.wkt,samples/milp/buildings/building11.wkt,samples/milp/buildings/building12.wkt,samples/milp/buildings/building13.wkt,samples/milp/buildings/building14.wkt,samples/milp/buildings/building15.wkt,samples/milp/buildings/building16.wkt,samples/milp/buildings/building17.wkt,samples/milp/buildings/building18.wkt,samples/milp/buildings/building19.wkt,samples/milp/buildings/building20.wkt,samples/milp/buildings/building21.wkt,samples/milp/buildings/building22.wkt,samples/milp/buildings/building23.wkt,samples/milp/buildings/building24.wkt,samples/milp/buildings/building25.wkt,samples/milp/buildings/building26.wkt,samples/milp/buildings/building27.wkt,samples/milp/buildings/building28.wkt,samples/milp/facilities/facility1.wkt,samples/milp/facilities/facility2.wkt,samples/milp/facilities/facility3.wkt,samples/milp/facilities/facility4.wkt,samples/milp/facilities/facility5.wkt,samples/milp/facilities/facility6.wkt,samples/milp/facilities/facility7.wkt,samples/milp/facilities/facility8.wkt,samples/milp/facilities/facility9.wkt,samples/milp/facilities/facility10.wkt,samples/milp/facilities/facility11.wkt,samples/milp/facilities/facility12.wkt,samples/milp/facilities/facility13.wkt,samples/milp/facilities/facility14.wkt,samples/milp/facilities/facility15.wkt,samples/milp/facilities/facility16.wkt,samples/milp/sports_lakes/sl_1.wkt,samples/milp/sports_lakes/sl_2.wkt,samples/milp/sports_lakes/sl_3.wkt,samples/milp/sports_lakes/sl_4.wkt,samples/milp/sports_lakes/sl_5.wkt,samples/milp/sports_lakes/sl_6.wkt,samples/milp/sports_lakes/sl_7.wkt,samples/milp/sports_lakes/sl_8.wkt,samples/milp/sports_lakes/sl_9.wkt,samples/milp/sports_lakes/sl_10.wkt,samples/milp/sports_lakes/sl_11.wkt,samples/milp/sports_lakes/sl_12.wkt,samples/milp/sports_lakes/sl_13.wkt,samples/milp/sports_lakes/sl_14.wkt,samples/milp/sports_lakes/sl_15.wkt,samples/milp/sports_lakes/sl_16.wkt
 # Recalculate optimal position every 15 seconds
 Group3.MILPClusteredFogMovement.updateInterval = 15.0 
 # Use 3 clusters for K-Means
@@ -72,20 +72,24 @@ MovementModel.worldSize = 10000, 10000
 
 ## Map files for visualization
 MapBasedMovement.nrofMapFiles = 7
-MapBasedMovement.mapFile1 = samples/gdrrt/highwaysbarriers.wkt
-MapBasedMovement.mapFile2 = samples/gdrrt/waterway.wkt 
-MapBasedMovement.mapFile3 = samples/gdrrt/highwaysstreets.wkt  
-MapBasedMovement.mapFile4 = samples/gdrrt/uoh_map.wkt
-MapBasedMovement.mapFile5 = samples/gdrrt/highwaysways.wkt
-MapBasedMovement.mapFile6 = samples/gdrrt/land_use_and_nature_lines.wkt
-MapBasedMovement.mapFile7 = samples/gdrrt/manmadepowerlines.wkt 
+MapBasedMovement.mapFile1 = samples/milp/highwaysbarriers.wkt
+MapBasedMovement.mapFile2 = samples/milp/waterway.wkt 
+MapBasedMovement.mapFile3 = samples/milp/highwaysstreets.wkt  
+MapBasedMovement.mapFile4 = samples/milp/uoh_map.wkt
+MapBasedMovement.mapFile5 = samples/milp/highwaysways.wkt
+MapBasedMovement.mapFile6 = samples/milp/land_use_and_nature_lines.wkt
+MapBasedMovement.mapFile7 = samples/milp/manmadepowerlines.wkt 
 
 ## Events & Reports
 Events.nrof = 0
 Report.nrofReports = 0
 
 ## GUI settings for visualization
-# GUI.UnderlayImage.fileName = samples/gdrrt/UOH.png
-GUI.UnderlayImage.offset = -250, 25
-GUI.UnderlayImage.scale = 5
+GUI.UnderlayImage.fileName = samples/milp/UOH2.png
+# GUI.UnderlayImage.offset = -250, 25
+# GUI.UnderlayImage.scale = 5
+# GUI.UnderlayImage.rotate = 0
+
+GUI.UnderlayImage.offset = -373, -2
+GUI.UnderlayImage.scale = 6.5
 GUI.UnderlayImage.rotate = 0
