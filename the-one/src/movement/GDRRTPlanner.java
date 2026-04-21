@@ -99,7 +99,6 @@ public boolean isInitialized() {
         this.root = new Node(start, 0);
         this.tree.add(root);
         this.goal = goal;
-        System.out.println("Initialized GDRRT with start: " + start + " and goal: " + goal);
         this.posTemp = start;
         this.distMin = start.distance(goal);
         this.delta = deltaInit;
