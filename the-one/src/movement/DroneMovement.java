@@ -13,7 +13,7 @@ public class DroneMovement extends ExtendedMovementModel {
   private static int nextID = 0;
 
   private LawnmowerMovement lawnmowerMM;
-  private MapRouteMovement mapRouteMM;
+  private GDRRTMovement gdrrtMovement;
   private SwitchableStationaryMovement stationaryMM;
 
   private static final int MAP_MODE = 1;
@@ -29,8 +29,8 @@ public class DroneMovement extends ExtendedMovementModel {
     int fvs = settings.getInt(FogVehicleSystem.FOG_VEHICLE_SYSTEM_NR);
     vehicleSystem = FogVehicleSystem.getFogVehicleSystem(fvs);
 
+    gdrrtMovement = new GDRRTMovement(settings);
     lawnmowerMM = new LawnmowerMovement(settings);
-    mapRouteMM = new MapRouteMovement(settings);
     stationaryMM = new SwitchableStationaryMovement(settings);
     setCurrentMovementModel(stationaryMM);
   }
@@ -41,8 +41,8 @@ public class DroneMovement extends ExtendedMovementModel {
     this.id = nextID++;
 
     vehicleSystem.registerDrone(this);
+    gdrrtMovement = proto.gdrrtMovement.replicate();
     lawnmowerMM = proto.lawnmowerMM.replicate();
-    mapRouteMM = proto.mapRouteMM.replicate();
     stationaryMM = proto.stationaryMM.replicate();
     setCurrentMovementModel(stationaryMM);
     state = STATIONARY_MODE;
@@ -70,7 +70,7 @@ public class DroneMovement extends ExtendedMovementModel {
   public boolean newOrders() {
     switch (state) {
       case MAP_MODE:
-        setCurrentMovementModel(mapRouteMM);
+        setCurrentMovementModel(gdrrtMovement);
         state = STATIONARY_MODE;
         break;
       case SCAN_MODE:
@@ -93,7 +93,7 @@ public class DroneMovement extends ExtendedMovementModel {
 
   @Override
   public Coord getInitialLocation() {
-    initLoc = mapRouteMM.getInitialLocation().clone();
+    initLoc = gdrrtMovement.getInitialLocation().clone();
     stationaryMM.setLocation(initLoc);
     return initLoc;
   }
@@ -111,4 +111,13 @@ public class DroneMovement extends ExtendedMovementModel {
   public int getID() {
     return id;
   }
+
+      /**
+     * Checks if the drone has reached its final destination.
+     * @return True if the drone is at its end location, false otherwise.
+     */
+    public boolean hasReachedTarget() {
+        return gdrrtMovement.isDone();
+    }
+
 }
