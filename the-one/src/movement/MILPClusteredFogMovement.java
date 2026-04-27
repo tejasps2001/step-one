@@ -1,12 +1,13 @@
 package movement;
 
 import core.Coord;
-import core.Connection;
 import core.Settings;
 import core.SimClock;
 import core.DTNHost;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Comparator;
 
 /**
  * Movement model for a Fog UAV Base Station based on the MILP and Clustering approach 
@@ -91,6 +92,8 @@ public class MILPClusteredFogMovement extends MovementModel {
     public double nextPathAvailable() {
         if (isWaiting) {
             // Try again shortly to see if collision paths have cleared
+            // Fog UAV to the ONE simulator: "The airspace is packed 
+            // right now and hence I am stuck. Come back after sometime"
             return SimClock.getTime() + 1.0;
         }
         return 0;
@@ -161,17 +164,54 @@ public class MILPClusteredFogMovement extends MovementModel {
         List<DroneData> droneDataList = new ArrayList<>();
         
         if (!initialPrioritiesPrinted) {
-            System.out.println("--- Drone Priorities ---");
+            System.out.println("--- Drone Priorities and Target Assignments ---");
+
+            // 1. Build a map of target locations to their names
+            Map<Coord, String> targetLocations = new java.util.HashMap<>();
             for (DTNHost host : core.SimScenario.getInstance().getHosts()) {
-                if (host == fogHost) continue; 
-                
-                MovementModel mm = host.getMovement();
-                if (mm instanceof GDRRTMovement || mm instanceof DroneMovement) {
-                    double priority = 1.0 + host.getAddress();
-                    System.out.println("Drone Name: " + host.getName() + ", ID: " + host.getAddress() + ", Priority: " + priority);
+                if (host.getMovement() instanceof StationaryMovement) {
+                    targetLocations.put(host.getLocation(), host.getName());
                 }
             }
-            System.out.println("------------------------");
+
+            // 2. Collect all drones
+            List<DTNHost> drones = new ArrayList<>();
+            for (DTNHost host : core.SimScenario.getInstance().getHosts()) {
+                if (host.getMovement() instanceof GDRRTMovement) { // This covers FogDeployedGDRRTMovement
+                    drones.add(host);
+                }
+            }
+            // Sort by address for ordered output (D0, D1, ...)
+            drones.sort(Comparator.comparingInt(DTNHost::getAddress));
+
+            // 3. Iterate through sorted drones, find their target, and print info
+            for (DTNHost drone : drones) {
+                GDRRTMovement gdrrtMm = (GDRRTMovement) drone.getMovement();
+                Coord endLoc = gdrrtMm.getEndLocation();
+                double priority = 1.0 + drone.getAddress();
+                String targetName = "unassigned";
+
+                if (endLoc != null) {
+                    // Find the closest target to the drone's end location
+                    double min_dist = Double.MAX_VALUE;
+                    for (Map.Entry<Coord, String> entry : targetLocations.entrySet()) {
+                        double dist = entry.getKey().distance(endLoc);
+                        if (dist < min_dist) {
+                            min_dist = dist;
+                            targetName = entry.getValue();
+                        }
+                    }
+                    // If no target is reasonably close, something is wrong with the setup
+                    if (min_dist > 1.0) {
+                        targetName = "unmatched";
+                    }
+                }
+                
+                System.out.println("Drone: " + drone.getName() + " (ID: " + drone.getAddress() + 
+                                   ", Priority: " + priority + ") -> Target: " + targetName);
+            }
+
+            System.out.println("---------------------------------------------");
             initialPrioritiesPrinted = true;
         }
 
@@ -187,9 +227,6 @@ public class MILPClusteredFogMovement extends MovementModel {
             if (mm instanceof GDRRTMovement) { // Covers FogDeployedGDRRTMovement
                 isDrone = true;
                 hasReached = ((GDRRTMovement) mm).isDone();
-            } else if (mm instanceof DroneMovement) {
-                isDrone = true;
-                hasReached = ((DroneMovement) mm).hasReachedTarget();
             }
 
             if (isDrone && !hasReached) {
