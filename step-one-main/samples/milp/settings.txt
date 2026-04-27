@@ -28,7 +28,7 @@ Group.bufferSize = 5M
 Group.msgTtl = 9999
 
 ## Group1: Drones moving with GDRRT
-Group1.groupID = D
+Group1.groupID = Drone
 Group1.nrofHosts = 8
 Group1.nrofInterfaces = 1
 Group1.interface1 = btInterface
@@ -39,13 +39,13 @@ Group1.GDRRTMovement.startLocation = [3500,3000; 2000,2000; 2750,2550; 2500,3000
 Group1.GDRRTMovement.endLocation =   [2500,2000; 2225,2225; 3500,2500; 2000,2500; 3426,2016; 2536,2035; 2621,2606; 2971,2600]
 
 ## Group2: Stationary Targets
-Group2.groupID = T
+Group2.groupID = Target
 Group2.nrofHosts = 8
 Group2.movementModel = StationaryMovement
 Group2.nodeLocations = [2500,2000; 2225,2225; 3500,2500; 2000,2500; 3426,2016; 2536,2035; 2621,2606; 2971,2600]
 
 ## Group3: The Fog UAV using MILPClusteredFogMovement
-Group3.groupID = F
+Group3.groupID = FogUAV
 Group3.nrofHosts = 1
 Group3.nrofInterfaces = 1
 Group3.interface1 = wifiInterface
