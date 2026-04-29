@@ -27,6 +27,8 @@ public class MILPClusteredFogMovement extends MovementModel {
     public static final String OBSTACLE_FILE_S = "obstacleFile";
     public static final String UPDATE_INTERVAL_S = "updateInterval"; // Interval to recalculate clustering (in seconds)
     public static final String NUM_CLUSTERS_S = "numClusters"; // Value 'k' for K-Means clustering
+    public static final String ENABLE_SHUTDOWN_S = "enableRandomShutdown";
+    public static final String SHUTDOWN_TIME_S = "shutdownTime";
 
     private Coord startLoc;
     private Coord currentOptimalTarget;
@@ -40,6 +42,10 @@ public class MILPClusteredFogMovement extends MovementModel {
     private int fvsId;
     private boolean isWaiting = false;
     private boolean initialPrioritiesPrinted = false;
+    
+    private boolean enableShutdown = false;
+    private double shutdownTime = -1.0;
+    private boolean shutdownTriggered = false;
 
     // Internal class to hold drone priority and location for clustering
     private class DroneData {
@@ -65,6 +71,13 @@ public class MILPClusteredFogMovement extends MovementModel {
         this.fvsId = s.getInt(FogVehicleSystem.FOG_VEHICLE_SYSTEM_NR);
         
         this.gdrrt = new GDRRTPlanner(this.obstacleFilePath);
+        
+        if (s.contains(MILP_FOG_NS + ENABLE_SHUTDOWN_S)) {
+            this.enableShutdown = s.getBoolean(MILP_FOG_NS + ENABLE_SHUTDOWN_S);
+        }
+        if (s.contains(MILP_FOG_NS + SHUTDOWN_TIME_S)) {
+            this.shutdownTime = s.getDouble(MILP_FOG_NS + SHUTDOWN_TIME_S);
+        }
     }
 
     public MILPClusteredFogMovement(MILPClusteredFogMovement proto) {
@@ -74,6 +87,9 @@ public class MILPClusteredFogMovement extends MovementModel {
         this.updateInterval = proto.updateInterval;
         this.numClusters = proto.numClusters;
         this.fvsId = proto.fvsId;
+        this.enableShutdown = proto.enableShutdown;
+        this.shutdownTime = proto.shutdownTime;
+        this.shutdownTriggered = proto.shutdownTriggered;
         
         this.gdrrt = new GDRRTPlanner(this.obstacleFilePath);
     }
@@ -102,6 +118,11 @@ public class MILPClusteredFogMovement extends MovementModel {
     @Override
     public Path getPath() {
         double currentTime = SimClock.getTime();
+        
+        // Random Drone Shutdown Event execution
+        if (enableShutdown && !shutdownTriggered && currentTime >= shutdownTime) {
+            triggerRandomShutdown();
+        }
 
         // 1. Recalculate optimal position if the interval has elapsed
         if (lastUpdateTime < 0 || (currentTime - lastUpdateTime) >= updateInterval) {
@@ -122,6 +143,7 @@ public class MILPClusteredFogMovement extends MovementModel {
         if (!gdrrt.isInitialized()) {
             gdrrt.init(getHost().getLocation(), currentOptimalTarget);
         }
+        gdrrt.init(getHost().getLocation(), currentOptimalTarget);
 
         // 2. Plan path segment using GDRRT Planner
         GDRRTPlanner.PlannedSegment proposedSegment = gdrrt.planNextSegment();
@@ -152,6 +174,68 @@ public class MILPClusteredFogMovement extends MovementModel {
     }
 
     /**
+     * Randomly shuts down an active drone and attempts to reassign its target
+     * to a lower-priority drone that is currently within the Fog UAV's range.
+     */
+    private void triggerRandomShutdown() {
+        System.out.println(">>> CRITICAL EVENT: Random Drone Shutdown Triggered at time " + SimClock.getTime() + " <<<");
+        shutdownTriggered = true;
+        List<DTNHost> activeDrones = new ArrayList<>();
+        
+        for (DTNHost host : core.SimScenario.getInstance().getHosts()) {
+            if (host.getMovement() instanceof GDRRTMovement) {
+                GDRRTMovement mm = (GDRRTMovement) host.getMovement();
+                if (!mm.isDone() && !mm.isDead()) activeDrones.add(host);
+            }
+        }
+
+        if (activeDrones.isEmpty()) return;
+
+        // 1. Pick a random active drone to shut down
+        java.util.Collections.shuffle(activeDrones, new java.util.Random((long)SimClock.getTime()));
+        DTNHost killedDrone = activeDrones.get(0);
+        GDRRTMovement killedMm = (GDRRTMovement) killedDrone.getMovement();
+        
+        double killedPriority = killedMm.getPriority();
+        Coord killedTarget = killedMm.getEndLocation();
+
+        System.out.println(">>> CRITICAL EVENT: Drone " + killedDrone.getName() + " HAS FAILED! <<<");
+        killedMm.kill();
+
+        // 2. Scan for a lower priority replacement drone in range
+        DTNHost replacement = null;
+        double bestPriority = Integer.MAX_VALUE;
+        double fogWifiRange = 500.0; // Matched with wifiInterface.transmitRange from settings
+
+        for (DTNHost host : activeDrones) {
+            if (host == killedDrone) continue;
+            GDRRTMovement mm = (GDRRTMovement) host.getMovement();
+            double priority = mm.getPriority();
+            
+            // Check: not done, not dead, lower priority than killed drone, AND in physical range
+            if (!mm.isDone() && !mm.isDead() && priority < killedPriority) {
+                if (host.getLocation().distance(getHost().getLocation()) <= fogWifiRange) {
+                    // Pick the lowest priority out of the available lower-priority candidates
+                    if (priority < bestPriority) {
+                        bestPriority = priority;
+                        replacement = host;
+                    }
+                }
+            }
+        }
+
+        // 3. Reassign if a suitable drone was found
+        if (replacement != null) {
+            System.out.println(">>> FOG UAV ACTION: Reassigning higher priority target " + killedTarget + 
+                               " to lower priority in-range Drone " + replacement.getName() + " <<<");
+            ((GDRRTMovement) replacement.getMovement()).changeTarget(killedTarget, killedPriority);
+            System.out.println(replacement.getPath());
+        } else {
+            System.out.println(">>> FOG UAV ACTION: Drone " + killedDrone.getName() + " failed, but NO lower priority drone is in range for reassignment. <<<");
+        }
+    }
+
+    /**
      * Extracts drones, groups them into K clusters, and returns the weighted 
      * centroid of the highest-priority cluster.
      */
@@ -177,7 +261,7 @@ public class MILPClusteredFogMovement extends MovementModel {
             // 2. Collect all drones
             List<DTNHost> drones = new ArrayList<>();
             for (DTNHost host : core.SimScenario.getInstance().getHosts()) {
-                if (host.getMovement() instanceof GDRRTMovement) { // This covers FogDeployedGDRRTMovement
+                if (host.getMovement() instanceof GDRRTMovement || host.getMovement() instanceof DroneMovement) { // This covers FogDeployedGDRRTMovement
                     drones.add(host);
                 }
             }
@@ -188,7 +272,7 @@ public class MILPClusteredFogMovement extends MovementModel {
             for (DTNHost drone : drones) {
                 GDRRTMovement gdrrtMm = (GDRRTMovement) drone.getMovement();
                 Coord endLoc = gdrrtMm.getEndLocation();
-                double priority = 1.0 + drone.getAddress();
+                double priority = gdrrtMm.getPriority();
                 String targetName = "unassigned";
 
                 if (endLoc != null) {
@@ -223,17 +307,22 @@ public class MILPClusteredFogMovement extends MovementModel {
             MovementModel mm = host.getMovement();
             boolean isDrone = false;
             boolean hasReached = false;
+            double priority = 1.0;
             
-            if (mm instanceof GDRRTMovement) { // Covers FogDeployedGDRRTMovement
+            if (mm instanceof GDRRTMovement || mm instanceof DroneMovement) { // Covers FogDeployedGDRRTMovement
                 isDrone = true;
                 hasReached = ((GDRRTMovement) mm).isDone();
+                priority = ((GDRRTMovement) mm).getPriority();
+            } else if (mm instanceof DroneMovement) {
+                isDrone = true;
+                hasReached = ((DroneMovement) mm).hasReachedTarget();
+                priority = 1.0 + host.getAddress(); // Fallback for DroneMovement
             }
 
             if (isDrone && !hasReached) {
-                System.out.println(host.getName() + " is active and considered for clustering.");
+                // System.out.println(host.getName() + " is active and considered for clustering.");
                 Coord loc = host.getLocation();
                 // Drones with higher priorities exert more gravity on the Fog UAV.
-                double priority = 1.0 + host.getAddress();
                 droneDataList.add(new DroneData(host.getName(), loc, priority));
             }
         }
@@ -314,7 +403,7 @@ public class MILPClusteredFogMovement extends MovementModel {
                 if (i < bestCluster.size() - 1) sb.append(", ");
             }
             sb.append(" (Cluster Priority Score: ").append(finalBestScore).append(")");
-            System.out.println(sb.toString());
+            // System.out.println(sb.toString());
         }
 
         return bestTarget != null ? bestTarget : getHost().getLocation();
