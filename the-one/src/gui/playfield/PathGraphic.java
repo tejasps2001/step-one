@@ -52,7 +52,7 @@ public class PathGraphic extends PlayFieldGraphic {
 		}
 
 		g2.setColor(PATH_COLOR);
-        
+
 		// Fill obstacles based on the specific alpha color passed from GDRRTPlanner
 		if (PATH_COLOR.getAlpha() == 100 && PATH_COLOR.getRed() == 255 && PATH_COLOR.getGreen() == 0 && PATH_COLOR.getBlue() == 0 && coords.size() > 2) {
 			int[] xPoints = new int[coords.size()];

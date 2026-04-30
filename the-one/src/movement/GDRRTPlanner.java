@@ -331,7 +331,7 @@ public class GDRRTPlanner {
                 filePath.contains("sl_") ||
                 filePath.contains("buildings.wkt") || 
                 filePath.contains("u_trap")) {
-                // Obstacles in one color
+                pathColor = Color.RED; // Obstacles in one color
                 pathColor = new Color(255, 0, 0, 100); // Specific color with alpha to trigger polygon filling
             }
             
@@ -371,7 +371,7 @@ public class GDRRTPlanner {
                     if (gui != null) {
                         gui.showPath(q, pathColor);
                     }
-
+                    
                     // Add visual thickness specifically for the campus boundary map
                     if (filePath.contains("uoh_map.wkt")) {
                         int[] offsets = {-10, -5, 5, 10};
@@ -386,7 +386,7 @@ public class GDRRTPlanner {
                             pathColors.add(pathColor);
                             obstaclePaths.add(pY);
                             pathColors.add(pathColor);
-
+                            
                             if (gui != null) {
                                 gui.showPath(pX, pathColor);
                                 gui.showPath(pY, pathColor);
