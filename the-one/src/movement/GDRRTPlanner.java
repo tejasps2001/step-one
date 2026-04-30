@@ -335,6 +335,7 @@ public boolean isInitialized() {
                 filePath.contains("buildings.wkt") || 
                 filePath.contains("u_trap")) {
                 pathColor = Color.RED; // Obstacles in one color
+                pathColor = new Color(255, 0, 0, 100); // Specific color with alpha to trigger polygon filling
             }
             
             try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
@@ -372,6 +373,28 @@ public boolean isInitialized() {
                     
                     if (gui != null) {
                         gui.showPath(q, pathColor);
+                    }
+                    
+                    // Add visual thickness specifically for the campus boundary map
+                    if (filePath.contains("uoh_map.wkt")) {
+                        int[] offsets = {-10, -5, 5, 10};
+                        for (int offset : offsets) {
+                            Path pX = new Path();
+                            Path pY = new Path();
+                            for (Coord pt : points) {
+                                pX.addWaypoint(new Coord(pt.getX() + offset, pt.getY()));
+                                pY.addWaypoint(new Coord(pt.getX(), pt.getY() + offset));
+                            }
+                            obstaclePaths.add(pX);
+                            pathColors.add(pathColor);
+                            obstaclePaths.add(pY);
+                            pathColors.add(pathColor);
+                            
+                            if (gui != null) {
+                                gui.showPath(pX, pathColor);
+                                gui.showPath(pY, pathColor);
+                            }
+                        }
                     }
                 }
             } catch (Exception e) {

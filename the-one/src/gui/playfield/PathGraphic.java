@@ -52,6 +52,23 @@ public class PathGraphic extends PlayFieldGraphic {
 		}
 
 		g2.setColor(PATH_COLOR);
+        
+		// Fill obstacles based on the specific alpha color passed from GDRRTPlanner
+		if (PATH_COLOR.getAlpha() == 100 && PATH_COLOR.getRed() == 255 && PATH_COLOR.getGreen() == 0 && PATH_COLOR.getBlue() == 0 && coords.size() > 2) {
+			int[] xPoints = new int[coords.size()];
+			int[] yPoints = new int[coords.size()];
+			for (int i=0; i < coords.size(); i++) {
+				xPoints[i] = scale(coords.get(i).getX());
+				yPoints[i] = scale(coords.get(i).getY());
+			}
+			g2.fillPolygon(xPoints, yPoints, coords.size());
+			
+			// Draw the solid border around the fill as well
+			g2.setColor(Color.RED);
+			g2.drawPolygon(xPoints, yPoints, coords.size());
+			return;
+		}
+
 		Coord prev = coords.get(0);
 
 		for (int i=1, n=coords.size(); i < n; i++) {
