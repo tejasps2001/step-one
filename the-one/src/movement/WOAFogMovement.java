@@ -8,6 +8,7 @@ import core.SimClock;
 import core.SimScenario;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -48,6 +49,7 @@ import java.time.format.DateTimeFormatter;
  *   [WOA-EVAL]   Detailed fitness breakdown (printed for the winning whale)
  *   [WOA-RESULT] Final WOA outcome per cycle
  *   [WOA-PATH]   Path planning and movement decisions
+ *   [WOA-EVENT]  Special scenario events (like drone shutdowns)
  *   [WOA-PRIO]   Priority weight loading and per-drone lookup
  *
  * Example grep commands:
@@ -216,6 +218,12 @@ public class WOAFogMovement extends MovementModel {
      */
     public static final String LOG_FILE_S          = "logFile";
 
+    // ── Random Shutdown parameters (from MILP reference) ─────────────────
+    /** Enable random drone shutdown event. */
+    public static final String ENABLE_SHUTDOWN_S   = "enableRandomShutdown";
+    /** Sim time at which to trigger the shutdown. */
+    public static final String SHUTDOWN_TIME_S     = "shutdownTime";
+
     private static final int DRONE_GROUP_ADDR_UNKNOWN = -1;
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -233,6 +241,9 @@ public class WOAFogMovement extends MovementModel {
     private final double coverageWeight;      // alpha — NCV2 term weight
     private final double priorityWeight;      // beta  — priority term weight
 
+    private final boolean enableShutdown;     // random shutdown toggle
+    private final double  shutdownTime;       // trigger time
+
     private final java.util.Map<Integer, Double> dronePriorityMap;
 
     // Lazily discovered on the first scan; never changes once set
@@ -246,6 +257,7 @@ public class WOAFogMovement extends MovementModel {
     private double  lastUpdateTime       = -1.0; // sim time of last WOA run
     private boolean isWaiting            = false; // collision-avoidance hold
     private int     woaCycleCount        = 0;     // readable log counter
+    private boolean shutdownTriggered    = false; // event latch
 
     private final GDRRTPlanner gdrrt;       // obstacle-aware path planner
     private final Random       rng = new Random(); // WOA random source
@@ -377,6 +389,11 @@ public class WOAFogMovement extends MovementModel {
         // Parse per-drone priorities — owned entirely by WOAFogMovement
         this.dronePriorityMap = parseDronePriorities(s);
 
+        this.enableShutdown = s.getBoolean(WOA_FOG_NS + ENABLE_SHUTDOWN_S, false);
+        this.shutdownTime   = s.getDouble(WOA_FOG_NS + SHUTDOWN_TIME_S,   -1.0);
+        LOG("[WOA-DIAG]   enableShutdown      = " + enableShutdown);
+        LOG("[WOA-DIAG]   shutdownTime        = " + shutdownTime + "s");
+
         LOG("[WOA-DIAG] ════════════════════════════════════════════\n");
 
         this.gdrrt = new GDRRTPlanner(this.obstacleFilePath);
@@ -395,6 +412,9 @@ public class WOAFogMovement extends MovementModel {
         this.coverageWeight       = proto.coverageWeight;
         this.priorityWeight       = proto.priorityWeight;
         this.dronePriorityMap     = proto.dronePriorityMap; // immutable — safe to share
+        this.enableShutdown       = proto.enableShutdown;
+        this.shutdownTime         = proto.shutdownTime;
+        this.shutdownTriggered    = proto.shutdownTriggered;
         this.gdrrt = new GDRRTPlanner(this.obstacleFilePath);
     }
 
@@ -448,6 +468,11 @@ public class WOAFogMovement extends MovementModel {
         double now    = SimClock.getTime();
         Coord  fogPos = (getHost() != null)
                       ? getHost().getLocation() : startLoc;
+
+        // Random Drone Shutdown Event execution
+        if (enableShutdown && !shutdownTriggered && now >= shutdownTime) {
+            triggerRandomShutdown();
+        }
 
         LOG("\n[WOA-PATH] ── getPath() t=" + fmt(now)
                 + "  fogPos=" + fmtCoord(fogPos)
@@ -828,6 +853,80 @@ public class WOAFogMovement extends MovementModel {
         LOG("[WOA-RESULT] ╚────────────────────────────────────────────\n");
 
         return best.toCoord();
+    }
+
+    /**
+     * Randomly shuts down an active mission drone and reassigns its target
+     * to a lower-priority drone within communicationRange.
+     * Based on behavior from MILPClusteredFogMovement.
+     */
+    private void triggerRandomShutdown() {
+        shutdownTriggered = true;
+        LOG("\n[WOA-EVENT] >>> CRITICAL EVENT: Random Drone Shutdown Triggered at t=" + fmt(SimClock.getTime()) + " <<<");
+
+        List<DTNHost> activeDrones = new ArrayList<>();
+        for (DTNHost host : SimScenario.getInstance().getHosts()) {
+            MovementModel mm = host.getMovement();
+            if (mm instanceof GDRRTMovement) {
+                GDRRTMovement gmm = (GDRRTMovement) mm;
+                if (!gmm.isDone() && !gmm.isDead()) {
+                    activeDrones.add(host);
+                }
+            }
+        }
+
+        if (activeDrones.isEmpty()) {
+            LOG("[WOA-EVENT]   Shutdown aborted: no active mission drones found.");
+            return;
+        }
+
+        // 1. Pick a random active drone to shut down
+        Collections.shuffle(activeDrones, new Random((long) SimClock.getTime()));
+        DTNHost killedDrone = activeDrones.get(0);
+        GDRRTMovement killedMm = (GDRRTMovement) killedDrone.getMovement();
+
+        double killedPriority = killedMm.getPriority();
+        Coord killedTarget = killedMm.getEndLocation();
+
+        LOG("[WOA-EVENT] >>> DRONE FAILURE: " + killedDrone.getName() + " (prio=" + fmt(killedPriority) + ") has been killed! <<<");
+        killedMm.kill();
+
+        // 2. Scan for a lower priority replacement drone in range
+        DTNHost replacement = null;
+        double bestPriorityFound = Double.MAX_VALUE;
+        Coord fogPos = getHost().getLocation();
+
+        for (DTNHost host : activeDrones) {
+            if (host == killedDrone) continue;
+            GDRRTMovement mm = (GDRRTMovement) host.getMovement();
+            double priority = mm.getPriority();
+
+            // Criteria: not done, not dead, lower priority than killed drone, AND within comm range
+            if (!mm.isDone() && !mm.isDead() && priority < killedPriority) {
+                double dist = host.getLocation().distance(fogPos);
+                if (dist <= communicationRange) {
+                    // Pick the lowest priority out of the available lower-priority candidates
+                    if (priority < bestPriorityFound) {
+                        bestPriorityFound = priority;
+                        replacement = host;
+                    }
+                }
+            }
+        }
+
+        // 3. Reassign if a suitable drone was found
+        if (replacement != null) {
+            LOG("[WOA-EVENT] >>> FOG ACTION: Reassigning target " + fmtCoord(killedTarget)
+                    + " to lower priority in-range Drone " + replacement.getName()
+                    + " (previous prio=" + fmt(((GDRRTMovement)replacement.getMovement()).getPriority())
+                    + " -> new prio=" + fmt(killedPriority) + ") <<<");
+            ((GDRRTMovement) replacement.getMovement()).changeTarget(killedTarget, killedPriority);
+        } else {
+            LOG("[WOA-EVENT] >>> FOG ACTION: Drone " + killedDrone.getName()
+                    + " failed, but NO lower priority drone is in range ("
+                    + fmt(communicationRange) + "m) for reassignment. <<<");
+        }
+        LOG("[WOA-EVENT] ─────────────────────────────────────────────────────────\n");
     }
 
     // =======================================================================
