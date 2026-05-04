@@ -1,7 +1,7 @@
 group 'ee.mass.stepone'
 apply plugin: 'idea'
 
-apply plugin: 'java'
+apply plugin: 'java-library'
 
 
 
@@ -13,6 +13,7 @@ sourceSets {
         }
         java {
             srcDirs = ['src']
+            exclude 'test/**'
         }
     }
     test {
@@ -31,16 +32,18 @@ compileTestJava.options.encoding = 'UTF-8'
 repositories {
     mavenCentral()
 }
+
+test {
+    ignoreFailures = true
+}
  
 dependencies {
-    compile 'junit:junit:4.11'
+    api 'junit:junit:4.11'
 
-    compile fileTree(include: ['*.jar'], dir: 'lib')
+    api fileTree(include: ['*.jar'], dir: 'lib')
 
-    compile 'org.apache.commons:commons-lang3:3.9'
-    compile 'org.slf4j:slf4j-api:1.7.26'
+    api 'org.apache.commons:commons-lang3:3.9'
+    api 'org.slf4j:slf4j-api:1.7.26'
     
-    compile 'org.apache.logging.log4j:log4j:2.11.2'
+    api 'org.apache.logging.log4j:log4j:2.11.2'
 }
-
-

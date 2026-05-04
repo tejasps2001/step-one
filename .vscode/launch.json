@@ -7,6 +7,24 @@
         
         {
             "type": "java",
+            "name": "Run Active Config (GUI)",
+            "request": "launch",
+            "mainClass": "ee.mass.epm.stepone.StepOneSim",
+            "projectName": "step-one-main",
+            "args": "${relativeFile}",
+            "cwd": "${workspaceFolder}/step-one-main"
+        },
+        {
+            "type": "java",
+            "name": "Run Active Config (Batch)",
+            "request": "launch",
+            "mainClass": "ee.mass.epm.stepone.StepOneSim",
+            "projectName": "step-one-main",
+            "args": ["-b", "1", "${relativeFile}"],
+            "cwd": "${workspaceFolder}/step-one-main"
+        },
+        {
+            "type": "java",
             "name": "Debug GDRRT",
             "request": "launch",
             "mainClass": "core.DTNSim",
