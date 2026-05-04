@@ -7,6 +7,7 @@ import java.awt.Color;
 
 import gui.DTNSimGUI;
 
+// Node for RR Tree
 class Node {
     Set<Node> children;
     Node parent;
@@ -47,22 +48,20 @@ class Node {
 
 public class GDRRTPlanner {
 
-    // New inner class to hold planning results before committing
+    // inner class to hold planning results before committing
     class PlannedSegment {
         Path path;
         Node nodeToCommit;
         boolean isFinalPath = false;
     }
 
-    // Parameters based on the study settings [cite: 547]
-    private double delta;// Tree extension distance (δ)
+    // GDRRT Parameters
+    private double delta;// Tree extension distance
     private double deltaInit = 20.0; // Initial extension value
     private double deltaMin = 5.0; // Minimum extension value for convergence
-    private double d = 25.0; // Sampling range diameter
     private double distGlobMin = 5.0; // Threshold for fine-tuning convergence
     private double rNear = 25.0; // Radius for finding neighbor nodes
-    // TODO: Must increase maxNodes since sometimes it isn't sufficent
-    private int maxNodes = 3000; // Maximum node limit
+    private final double k = 30.0; // Increase in step-size to escape obstacle
     private static DTNSimGUI gui;
 
     private String obstacleFilePath;
@@ -80,17 +79,16 @@ public class GDRRTPlanner {
     private List<Color> pathColors = null;
     private double droneBuffer = 0.5; // Radius of the drone's boundary
 
-    // TODO: Below constructor is the long-term solution
     public GDRRTPlanner(String obstacleFilePath) {
         this.obstacleFilePath = obstacleFilePath;
     }
 
-    // Below const only to see the boundary of obstacles
+    // Constructor only to see the boundary of obstacles
     public GDRRTPlanner(DTNSimGUI gui) {
         GDRRTPlanner.gui = gui;
     }
 
-public boolean isInitialized() {
+    public boolean isInitialized() {
         return isInitialized;
     }
 
@@ -114,34 +112,33 @@ public boolean isInitialized() {
         int maxNodesLimit = 1000; // Allow massive expansion if trapped
 
         int nodesInBatch = 0;
-        boolean goalReached = false;
         Node finalGoalNode = null;
 
         // Expansion Phase
         while (nodesInBatch < maxNodesLimit) {
-            // Line 14: Smart sampling based on posTemp and range d [cite: 361]
+            // Smart sampling based on posTemp and range d
             Coord xRand = smartSample(posTemp, delta, rand);
-            // Line 5: Find nearest node in tree [cite: 350]
+            // Find node nearest to the sample in the tree
             Node xNearest = findNearest(tree, xRand);
-            // Line 6: Create new node via Steer function [cite: 351]
+            // Create new node via Steer function
             Coord newCoord = steer(xNearest.getLocation(), xRand, delta);
 
-            // Line 7: Collision check
+            // Collision check
             if (isCollisionFree(xNearest.position, newCoord)) {
                 if (escapeCounter > 2) delta = deltaInit;
 
                 double distNew = newCoord.distance(goal);
-                // Lines 9-11: Update closest node to goal
+                // Update closest node to goal
                 if (distNew < distMin || escapeCounter < 3) {
                     posTemp = newCoord;
                     distMin = distNew;
                 }
-                // Lines 12-13: Reduce step size if very close to target
+                // Reduce step size if very close to target
                 if (distMin < distGlobMin) delta = deltaMin;
 
                 Node xNew = new Node(newCoord, xNearest.getCost() + xNearest.getLocation().distance(newCoord), xNearest);
 
-                // Lines 15-17: RRT* Rewiring and parent selection
+                // Rewiring the tree and parent selection
                 List<Node> xNearNodes = findNear(tree, xNew.getLocation(), rNear);
                 chooseParent(xNew, xNearNodes);
                 tree.add(xNew);
@@ -154,20 +151,19 @@ public boolean isInitialized() {
                 // Check if goal is reached
                 if (xNew.getLocation().distance(goal) < delta) {
                     finalGoalNode = new Node(goal, xNew.getCost() + xNew.getLocation().distance(goal), xNew);
-                    goalReached = true;
                     break;
                 }    
                 
-                // If we've sampled a good chunk, check if we broke out of the local minimum
+                // If enough sampling is done, check if we broke out of the local minimum
                 if (nodesInBatch >= 25 && nodesInBatch % 25 == 0) {
                     Node currentBest = findNearest(tree, goal);
                     if (currentBest != root && currentBest.getLocation().distance(goal) < root.getLocation().distance(goal) - 1.0) {
-                        break; // Progress made! Break out early and move.
+                        break;
                     }
                 }
             } else {
-                // Line 19-21: Obstacle avoidance [cite: 368, 369, 370]
-                delta += 30.0; // k constant
+                // Obstacle avoidance
+                delta += k;
                 escaping = true;
                 escapeCounter = 0;
             }
@@ -175,14 +171,14 @@ public boolean isInitialized() {
 
         PlannedSegment plannedSegment = new PlannedSegment();
 
-        if (goalReached && finalGoalNode != null) {
+        if (finalGoalNode != null) {
             plannedSegment.path = constructPathObject(finalGoalNode);
             plannedSegment.nodeToCommit = finalGoalNode;
             plannedSegment.isFinalPath = true;
             return plannedSegment;
         }
 
-        // Find best path segment
+        // Find the best path segment
         Node bestNode = findNearest(tree, goal);
         if (bestNode == root) {
             if (tree.size() > 1) {
@@ -199,7 +195,7 @@ public boolean isInitialized() {
         if (pathSegmentNodes.size() > 1) {
             Node committedNode = pathSegmentNodes.get(1);
             
-            Path segment = new Path(0.5); // scaled constant speed
+            Path segment = new Path(0.5);
             segment.addWaypoint(root.getLocation());
             segment.addWaypoint(committedNode.getLocation());
 
@@ -215,7 +211,8 @@ public boolean isInitialized() {
         if (segment == null || segment.nodeToCommit == null) return;
 
         if (segment.isFinalPath) {
-            isInitialized = false; // Goal reached, reset for next time
+            // Goal reached, reset for next time
+            isInitialized = false;
             return;
         }
 
@@ -224,7 +221,7 @@ public boolean isInitialized() {
         // Prune Phase
         root = committedNode;
         root.parent = null;
-        Path z = new Path(); // for drawing
+        Path z = new Path();
         z.addWaypoint(committedNode.position);
         tree = getSubTree(root, z);
         if (gui != null) {
@@ -253,7 +250,7 @@ public boolean isInitialized() {
             double ry = posTemp.getY() + (rand.nextDouble() - 0.5) * 2000.0;
             return new Coord(rx, ry);
         }
-        // Equation 2: x_rand = (pos_temp - d/2) + rand * d [cite: 318]
+        // Equation 2: x_rand = (pos_temp - d/2) + rand * d
         double rx = (posTemp.getX() - d / 2) + rand.nextDouble() * d;
         double ry = (posTemp.getY() - d / 2) + rand.nextDouble() * d;
         return new Coord(rx, ry);
@@ -327,14 +324,14 @@ public boolean isInitialized() {
             String filePath = file.trim();
             if (filePath.isEmpty()) continue;
             
-            Color pathColor = Color.BLACK; // Default for other map files
+            Color pathColor = Color.BLACK;
             if (filePath.contains("facilities.wkt") || 
                 filePath.contains("building") || 
                 filePath.contains("facility") ||
                 filePath.contains("sl_") ||
                 filePath.contains("buildings.wkt") || 
                 filePath.contains("u_trap")) {
-                pathColor = Color.RED; // Obstacles in one color
+                // Obstacles in one color
                 pathColor = new Color(255, 0, 0, 100); // Specific color with alpha to trigger polygon filling
             }
             
@@ -374,7 +371,7 @@ public boolean isInitialized() {
                     if (gui != null) {
                         gui.showPath(q, pathColor);
                     }
-                    
+
                     // Add visual thickness specifically for the campus boundary map
                     if (filePath.contains("uoh_map.wkt")) {
                         int[] offsets = {-10, -5, 5, 10};
@@ -389,7 +386,7 @@ public boolean isInitialized() {
                             pathColors.add(pathColor);
                             obstaclePaths.add(pY);
                             pathColors.add(pathColor);
-                            
+
                             if (gui != null) {
                                 gui.showPath(pX, pathColor);
                                 gui.showPath(pY, pathColor);

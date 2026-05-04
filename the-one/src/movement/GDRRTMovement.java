@@ -16,7 +16,7 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
     public static final String GDRRT_MOVEMENT_NS = "GDRRTMovement.";
 
     public static final String START_LOCATION_S = "startLocation";
-    // per node group setting for defining the cordinate of the target
+    // per node group setting for defining the coordinate of the target
     public static final String END_LOCATION_S = "endLocation";
     public static final String OBSTACLE_FILE_S = "obstacleFile";
 
@@ -62,7 +62,7 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
     }
 
     // Helper to parse coordinate arrays like "[x1,y1; x2,y2]"
-    private List<Coord> parseCoords(Settings s, String key) { // Changed to private visibility
+    private List<Coord> parseCoords(Settings s, String key) {
         // Use getRawSetting to bypass run-index parsing and get the full string
         String raw = s.getRawSetting(key);
         raw = raw.replace("[", "").replace("]", "");
@@ -91,10 +91,12 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
         this.gdrrt = new GDRRTPlanner(this.obstacleFilePath);
     }
 
+    @Override
     public GDRRTMovement replicate() {
         return new GDRRTMovement(this);
     }
 
+    // TODO: read the priorities from the settings file
     public double getPriority() {
         if (currentPriority < 0 && getHost() != null) {
             currentPriority = 1.0 + getHost().getAddress();
@@ -128,7 +130,7 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
             gdrrt.init(getHost().getLocation(), endLoc);
         }
 
-        // 1. Plan the next move without committing
+        // Plan the next move without committing
         GDRRTPlanner.PlannedSegment proposedSegment = gdrrt.planNextSegment();
 
         if (proposedSegment == null) { // Planner couldn't find a path
@@ -139,9 +141,9 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
             return null;
         }
 
-        // 2. Request permission from the path manager
+        // Request permission from the path manager
         if (DronePathManager.requestPath(getHost().getAddress(), proposedSegment.path)) {
-            // 3a. Permission granted: commit and move
+            // Permission granted: commit and move
             isWaiting = false;
             gdrrt.commit(proposedSegment);
 
@@ -153,7 +155,7 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
 
             return proposedSegment.path;
         } else {
-            // 3b. Permission denied: wait
+            // Permission denied: wait
             isWaiting = true;
             DronePathManager.setStationary(getHost().getAddress());
 
@@ -209,8 +211,7 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
 
     @Override
     public Coord getInitialLocation() {
-        Coord initLoc = this.startLoc.clone();
-        return initLoc;
+        return this.startLoc.clone();
     }
 
     @Override
@@ -219,7 +220,7 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
             return Double.MAX_VALUE;
         }
         if (isWaiting) {
-            // If waiting, try again after a short delay to see if the path is clear.
+            // try again after a short delay
             return core.SimClock.getTime() + 1.0;
         }
         return 0;
