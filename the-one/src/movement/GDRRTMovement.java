@@ -3,6 +3,8 @@ package movement;
 import core.Coord;
 import core.Settings;
 import core.SettingsError;
+import report.UavPathPlanningReport;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +26,10 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
     private List<Coord> startLocs;
     private List<Coord> endLocs;
     private static int nextHostIndex = 0;
+
+    // Object for reporting
+    private static List<UavPathPlanningReport> listeners = new ArrayList<>();
+    private boolean hasSignaledStart = false;
 
     // starting location of the node
     private Coord startLoc;
@@ -114,11 +120,24 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
             return null;
         }
 
+        // Report object not initialized yet
+        if (!hasSignaledStart) {
+            for (UavPathPlanningReport l : listeners) {
+                l.droneStarted(getHost().getAddress(), System.nanoTime());
+            }
+
+            hasSignaledStart = true;
+        }
+
         // Check if the drone has physically reached the destination
         if (getHost() != null && getHost().getLocation().distance(endLoc) < 1.0) {
             reachedEnd = true;
             DronePathManager.setStationary(getHost().getAddress());
             System.out.println("Drone " + getHost().getAddress() + " successfully reached its goal at " + core.SimClock.getTime() + "s!");
+
+            for (UavPathPlanningReport l : listeners) {
+                l.droneArrived(getHost().getAddress(), System.nanoTime());
+            }
             return null;
         }
 
@@ -242,5 +261,9 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
 
     public Coord getEndLocation() {
         return this.endLoc;
+    }
+
+    public static void addListener(UavPathPlanningReport report) {
+        listeners.add(report);
     }
 }

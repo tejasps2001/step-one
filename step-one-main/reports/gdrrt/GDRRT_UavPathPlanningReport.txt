@@ -1,0 +1,8 @@
+Drone 1 arrived. Total Time 0.33
+Drone 6 arrived. Total Time 0.28
+Drone 5 arrived. Total Time 0.29
+Drone 3 arrived. Total Time 0.31
+Drone 2 arrived. Total Time 0.32
+Drone 7 arrived. Total Time 0.26
+Drone 0 arrived. Total Time 0.48
+Drone 4 arrived. Total Time 0.30
