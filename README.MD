@@ -35,6 +35,9 @@ chmod +x run-sim.sh
 # Run in GUI mode
 ./run-sim.sh --gui
 
+# Run multiple batch iterations (e.g., 5 runs)
+./run-sim.sh --config "samples/disaster_scenario/disaster_scenario.txt" -b 5
+
 # Clean Gradle cache if something breaks
 ./run-sim.sh --clean
 ```
