@@ -1,8 +1,20 @@
-Drone 1 arrived. Total Time 0.33
-Drone 6 arrived. Total Time 0.28
-Drone 5 arrived. Total Time 0.29
-Drone 3 arrived. Total Time 0.31
-Drone 2 arrived. Total Time 0.32
-Drone 7 arrived. Total Time 0.26
-Drone 0 arrived. Total Time 0.48
-Drone 4 arrived. Total Time 0.30
+=================================================
+UAV Path Planning Report for GDRRT
+Collision Threshold: 5.0m
+=================================================
+NodeID	Distance(m)	TravelTime(s)	Finished
+0	1525.0109	3063.0000	true
+1	351.6680	708.0000	true
+2	843.8348	1696.0000	true
+3	751.5878	1508.0000	true
+4	1533.4455	3079.0000	false
+5	616.0434	1236.0000	true
+6	465.4682	935.0000	true
+7	1129.5728	2268.0000	true
+-------------------------------------------------
+Total Tracked UAVs: 8
+Total UAVs Finished: 7
+Average Distance (Finished): 811.8837m
+Average Travel Time (Finished): 1630.5714s
+Total Inter-UAV Collisions: 0
+=================================================

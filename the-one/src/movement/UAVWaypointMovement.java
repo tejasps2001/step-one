@@ -212,6 +212,11 @@ public class UAVWaypointMovement extends MovementModel {
     private List<String> geoExtentFiles        = new ArrayList<>();
     private double[]     explicitGeoExtents    = null;
 
+    static {
+        // Automatically register this class to be reset between batch runs
+        core.DTNSim.registerForReset(UAVWaypointMovement.class.getName());
+    }
+
     // ================================================================ //
     //  Peer-UAV registry  (Velocity Obstacle)
     // ================================================================ //
@@ -234,6 +239,18 @@ public class UAVWaypointMovement extends MovementModel {
     // ================================================================ //
     //  GUI toggle for planning-grid overlay
     // ================================================================ //
+
+    public static final class PlanningGridSnapshot {
+        public final double      gridCellM;
+        public final int         gridW, gridH;
+        public final boolean[][] blocked;
+
+        PlanningGridSnapshot(double c, int w, int h, boolean[][] b) {
+            this.gridCellM = c; this.gridW = w; this.gridH = h; this.blocked = b;
+        }
+    }
+
+    private static PlanningGridSnapshot planningGridSnapshot = null;
 
     private static boolean gridRenderingEnabled = true;
 
@@ -776,7 +793,9 @@ public class UAVWaypointMovement extends MovementModel {
         if (raw == null || raw.isEmpty()) {
             keyNodes = new ArrayList<>();
             keyNodes.add(dwaEscapePoint(uavPos, goal));
-            replanNeeded = true;
+            // Fix: Do not instantly trigger replanNeeded = true here, otherwise 
+            // the A* algorithm will continuously run every single tick until it escapes, 
+            // freezing the simulation. Let the drone physically move to the escape point first.
         } else {
             List<Coord> wp = UavPathUtils.gridPathToWorld(raw, gridCellM);
             wp.add(goal.clone());
@@ -1032,14 +1051,62 @@ public class UAVWaypointMovement extends MovementModel {
         }
     }
 
-    /**
-     * Full state reset — call before each simulator re-run.
-     * Clears shared obstacle state, peer registry, and ID counter.
-     */
-    public static synchronized void resetObstacleState() {
-        UavObstacleGrid.reset();
+    private void mergeObstaclesIfNeededLocked() {
+        if (obstacleGrid == null) {
+            obstacleGrid      = new boolean[gridH][gridW];
+            obstacleDiscs     = new ArrayList<>();
+            obstacleSegBuf    = new ArrayList<>();
+            obstacleRenderData = new ArrayList<>();
+            publishPlanningGridSnapshot();
+        }
+
+        if (groupObstacleWktFiles == null || groupObstacleWktFiles.isEmpty()) return;
+
+        boolean anyNewFile = false;
+
+        for (String wkt : groupObstacleWktFiles) {
+            if (wkt == null || wkt.trim().isEmpty()) continue;
+            String trimmed = wkt.trim();
+
+            String canonical;
+            try {
+                java.nio.file.Path p = java.nio.file.Paths.get(trimmed);
+                if (!p.isAbsolute())
+                    p = java.nio.file.Paths.get(System.getProperty("user.dir", ".")).resolve(p);
+                p = p.normalize();
+                canonical = java.nio.file.Files.exists(p) ? p.toRealPath().toString()
+                                                           : p.toString();
+            } catch (IOException e) {
+                canonical = trimmed;
+            }
+
+            if (!loadedWktFiles.add(canonical)) continue;
+
+            loadObstaclesFromWkt(trimmed);
+            anyNewFile = true;
+        }
+
+        if (anyNewFile) {
+            publishPlanningGridSnapshot();
+        }
+    }
+
+    private void publishPlanningGridSnapshot() {
+        boolean[][] copy = new boolean[gridH][gridW];
+        for (int r=0; r<gridH; r++)
+            System.arraycopy(obstacleGrid[r], 0, copy[r], 0, gridW);
+        planningGridSnapshot = new PlanningGridSnapshot(gridCellM, gridW, gridH, copy);
+    }
+
+    public static synchronized void reset() {
+        obstacleGrid         = null;
+        obstacleDiscs        = null;
+        obstacleSegBuf       = null;
+        obstacleRenderData   = null;
+        planningGridSnapshot = null;
         gridRenderingEnabled = true;
         PEER_REGISTRY.clear();
+        TRAIL_REGISTRY.clear();
         ID_COUNTER.set(0);
     }
 

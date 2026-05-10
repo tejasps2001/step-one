@@ -1,0 +1,128 @@
+# =========================================================================
+# UAV Path Planning Comparison - Batch Mode Settings
+# Run this via terminal using: 
+# ./step-one.bat -b 10 samples/gdrrt/batch_settings.txt
+# =========================================================================
+
+# The '%%' dynamically inserts the model name and seed into the report filename!
+Scenario.name = %%Group.movementModel%%_Seed%%MovementModel.rngSeed%%
+Scenario.simulateConnections = false
+Scenario.updateInterval = 1.0
+Scenario.endTime = 10000
+Scenario.nrofHostGroups = 9
+
+# -------------------------------------------------------------------------
+# TEST CONFIGURATION (Run 10 times with different random variables)
+# -------------------------------------------------------------------------
+MovementModel.rngSeed = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10]
+MovementModel.worldSize = 10000, 10000
+
+# --> TOGGLE WHICH MODEL TO TEST HERE <--
+# Group.movementModel = GDRRTMovement
+Group.movementModel = UAVWaypointMovement
+
+# ================================================================
+#  SHARED MOVEMENT SETTINGS (Applies to all 8 drones)
+# ================================================================
+Group.speed = 0.5, 0.5
+Group.bufferSize = 5M
+
+# --- GDRRT Shared Settings ---
+Group.GDRRTMovement.obstacleFile = samples/gdrrt/uoh_map.wkt
+
+# --- UAVWaypoint Shared Settings (Adapted from Collision Test) ---
+UAVWaypointMovement.obstacleWktFile = samples/gdrrt/uoh_map.wkt
+UAVWaypointMovement.geoExtentFiles = samples/gdrrt/uoh_map.wkt
+UAVWaypointMovement.gridCellM = 30
+UAVWaypointMovement.pointObstacleRadius = 30
+UAVWaypointMovement.lineObstacleHalfWidth = 20
+UAVWaypointMovement.snapLocationsToGrid = true
+UAVWaypointMovement.showPlanningGrid = false
+UAVWaypointMovement.dwaSteps = 16
+UAVWaypointMovement.distAlert = 30
+UAVWaypointMovement.distRisk = 18
+UAVWaypointMovement.finalGoalTolerance = 2.5
+UAVWaypointMovement.uavSeparationM = 20.0
+UAVWaypointMovement.voWeight = 3.0
+UAVWaypointMovement.launchStaggerS = 2.0
+UAVWaypointMovement.speedMin = 0.5
+UAVWaypointMovement.speedMax = 0.5
+UAVWaypointMovement.dwellMin = 1.0
+UAVWaypointMovement.dwellMax = 3.0
+
+# ================================================================
+#  DRONE GROUPS (Exact matching pairs for fair comparison)
+# ================================================================
+
+Group1.groupID = UAV1
+Group1.nrofHosts = 1
+Group1.GDRRTMovement.startLocation = [3500,3000]
+Group1.GDRRTMovement.endLocation   = [2500,2000]
+Group1.spawn  = 3500, 3000
+Group1.target = 2500, 2000
+
+Group2.groupID = UAV2
+Group2.nrofHosts = 1
+Group2.GDRRTMovement.startLocation = [2000,2000]
+Group2.GDRRTMovement.endLocation   = [2225,2225]
+Group2.spawn  = 2000, 2000
+Group2.target = 2225, 2225
+
+Group3.groupID = UAV3
+Group3.nrofHosts = 1
+Group3.GDRRTMovement.startLocation = [2750,2550]
+Group3.GDRRTMovement.endLocation   = [3500,2500]
+Group3.spawn  = 2750, 2550
+Group3.target = 3500, 2500
+
+Group4.groupID = UAV4
+Group4.nrofHosts = 1
+Group4.GDRRTMovement.startLocation = [2500,3000]
+Group4.GDRRTMovement.endLocation   = [2000,2500]
+Group4.spawn  = 2500, 3000
+Group4.target = 2000, 2500
+
+Group5.groupID = UAV5
+Group5.nrofHosts = 1
+Group5.GDRRTMovement.startLocation = [2120,3033]
+Group5.GDRRTMovement.endLocation   = [3426,2016]
+Group5.spawn  = 2120, 3033
+Group5.target = 3426, 2016
+
+Group6.groupID = UAV6
+Group6.nrofHosts = 1
+Group6.GDRRTMovement.startLocation = [2306,2574]
+Group6.GDRRTMovement.endLocation   = [2536,2035]
+Group6.spawn  = 2306, 2574
+Group6.target = 2536, 2035
+
+Group7.groupID = UAV7
+Group7.nrofHosts = 1
+Group7.GDRRTMovement.startLocation = [2490,2940]
+Group7.GDRRTMovement.endLocation   = [2621,2606]
+Group7.spawn  = 2490, 2940
+Group7.target = 2621, 2606
+
+Group8.groupID = UAV8
+Group8.nrofHosts = 1
+Group8.GDRRTMovement.startLocation = [2165,3062]
+Group8.GDRRTMovement.endLocation   = [2971,2600]
+Group8.spawn  = 2165, 3062
+Group8.target = 2971, 2600
+
+# ================================================================
+#  MAP UNDERLAY
+# ================================================================
+Group9.groupID = Map
+Group9.movementModel = MapBasedMovement
+Group9.nrofHosts = 0
+MapBasedMovement.nrofMapFiles = 1
+MapBasedMovement.mapFile1 = samples/gdrrt/uoh_map.wkt
+
+# ================================================================
+#  REPORTING
+# ================================================================
+Report.nrofReports = 1
+Report.reportDir = reports/batch_results
+Report.report1 = UavPathPlanningReport
+UavPathPlanningReport.collisionThreshold = 5.0

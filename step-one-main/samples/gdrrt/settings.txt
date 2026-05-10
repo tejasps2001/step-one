@@ -69,7 +69,6 @@ Group3.nrofHosts = 0
 
 MapBasedMovement.nrofMapFiles = 7
 Events.nrof = 0
-Report.nrofReports = 0
 
 MapBasedMovement.mapFile1 = samples/gdrrt/highwaysbarriers.wkt
 MapBasedMovement.mapFile2 = samples/gdrrt/waterway.wkt 
@@ -104,10 +103,10 @@ Events.nrof = 0
 
 ## Reports - all report names have to be valid report classes
 # how many reports to load
-Report.nrofReports = 0
-# Report.reportDir = reports/tutorial
+Report.nrofReports = 1
+Report.reportDir = reports/gdrrt
 # Report classes to load
-# Report.report1 = MessageStatsReport
+Report.report1 = UavPathPlanningReport
 
 
 ## Optimization settings -- these affect the speed of the simulation

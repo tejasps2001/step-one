@@ -59,17 +59,23 @@ exit /b 1
 
 :end_parse
 
+if "%CLEAN%"=="true" (
+    echo ^>^>^> Stopping lingering Gradle daemons...
+    call .\gradlew --stop
+    echo ^>^>^> Cleaning old build directories...
+    if exist "build" rmdir /s /q "build"
+    if exist "step-one-main\build" rmdir /s /q "step-one-main\build"
+    if exist "the-one\build" rmdir /s /q "the-one\build"
+    if exist "sim-flowable\build" rmdir /s /q "sim-flowable\build"
+    if "%CONFIG_PATH%"=="" (
+        exit /b 0
+    )
+)
+
 if "%CONFIG_PATH%"=="" (
     echo [ERROR] Please provide the path to your settings config file.
     echo Usage: run-sim.bat [path\to\config.txt] [--gui] [--clean] [-b runs]
     exit /b 1
-)
-
-if "%CLEAN%"=="true" (
-    echo ^>^>^> Cleaning old build directories...
-    call .\gradlew clean
-    echo ^>^>^> Stopping lingering Gradle daemons...
-    call .\gradlew --stop
 )
 
 echo ^>^>^> Compiling and packaging standalone distribution...

@@ -14,7 +14,7 @@ public class DronePathManager {
     private static final Map<Integer, Path> activePaths = new HashMap<>();
     
     // Safety buffer around drone paths. If two paths come within this distance, it's a collision.
-    private static final double DRONE_BUFFER = 20.0; 
+    private static final double DRONE_BUFFER = 5.0; 
 
     /**
      * A drone requests permission to take a path.

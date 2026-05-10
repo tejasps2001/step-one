@@ -320,7 +320,7 @@ Report2.reportName  = MultiDrone_Encounters
 #
 ## ============================================================
 
-GUI.UnderlayImage.fileName = samples/gdrrt/UOH.png
+GUI.UnderlayImage.fileName = samples/gdrrt/UOH2.png
 GUI.UnderlayImage.offset   = -370, -1
 GUI.UnderlayImage.scale    = 6.5
 GUI.UnderlayImage.rotate   = 0

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONFIG_PATH="samples/milp/random_shutdown.txt"
+CONFIG_PATH=""
 GUI=false
 CLEAN=false
 BATCH_RUNS="1"
@@ -12,7 +12,8 @@ while [[ "$#" -gt 0 ]]; do
         -g|--gui) GUI=true ;;
         --clean) CLEAN=true ;;
         -b|--batch) BATCH_RUNS="$2"; shift ;;
-        *) echo "Unknown parameter passed: $1"; exit 1 ;;
+        -*) echo "Unknown parameter passed: $1"; exit 1 ;;
+        *) CONFIG_PATH="$1" ;;
     esac
     shift
 done
@@ -21,10 +22,19 @@ done
 CONFIG_PATH="${CONFIG_PATH//\\//}"
 
 if [ "$CLEAN" = true ]; then
-    echo -e "\e[33m>>> Cleaning old build directories...\e[0m"
-    ./gradlew clean
     echo -e "\e[33m>>> Stopping lingering Gradle daemons...\e[0m"
     ./gradlew --stop
+    echo -e "\e[33m>>> Cleaning old build directories...\e[0m"
+    rm -rf build step-one-main/build the-one/build sim-flowable/build
+    if [ -z "$CONFIG_PATH" ]; then
+        exit 0
+    fi
+fi
+
+if [ -z "$CONFIG_PATH" ]; then
+    echo -e "\e[31m[ERROR] Please provide the path to your settings config file.\e[0m"
+    echo "Usage: ./run-sim.sh [path/to/config.txt] [--gui] [--clean] [-b runs]"
+    exit 1
 fi
 
 echo -e "\e[36m>>> Compiling and packaging standalone distribution...\e[0m"

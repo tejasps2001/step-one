@@ -139,8 +139,9 @@ gradle-app.setting
 # Covers VS Code
 # .vscode/
 
-# Ignore reports
-step-one-main/samples/**/reports/
+# Ignore reports and comparison results
+step-one-main/**/reports/
+*.png
 
 # Ignore the-one's binary files
 the-one/bin/
