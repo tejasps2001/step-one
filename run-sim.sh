@@ -3,6 +3,7 @@
 CONFIG_PATH="samples/milp/random_shutdown.txt"
 GUI=false
 CLEAN=false
+BATCH_RUNS="1"
 
 # Parse arguments
 while [[ "$#" -gt 0 ]]; do
@@ -10,6 +11,7 @@ while [[ "$#" -gt 0 ]]; do
         -c|--config) CONFIG_PATH="$2"; shift ;;
         -g|--gui) GUI=true ;;
         --clean) CLEAN=true ;;
+        -b|--batch) BATCH_RUNS="$2"; shift ;;
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
     esac
     shift
@@ -40,7 +42,7 @@ pushd step-one-main > /dev/null || exit
 if [ "$GUI" = true ]; then
     ./build/install/step-one-main/bin/step-one-main "$CONFIG_PATH"
 else
-    ./build/install/step-one-main/bin/step-one-main -b 1 "$CONFIG_PATH"
+    ./build/install/step-one-main/bin/step-one-main -b "$BATCH_RUNS" "$CONFIG_PATH"
 fi
 
 popd > /dev/null

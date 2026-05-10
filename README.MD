@@ -1,28 +1,24 @@
 ## STEP-ONE simulator:
 STEP-ONE is packaged as a *Gradle* project.
 
-Run a specific simulation settings file with gradle *run*, for example:
-
-`gradlew run --args samples/tutorial1_basic_messaging/settings.txt`
-
 ### Running with convenience scripts
 
-For a streamlined experience, use the provided run scripts which handle building and launching automatically.
+For a streamlined experience, use the provided run scripts which handle building and launching automatically. A configuration file must be provided.
 
-**Windows (PowerShell):**
+**Windows (Command Prompt / PowerShell):**
 
-```powershell
-# Normal batch run (default config)
-.\run-sim.ps1
-
-# Run a specific config file
-.\run-sim.ps1 -ConfigPath "samples\disaster_scenario\disaster_scenario.txt"
+```cmd
+# Run a specific config file (Batch mode, 1 run)
+.\run-sim.bat samples\disaster_scenario\disaster_scenario.txt
 
 # Run in GUI mode
-.\run-sim.ps1 -GUI
+.\run-sim.bat samples\disaster_scenario\disaster_scenario.txt --gui
 
-# Clean Gradle cache if you encounter build errors (e.g. "Unable to delete directory")
-.\run-sim.ps1 -Clean
+# Run multiple batch iterations (e.g., 5 runs)
+.\run-sim.bat samples\disaster_scenario\disaster_scenario.txt -b 5
+
+# Clean Gradle cache if you encounter build errors (e.g., "Unable to delete directory")
+.\run-sim.bat samples\disaster_scenario\disaster_scenario.txt --clean
 ```
 
 **Linux/macOS (Bash):**
@@ -33,9 +29,6 @@ chmod +x run-sim.sh
 ```
 
 ```bash
-# Normal batch run (default config)
-./run-sim.sh
-
 # Run a specific config file
 ./run-sim.sh --config "samples/disaster_scenario/disaster_scenario.txt"
 
