@@ -39,13 +39,15 @@ public class MILPClusteredFogMovement extends MovementModel {
     private int numClusters;
 
     private GDRRTPlanner gdrrt;
-    private int fvsId;
     private boolean isWaiting = false;
     private boolean initialPrioritiesPrinted = false;
     
     private boolean enableShutdown = false;
     private double shutdownTime = -1.0;
     private boolean shutdownTriggered = false;
+    private boolean reassignmentSuccessful = false;
+    private double actualShutdownTime = -1.0;
+    private double lastExecutionTimeMs = 0.0;
 
     // Internal class to hold drone priority and location for clustering
     private class DroneData {
@@ -68,7 +70,6 @@ public class MILPClusteredFogMovement extends MovementModel {
         this.obstacleFilePath = s.getSetting(MILP_FOG_NS + OBSTACLE_FILE_S);
         this.updateInterval = s.getDouble(MILP_FOG_NS + UPDATE_INTERVAL_S, 30.0);
         this.numClusters = s.getInt(MILP_FOG_NS + NUM_CLUSTERS_S, 3); // Default to 3 clusters
-        this.fvsId = s.getInt(FogVehicleSystem.FOG_VEHICLE_SYSTEM_NR);
         
         this.gdrrt = new GDRRTPlanner(this.obstacleFilePath);
         
@@ -86,10 +87,12 @@ public class MILPClusteredFogMovement extends MovementModel {
         this.obstacleFilePath = proto.obstacleFilePath;
         this.updateInterval = proto.updateInterval;
         this.numClusters = proto.numClusters;
-        this.fvsId = proto.fvsId;
         this.enableShutdown = proto.enableShutdown;
         this.shutdownTime = proto.shutdownTime;
         this.shutdownTriggered = proto.shutdownTriggered;
+        this.reassignmentSuccessful = proto.reassignmentSuccessful;
+        this.actualShutdownTime = proto.actualShutdownTime;
+        this.lastExecutionTimeMs = proto.lastExecutionTimeMs;
         
         this.gdrrt = new GDRRTPlanner(this.obstacleFilePath);
     }
@@ -113,6 +116,17 @@ public class MILPClusteredFogMovement extends MovementModel {
             return SimClock.getTime() + 1.0;
         }
         return 0;
+    }
+
+    public Coord getCurrentOptimalTarget() { return currentOptimalTarget; }
+    public boolean isShutdownTriggered() { return shutdownTriggered; }
+    public boolean isReassignmentSuccessful() { return reassignmentSuccessful; }
+    public double getShutdownTime() { return actualShutdownTime; }
+    
+    public double pollExecutionTimeMs() { 
+        double val = lastExecutionTimeMs;
+        lastExecutionTimeMs = 0;
+        return val;
     }
 
     @Override
@@ -149,7 +163,7 @@ public class MILPClusteredFogMovement extends MovementModel {
         GDRRTPlanner.PlannedSegment proposedSegment = gdrrt.planNextSegment();
 
         if (proposedSegment == null) {
-            DronePathManager.setStationary(getHost().getAddress());
+            DronePathManager.setStationary(getHost().getAddress(), getHost().getLocation());
             return null;
         }
 
@@ -157,15 +171,11 @@ public class MILPClusteredFogMovement extends MovementModel {
         if (DronePathManager.requestPath(getHost().getAddress(), proposedSegment.path)) {
             isWaiting = false;
             gdrrt.commit(proposedSegment);
-
-            if (proposedSegment.isFinalPath) {
-                DronePathManager.setStationary(getHost().getAddress());
-            }
             return proposedSegment.path;
         } else {
             // Wait if a collision is detected by the Path Manager
             isWaiting = true;
-            DronePathManager.setStationary(getHost().getAddress());
+            DronePathManager.setStationary(getHost().getAddress(), getHost().getLocation());
             
             Path waitingPath = new Path(0);
             waitingPath.addWaypoint(getHost().getLocation());
@@ -180,6 +190,7 @@ public class MILPClusteredFogMovement extends MovementModel {
     private void triggerRandomShutdown() {
         System.out.println(">>> CRITICAL EVENT: Random Drone Shutdown Triggered at time " + SimClock.getTime() + " <<<");
         shutdownTriggered = true;
+        actualShutdownTime = SimClock.getTime();
         List<DTNHost> activeDrones = new ArrayList<>();
         
         for (DTNHost host : core.SimScenario.getInstance().getHosts()) {
@@ -229,8 +240,10 @@ public class MILPClusteredFogMovement extends MovementModel {
             System.out.println(">>> FOG UAV ACTION: Reassigning higher priority target " + killedTarget + 
                                " to lower priority in-range Drone " + replacement.getName() + " <<<");
             ((GDRRTMovement) replacement.getMovement()).changeTarget(killedTarget, killedPriority);
+            reassignmentSuccessful = true;
             System.out.println(replacement.getPath());
         } else {
+            reassignmentSuccessful = false;
             System.out.println(">>> FOG UAV ACTION: Drone " + killedDrone.getName() + " failed, but NO lower priority drone is in range for reassignment. <<<");
         }
     }
@@ -240,8 +253,10 @@ public class MILPClusteredFogMovement extends MovementModel {
      * centroid of the highest-priority cluster.
      */
     private Coord calculateOptimalPosition() {
+        long startTime = System.nanoTime();
         DTNHost fogHost = getHost();
         if (fogHost == null) {
+            lastExecutionTimeMs = (System.nanoTime() - startTime) / 1_000_000.0;
             return null; // Stay put if no host exists
         }
 
@@ -328,11 +343,13 @@ public class MILPClusteredFogMovement extends MovementModel {
         }
 
         if (droneDataList.isEmpty()) {
+            lastExecutionTimeMs = (System.nanoTime() - startTime) / 1_000_000.0;
             return getHost().getLocation(); // No connected drones found
         }
 
         if (droneDataList.size() == 1) {
             System.out.println("Fog UAV is currently prioritising drone: " + droneDataList.get(0).name + " (Only one active drone)");
+            lastExecutionTimeMs = (System.nanoTime() - startTime) / 1_000_000.0;
             return droneDataList.get(0).loc.clone();
         }
 
@@ -406,6 +423,7 @@ public class MILPClusteredFogMovement extends MovementModel {
             // System.out.println(sb.toString());
         }
 
+        lastExecutionTimeMs = (System.nanoTime() - startTime) / 1_000_000.0;
         return bestTarget != null ? bestTarget : getHost().getLocation();
     }
 }

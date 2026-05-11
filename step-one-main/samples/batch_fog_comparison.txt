@@ -1,0 +1,108 @@
+# =========================================================================
+# Fog UAV Movement Comparison - Batch Mode Settings
+# Run this via terminal using: 
+# ./step-one.bat -b 10 samples/batch_fog_comparison.txt
+# =========================================================================
+
+# The '%%' dynamically inserts the model name and seed into the report filename!
+Scenario.name = %%Group3.movementModel%%_Seed%%MovementModel.rngSeed%%
+Scenario.simulateConnections = true
+Scenario.updateInterval = 1.0
+Scenario.endTime = 10000
+
+Scenario.nrofHostGroups = 3
+
+# -------------------------------------------------------------------------
+# TEST CONFIGURATION (Run 10 times with different random seeds)
+# -------------------------------------------------------------------------
+MovementModel.rngSeed = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10]
+MovementModel.worldSize = 10000, 10000
+
+## Interface-specific settings
+btInterface.type = SimpleBroadcastInterface
+btInterface.transmitRange = 50
+btInterface.transmitSpeed = 2M
+
+wifiInterface.type = SimpleBroadcastInterface
+wifiInterface.transmitRange = 500
+wifiInterface.transmitSpeed = 10M
+
+## Message Router
+Group.router = DirectDeliveryRouter
+Group.bufferSize = 5M
+Group.msgTtl = 9999
+
+# ================================================================
+#  DRONE & TARGET GROUPS (Identical for both models)
+# ================================================================
+Group1.groupID = Drone
+Group1.nrofHosts = 8
+Group1.nrofInterfaces = 1
+Group1.interface1 = btInterface
+Group1.speed = 0.5, 1.5
+Group1.movementModel = FogDeployedGDRRTMovement
+Group1.GDRRTMovement.obstacleFile = samples/milp/uoh_map.wkt,samples/milp/buildings/building1.wkt,samples/milp/buildings/building2.wkt,samples/milp/buildings/building3.wkt,samples/milp/buildings/building4.wkt,samples/milp/buildings/building5.wkt,samples/milp/buildings/building6.wkt,samples/milp/buildings/building7.wkt,samples/milp/buildings/building8.wkt,samples/milp/buildings/building9.wkt,samples/milp/buildings/building10.wkt,samples/milp/buildings/building11.wkt,samples/milp/buildings/building12.wkt,samples/milp/buildings/building13.wkt,samples/milp/buildings/building14.wkt,samples/milp/buildings/building15.wkt,samples/milp/buildings/building16.wkt,samples/milp/buildings/building17.wkt,samples/milp/buildings/building18.wkt,samples/milp/buildings/building19.wkt,samples/milp/buildings/building20.wkt,samples/milp/buildings/building21.wkt,samples/milp/buildings/building22.wkt,samples/milp/buildings/building23.wkt,samples/milp/buildings/building24.wkt,samples/milp/buildings/building25.wkt,samples/milp/buildings/building26.wkt,samples/milp/buildings/building27.wkt,samples/milp/buildings/building28.wkt,samples/milp/facilities/facility1.wkt,samples/milp/facilities/facility2.wkt,samples/milp/facilities/facility3.wkt,samples/milp/facilities/facility4.wkt,samples/milp/facilities/facility5.wkt,samples/milp/facilities/facility6.wkt,samples/milp/facilities/facility7.wkt,samples/milp/facilities/facility8.wkt,samples/milp/facilities/facility9.wkt,samples/milp/facilities/facility10.wkt,samples/milp/facilities/facility11.wkt,samples/milp/facilities/facility12.wkt,samples/milp/facilities/facility13.wkt,samples/milp/facilities/facility14.wkt,samples/milp/facilities/facility15.wkt,samples/milp/facilities/facility16.wkt,samples/milp/sports_lakes/sl_1.wkt,samples/milp/sports_lakes/sl_2.wkt,samples/milp/sports_lakes/sl_3.wkt,samples/milp/sports_lakes/sl_4.wkt,samples/milp/sports_lakes/sl_5.wkt,samples/milp/sports_lakes/sl_6.wkt,samples/milp/sports_lakes/sl_7.wkt,samples/milp/sports_lakes/sl_8.wkt,samples/milp/sports_lakes/sl_9.wkt,samples/milp/sports_lakes/sl_10.wkt,samples/milp/sports_lakes/sl_11.wkt,samples/milp/sports_lakes/sl_12.wkt,samples/milp/sports_lakes/sl_13.wkt,samples/milp/sports_lakes/sl_14.wkt,samples/milp/sports_lakes/sl_15.wkt,samples/milp/sports_lakes/sl_16.wkt
+Group1.GDRRTMovement.startLocation = [3500,3000; 2000,2000; 2750,2550; 2500,3000; 2120,3033; 2306,2574; 2490,2940; 2165,3062]
+Group1.GDRRTMovement.endLocation =   [2500,2000; 2225,2225; 3500,2500; 2000,2500; 3426,2016; 2536,2035; 2621,2606; 2971,2600]
+
+Group2.groupID = Target
+Group2.nrofHosts = 8
+Group2.movementModel = StationaryMovement
+Group2.nodeLocations = [2500,2000; 2225,2225; 3500,2500; 2000,2500; 3426,2016; 2536,2035; 2621,2606; 2971,2600]
+
+# ================================================================
+#  FOG UAV GROUP
+# ================================================================
+Group3.groupID = FogUAV
+Group3.nrofHosts = 1
+Group3.nrofInterfaces = 1
+Group3.interface1 = wifiInterface
+Group3.speed = 1.0, 2.0
+
+# --> TOGGLE WHICH MODEL TO TEST HERE <--
+# Group3.movementModel = MILPClusteredFogMovement
+Group3.movementModel = WOAFogMovement
+
+# --- MILP-Specific Settings ---
+Group3.MILPClusteredFogMovement.startLocation = 2500,2500
+Group3.MILPClusteredFogMovement.obstacleFile = samples/milp/uoh_map.wkt,samples/milp/buildings/building1.wkt,samples/milp/buildings/building2.wkt,samples/milp/buildings/building3.wkt,samples/milp/buildings/building4.wkt,samples/milp/buildings/building5.wkt,samples/milp/buildings/building6.wkt,samples/milp/buildings/building7.wkt,samples/milp/buildings/building8.wkt,samples/milp/buildings/building9.wkt,samples/milp/buildings/building10.wkt,samples/milp/buildings/building11.wkt,samples/milp/buildings/building12.wkt,samples/milp/buildings/building13.wkt,samples/milp/buildings/building14.wkt,samples/milp/buildings/building15.wkt,samples/milp/buildings/building16.wkt,samples/milp/buildings/building17.wkt,samples/milp/buildings/building18.wkt,samples/milp/buildings/building19.wkt,samples/milp/buildings/building20.wkt,samples/milp/buildings/building21.wkt,samples/milp/buildings/building22.wkt,samples/milp/buildings/building23.wkt,samples/milp/buildings/building24.wkt,samples/milp/buildings/building25.wkt,samples/milp/buildings/building26.wkt,samples/milp/buildings/building27.wkt,samples/milp/buildings/building28.wkt,samples/milp/facilities/facility1.wkt,samples/milp/facilities/facility2.wkt,samples/milp/facilities/facility3.wkt,samples/milp/facilities/facility4.wkt,samples/milp/facilities/facility5.wkt,samples/milp/facilities/facility6.wkt,samples/milp/facilities/facility7.wkt,samples/milp/facilities/facility8.wkt,samples/milp/facilities/facility9.wkt,samples/milp/facilities/facility10.wkt,samples/milp/facilities/facility11.wkt,samples/milp/facilities/facility12.wkt,samples/milp/facilities/facility13.wkt,samples/milp/facilities/facility14.wkt,samples/milp/facilities/facility15.wkt,samples/milp/facilities/facility16.wkt,samples/milp/sports_lakes/sl_1.wkt,samples/milp/sports_lakes/sl_2.wkt,samples/milp/sports_lakes/sl_3.wkt,samples/milp/sports_lakes/sl_4.wkt,samples/milp/sports_lakes/sl_5.wkt,samples/milp/sports_lakes/sl_6.wkt,samples/milp/sports_lakes/sl_7.wkt,samples/milp/sports_lakes/sl_8.wkt,samples/milp/sports_lakes/sl_9.wkt,samples/milp/sports_lakes/sl_10.wkt,samples/milp/sports_lakes/sl_11.wkt,samples/milp/sports_lakes/sl_12.wkt,samples/milp/sports_lakes/sl_13.wkt,samples/milp/sports_lakes/sl_14.wkt,samples/milp/sports_lakes/sl_15.wkt,samples/milp/sports_lakes/sl_16.wkt
+Group3.MILPClusteredFogMovement.updateInterval = 15.0 
+Group3.MILPClusteredFogMovement.numClusters = 3      
+Group3.MILPClusteredFogMovement.enableRandomShutdown = true
+Group3.MILPClusteredFogMovement.shutdownTime = 500.0
+
+# --- WOA-Specific Settings ---
+Group3.WOAFogMovement.startLocation = 2500,2500
+Group3.WOAFogMovement.obstacleFile = samples/milp/uoh_map.wkt,samples/milp/buildings/building1.wkt,samples/milp/buildings/building2.wkt,samples/milp/buildings/building3.wkt,samples/milp/buildings/building4.wkt,samples/milp/buildings/building5.wkt,samples/milp/buildings/building6.wkt,samples/milp/buildings/building7.wkt,samples/milp/buildings/building8.wkt,samples/milp/buildings/building9.wkt,samples/milp/buildings/building10.wkt,samples/milp/buildings/building11.wkt,samples/milp/buildings/building12.wkt,samples/milp/buildings/building13.wkt,samples/milp/buildings/building14.wkt,samples/milp/buildings/building15.wkt,samples/milp/buildings/building16.wkt,samples/milp/buildings/building17.wkt,samples/milp/buildings/building18.wkt,samples/milp/buildings/building19.wkt,samples/milp/buildings/building20.wkt,samples/milp/buildings/building21.wkt,samples/milp/buildings/building22.wkt,samples/milp/buildings/building23.wkt,samples/milp/buildings/building24.wkt,samples/milp/buildings/building25.wkt,samples/milp/buildings/building26.wkt,samples/milp/buildings/building27.wkt,samples/milp/buildings/building28.wkt,samples/milp/facilities/facility1.wkt,samples/milp/facilities/facility2.wkt,samples/milp/facilities/facility3.wkt,samples/milp/facilities/facility4.wkt,samples/milp/facilities/facility5.wkt,samples/milp/facilities/facility6.wkt,samples/milp/facilities/facility7.wkt,samples/milp/facilities/facility8.wkt,samples/milp/facilities/facility9.wkt,samples/milp/facilities/facility10.wkt,samples/milp/facilities/facility11.wkt,samples/milp/facilities/facility12.wkt,samples/milp/facilities/facility13.wkt,samples/milp/facilities/facility14.wkt,samples/milp/facilities/facility15.wkt,samples/milp/facilities/facility16.wkt,samples/milp/sports_lakes/sl_1.wkt,samples/milp/sports_lakes/sl_2.wkt,samples/milp/sports_lakes/sl_3.wkt,samples/milp/sports_lakes/sl_4.wkt,samples/milp/sports_lakes/sl_5.wkt,samples/milp/sports_lakes/sl_6.wkt,samples/milp/sports_lakes/sl_7.wkt,samples/milp/sports_lakes/sl_8.wkt,samples/milp/sports_lakes/sl_9.wkt,samples/milp/sports_lakes/sl_10.wkt,samples/milp/sports_lakes/sl_11.wkt,samples/milp/sports_lakes/sl_12.wkt,samples/milp/sports_lakes/sl_13.wkt,samples/milp/sports_lakes/sl_14.wkt,samples/milp/sports_lakes/sl_15.wkt,samples/milp/sports_lakes/sl_16.wkt
+Group3.WOAFogMovement.updateInterval = 15.0
+Group3.WOAFogMovement.communicationRange = 500.0
+Group3.WOAFogMovement.populationSize = 20
+Group3.WOAFogMovement.maxIterations = 100
+Group3.WOAFogMovement.woaSpiralB = 1.0
+Group3.WOAFogMovement.targetMoveThreshold = 10.0
+Group3.WOAFogMovement.coverageWeight = 0.5
+Group3.WOAFogMovement.priorityWeight = 0.5
+Group3.WOAFogMovement.enableLogging = false
+Group3.WOAFogMovement.enableRandomShutdown = true
+Group3.WOAFogMovement.shutdownTime = 500.0
+
+# ================================================================
+#  MAP UNDERLAY
+# ================================================================
+MapBasedMovement.nrofMapFiles = 7
+MapBasedMovement.mapFile1 = samples/milp/highwaysbarriers.wkt
+MapBasedMovement.mapFile2 = samples/milp/waterway.wkt 
+MapBasedMovement.mapFile3 = samples/milp/highwaysstreets.wkt  
+MapBasedMovement.mapFile4 = samples/milp/uoh_map.wkt
+MapBasedMovement.mapFile5 = samples/milp/highwaysways.wkt
+MapBasedMovement.mapFile6 = samples/milp/land_use_and_nature_lines.wkt
+MapBasedMovement.mapFile7 = samples/milp/manmadepowerlines.wkt 
+
+# ================================================================
+#  REPORTING
+# ================================================================
+Events.nrof = 0
+
+Report.nrofReports = 1
+Report.reportDir = reports/batch_fog_results
+Report.report1 = FogPerformanceReport

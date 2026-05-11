@@ -123,6 +123,9 @@ public class WOAFogMovement extends MovementModel {
     private boolean isWaiting            = false; // collision-avoidance hold
     private int     woaCycleCount        = 0;     // readable log counter
     private boolean shutdownTriggered    = false; // event latch
+    private boolean reassignmentSuccessful = false;
+    private double  actualShutdownTime   = -1.0;
+    private double  lastExecutionTimeMs  = 0.0;
 
     private final GDRRTPlanner gdrrt;       // obstacle-aware path planner
     private final Random       rng = new Random(); // WOA random source
@@ -235,6 +238,10 @@ public class WOAFogMovement extends MovementModel {
         this.priorityWeight      = proto.priorityWeight;
         this.enableShutdown      = proto.enableShutdown;
         this.shutdownTime        = proto.shutdownTime;
+        this.shutdownTriggered   = proto.shutdownTriggered;
+        this.reassignmentSuccessful = proto.reassignmentSuccessful;
+        this.actualShutdownTime  = proto.actualShutdownTime;
+        this.lastExecutionTimeMs = proto.lastExecutionTimeMs;
         this.dronePriorityMap    = new java.util.HashMap<>(proto.dronePriorityMap);
         this.gdrrt               = proto.gdrrt;
     }
@@ -304,7 +311,7 @@ public class WOAFogMovement extends MovementModel {
         // ------------------------------------------------------------------
         GDRRTPlanner.PlannedSegment proposed = gdrrt.planNextSegment();
         if (proposed == null) {
-            DronePathManager.setStationary(getHost().getAddress());
+            DronePathManager.setStationary(getHost().getAddress(), getHost().getLocation());
             return null;
         }
 
@@ -314,13 +321,10 @@ public class WOAFogMovement extends MovementModel {
         if (DronePathManager.requestPath(getHost().getAddress(), proposed.path)) {
             isWaiting = false;
             gdrrt.commit(proposed);
-            if (proposed.isFinalPath) {
-                DronePathManager.setStationary(getHost().getAddress());
-            }
             return proposed.path;
         } else {
             isWaiting = true;
-            DronePathManager.setStationary(getHost().getAddress());
+            DronePathManager.setStationary(getHost().getAddress(), getHost().getLocation());
             Path hold = new Path(0);
             hold.addWaypoint(getHost().getLocation());
             return hold;
@@ -330,6 +334,17 @@ public class WOAFogMovement extends MovementModel {
     @Override
     public WOAFogMovement replicate() {
         return new WOAFogMovement(this);
+    }
+
+    public Coord getCurrentOptimalTarget() { return currentOptimalTarget; }
+    public boolean isShutdownTriggered() { return shutdownTriggered; }
+    public boolean isReassignmentSuccessful() { return reassignmentSuccessful; }
+    public double getShutdownTime() { return actualShutdownTime; }
+    
+    public double pollExecutionTimeMs() { 
+        double val = lastExecutionTimeMs;
+        lastExecutionTimeMs = 0;
+        return val;
     }
 
     // =======================================================================
@@ -346,11 +361,13 @@ public class WOAFogMovement extends MovementModel {
      * @return optimal Coord to move toward, or null if no drones are in range.
      */
     private Coord runWOA() {
+        long startTime = System.nanoTime();
         woaCycleCount++;
         double  now     = SimClock.getTime();
         DTNHost fogHost = getHost();
 
         if (fogHost == null) {
+            lastExecutionTimeMs = (System.nanoTime() - startTime) / 1_000_000.0;
             return null;
         }
 
@@ -360,6 +377,7 @@ public class WOAFogMovement extends MovementModel {
         double pTotal = computePTotal(droneInfos);
 
         if (m == 0) {
+            lastExecutionTimeMs = (System.nanoTime() - startTime) / 1_000_000.0;
             return fogHost.getLocation();
         }
 
@@ -448,6 +466,7 @@ public class WOAFogMovement extends MovementModel {
             }
         }
 
+        lastExecutionTimeMs = (System.nanoTime() - startTime) / 1_000_000.0;
         return bestWhale.toCoord();
     }
 
@@ -464,6 +483,7 @@ public class WOAFogMovement extends MovementModel {
      */
     private void triggerRandomShutdown() {
         shutdownTriggered = true;
+        actualShutdownTime = SimClock.getTime();
         System.out.println("[WOA-EVENT] >>> CRITICAL EVENT: Random Drone Shutdown Triggered at t="
                 + fmt(SimClock.getTime()) + " <<<");
 
@@ -550,7 +570,9 @@ public class WOAFogMovement extends MovementModel {
                     + " (previous prio=" + fmt(replacementMm.getPriority())
                     + " -> new prio=" + fmt(killedPriority) + ") <<<");
             replacementMm.changeTarget(killedTarget, killedPriority);
+            reassignmentSuccessful = true;
         } else {
+            reassignmentSuccessful = false;
             System.out.println("[WOA-EVENT] >>> FOG ACTION: Drone " + killedDrone.getName()
                     + " failed, but NO lower priority drone is in range ("
                     + fmt(communicationRange) + "m) for reassignment. <<<");
