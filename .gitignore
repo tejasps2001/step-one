@@ -149,3 +149,4 @@ step-one-main/bin
 sim-flowable/bin
 step-one-main/samples/woa/woa_log.txt
 gradle.properties
+step-one-main/reports/
