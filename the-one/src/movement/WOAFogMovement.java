@@ -759,7 +759,6 @@ public class WOAFogMovement extends MovementModel {
      * the weighted contribution is priority*(1+1) = 2*priority. Dividing by
      * P_total = 2*sum(priorities) therefore correctly bounds priorityTerm to
      * [0, 1].
-     *
      * SIDE EFFECT (documented): at typical coverage distances where proximity
      * is between 0 and 1, pScore per drone is between priority and 2*priority,
      * so priorityTerm operates in [0.5, 1.0] rather than the full [0, 1.0]
