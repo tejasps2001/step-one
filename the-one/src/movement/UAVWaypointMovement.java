@@ -1,6 +1,7 @@
 package movement;
 
 import core.Coord;
+import core.SimScenario;
 import core.Settings;
 import core.SimClock;
 import core.SimError;
@@ -305,7 +306,14 @@ public class UAVWaypointMovement extends MovementModel {
     private double      hoverUntil = 0;
     private boolean     replanNeeded = false;
     private int         stallCount   = 0;
-    private boolean     reachedFinalGoal = false;
+    private double      minSubGoalDist = Double.MAX_VALUE;
+    private int         progressStallCount = 0;
+
+    private static final double DEFAULT_FINAL_GOAL_TOLERANCE = 2.0;
+    public  static final String FINAL_GOAL_TOLERANCE_S = "finalGoalTolerance";
+    private double  finalGoalTolerance;
+
+    private boolean reachedFinalGoal = false;
 
     private Path trailPath = null;
 
@@ -314,6 +322,29 @@ public class UAVWaypointMovement extends MovementModel {
     private int           historyHead = 0;
     private int           historyFill = 0;
 
+    private long          totalComputeTimeNs = 0;
+    private boolean       failureLogPrinted = false;
+
+    // ================================================================ //
+    //  FIX: Peer-proximity check threshold for direct-walk bypass
+    //
+    //  When a peer UAV is closer than this fraction of uavSeparationM,
+    //  the direct-walk primary mover hands off to DWA (which includes VO).
+    //  This ensures VO fires even when there are no static obstacles
+    //  between two converging drones — the original code only invoked
+    //  DWA when the direct step landed in obstacleGrid, but peer UAVs
+    //  are never written to obstacleGrid.
+    // ================================================================ //
+    private static final double PEER_CHECK_RATIO = 1.5;
+
+    // ================================================================ //
+    //  DEBUG: Stuck-detection logging
+    //
+    //  Log a detailed status message whenever the drone fires its stall
+    //  handler, and track the last position where we logged so we avoid
+    //  flooding the console on every single tick.
+    // ================================================================ //
+    /** Sim time of the last stall-debug log for this drone. */
     private double lastStallLogTime = -1.0;
 
     // ================================================================ //
@@ -501,6 +532,10 @@ public class UAVWaypointMovement extends MovementModel {
                                      ? proto.explicitGeoExtents.clone() : null;
         this.finalGoalTolerance    = proto.finalGoalTolerance;
         this.reachedFinalGoal      = false;
+        this.failureLogPrinted     = false;
+
+        this.totalComputeTimeNs    = 0;
+
         this.uavId = ID_COUNTER.getAndIncrement();
     }
 
@@ -510,179 +545,237 @@ public class UAVWaypointMovement extends MovementModel {
 
     @Override
     public Coord getInitialLocation() {
-        mergeObstaclesIfNeeded();
-
-        double offsetX = (!perGroupSpawnSet && uavId >= 0) ? uavId * spawnStrideM : 0.0;
-        uavPos = new Coord(spawnX + offsetX, spawnY);
-        if (snapLocationsToGrid)
-            uavPos = UavPathUtils.snapToNearestFreeCell(
-                uavPos, UavObstacleGrid.obstacleGrid, gridCellM, gridW, gridH);
-
-        poiTour      = buildMissionPoiTour(uavPos);
-        poiIndex     = 0;
-        replanNeeded = false;
-        stallCount   = 0;
-        reachedFinalGoal = false;
-        trailPath    = new Path(sampleSpeed());
-        trailPath.addWaypoint(uavPos.clone());
-        historyHead = 0;
-        historyFill = 0;
-        lastStallLogTime = -1.0;
-        planToNextPoi();
-        hovering   = false;
-        hoverUntil = 0;
-
-        if (uavId >= 0)
-            PEER_REGISTRY.put(uavId,
-                new double[]{ uavPos.getX(), uavPos.getY(), 0.0, 0.0 });
-
-        return uavPos.clone();
+        long _startNs = System.nanoTime();
+        try {
+            mergeObstaclesIfNeeded();
+    
+            double offsetX = (!perGroupSpawnSet && uavId >= 0) ? uavId * spawnStrideM : 0.0;
+            uavPos = new Coord(spawnX + offsetX, spawnY);
+            if (snapLocationsToGrid) uavPos = snapToNearestFreeCell(uavPos);
+    
+            poiTour      = buildMissionPoiTour(uavPos);
+            poiIndex     = 0;
+            replanNeeded = false;
+            stallCount   = 0;
+            minSubGoalDist = Double.MAX_VALUE;
+            progressStallCount = 0;
+            reachedFinalGoal = false;
+            failureLogPrinted = false;
+            trailPath    = new Path(sampleSpeed());
+            trailPath.addWaypoint(uavPos.clone());
+            historyHead = 0;
+            historyFill = 0;
+            lastStallLogTime = -1.0;
+            planToNextPoi();
+            hovering   = false;
+            hoverUntil = 0;
+    
+            if (uavId >= 0)
+                PEER_REGISTRY.put(uavId,
+                    new double[]{ uavPos.getX(), uavPos.getY(), 0.0, 0.0 });
+    
+            return uavPos.clone();
+        } finally {
+            this.totalComputeTimeNs += (System.nanoTime() - _startNs);
+        }
     }
 
     @Override
     public Path getPath() {
+        long _startNs = System.nanoTime();
+        try {
+            // ── End-of-simulation failure log ───────────────────────────────────
+            if (SimClock.getTime() >= SimScenario.getInstance().getEndTime() - 1.0) {
+                if (!reachedFinalGoal && !failureLogPrinted) {
+                    System.out.printf("[GUI/LOG] FAILURE at T=%.1fs: UAV%d did not reach final goal (%.1f, %.1f)%n",
+                            SimClock.getTime(), uavId, targetX, targetY);
+                    failureLogPrinted = true;
+                }
+            }
 
-        // ── FIX 1: Already stopped at goal? Stay put. ───────────────────
-        if (reachedFinalGoal) {
-            Path path = new Path(0);
-            path.addWaypoint(uavPos.clone());
-            path.addWaypoint(uavPos.clone());
-            return path;
-        }
+            // ── FIX 1: Already stopped at goal? Stay put. ───────────────────────
+            if (reachedFinalGoal) {
+                Path path = new Path(0);
+                path.addWaypoint(uavPos.clone());
+                path.addWaypoint(uavPos.clone());
+                return path;
+            }
+    
+            // ── FIX 1: Are we close enough to the final goal right now? ─────────
+            Coord finalGoal = poiTour.get(poiTour.size() - 1);
+            if (poiIndex == poiTour.size() - 1
+                    && uavPos.distance(finalGoal) <= finalGoalTolerance) {
+                reachedFinalGoal = true;
+            if (getHost() != null) {
+                System.out.println("Drone " + getHost().getAddress() + " successfully reached its goal at " + core.SimClock.getTime() + "s!");
+            }
+                lastVx = 0.0;
+                lastVy = 0.0;
+                if (uavId >= 0)
+                    PEER_REGISTRY.remove(uavId);
+                Path path = new Path(0);
+                path.addWaypoint(uavPos.clone());
+                path.addWaypoint(uavPos.clone());
+                return path;
+            }
+    
+            // ── Normal planning ─────────────────────────────────────────────────
+            if (keyNodes == null || keyNodes.isEmpty()) planToNextPoi();
+    
+            Coord subGoal = keyNodes.get(keyIndex);
+    
+            if (replanNeeded) {
+                replanNeeded = false; stallCount = 0;
+                progressStallCount = 0;
+                minSubGoalDist = Double.MAX_VALUE;
+                planToNextPoi();
+                subGoal = keyNodes.get(keyIndex);
+            }
+    
+            double prevX = uavPos.getX(), prevY = uavPos.getY();
+            double distToSub = uavPos.distance(subGoal);
 
-        // ── FIX 1: Are we close enough to the final goal right now? ─────
-        Coord finalGoal = poiTour.get(poiTour.size() - 1);
-        if (poiIndex == poiTour.size() - 1
-                && uavPos.distance(finalGoal) <= finalGoalTolerance) {
-            reachedFinalGoal = true;
-            lastVx = 0.0; lastVy = 0.0;
-            if (uavId >= 0)
-                PEER_REGISTRY.put(uavId,
-                    new double[]{ uavPos.getX(), uavPos.getY(), 0.0, 0.0 });
-            Path path = new Path(0);
-            path.addWaypoint(uavPos.clone());
-            path.addWaypoint(uavPos.clone());
-            return path;
-        }
+            // Track net progress toward the subgoal to detect large oscillations
+            if (distToSub < minSubGoalDist - 0.1) {
+                minSubGoalDist = distToSub;
+                progressStallCount = 0;
+            } else {
+                progressStallCount++;
+            }
 
-        // ── Normal planning ─────────────────────────────────────────────
-        if (keyNodes == null || keyNodes.isEmpty()) planToNextPoi();
+            // ── FIX: Peer-proximity VO gate for direct-walk primary mover ────────
+            boolean peerThreat = isPeerWithinRange(uavPos, PEER_CHECK_RATIO * uavSeparationM);
+    
+            double stepSize  = Math.min(speedMax, distToSub);
+            Coord nextPos;
+            if (distToSub < 0.1) {
+                nextPos = subGoal.clone();
+            } else if (peerThreat) {
+                // Peer nearby: use DWA so the VO penalty influences direction choice
+                nextPos = dwaStep(uavPos, subGoal);
+            } else {
+                double dx = (subGoal.getX() - uavPos.getX()) / distToSub;
+                double dy = (subGoal.getY() - uavPos.getY()) / distToSub;
+                Coord direct = clampToWorld(new Coord(
+                    uavPos.getX() + dx * stepSize,
+                    uavPos.getY() + dy * stepSize));
+                int[] dc = worldToGrid(direct);
+                if (obstacleGrid[dc[1]][dc[0]]) {
+                    nextPos = dwaStep(uavPos, subGoal);
+                } else {
+                    nextPos = direct;
+                }
+            }
+    
+            // ── Record current position in the circular history buffer ───────────
+            int[] curCell = worldToGrid(uavPos);
+            posHistory[historyHead][0] = curCell[0];
+            posHistory[historyHead][1] = curCell[1];
+            historyHead = (historyHead + 1) % HISTORY_SIZE;
+            if (historyFill < HISTORY_SIZE) historyFill++;
+    
+            // ── Stall & Oscillation detection → skip waypoint then replan ────────
+            boolean isPhysicalStall = (nextPos.distance(uavPos) < speedMax * 0.1);
+            boolean isOscillating = (progressStallCount >= STALL_LIMIT * 4);
+            
+            if (isPhysicalStall) stallCount++;
+            else stallCount = 0;
 
-        Coord subGoal = keyNodes.get(keyIndex);
-
-        if (replanNeeded) {
-            replanNeeded = false; stallCount = 0;
-            planToNextPoi();
-            subGoal = keyNodes.get(keyIndex);
-        }
-
-        double prevX = uavPos.getX(), prevY = uavPos.getY();
-
-        // ── Peer-proximity VO gate for direct-walk primary mover ─────────
-        boolean peerThreat = isPeerWithinRange(uavPos, PEER_CHECK_RATIO * uavSeparationM);
-
-        double distToSub = uavPos.distance(subGoal);
-        double stepSize  = Math.min(speedMax, distToSub);
-        Coord nextPos;
-        if (distToSub < 0.1) {
-            nextPos = subGoal.clone();
-        } else if (peerThreat) {
-            nextPos = dwaStep(uavPos, subGoal);
-        } else {
-            double dx = (subGoal.getX() - uavPos.getX()) / distToSub;
-            double dy = (subGoal.getY() - uavPos.getY()) / distToSub;
-            Coord direct = UavPathUtils.clampToWorld(
-                new Coord(uavPos.getX() + dx * stepSize,
-                          uavPos.getY() + dy * stepSize),
-                worldW(), worldH());
-            int[] dc = worldToGrid(direct);
-            nextPos = UavObstacleGrid.obstacleGrid[dc[1]][dc[0]]
-                      ? dwaStep(uavPos, subGoal)
-                      : direct;
-        }
-
-        // ── Record current position in the circular history buffer ───────
-        int[] curCell = worldToGrid(uavPos);
-        posHistory[historyHead][0] = curCell[0];
-        posHistory[historyHead][1] = curCell[1];
-        historyHead = (historyHead + 1) % HISTORY_SIZE;
-        if (historyFill < HISTORY_SIZE) historyFill++;
-
-        // ── Stall detection → skip waypoint then replan ──────────────────
-        if (nextPos.distance(uavPos) < speedMax * 0.1) {
-            if (++stallCount >= STALL_LIMIT) {
+            if (stallCount >= STALL_LIMIT || isOscillating) {
                 double now = SimClock.getTime();
                 if (now - lastStallLogTime >= STALL_LOG_INTERVAL) {
                     lastStallLogTime = now;
                     logStuckState(subGoal, peerThreat);
                 }
                 stallCount  = 0;
+                progressStallCount = 0;
+                minSubGoalDist = Double.MAX_VALUE;
                 historyFill = 0;
                 historyHead = 0;
-                if (keyNodes != null && keyIndex < keyNodes.size() - 1) {
-                    System.out.printf(
-                        "[UAV%d DEBUG] Stall resolved: skipping to keyNode %d/%d @ (%.1f, %.1f)%n",
-                        uavId, keyIndex + 1, keyNodes.size() - 1,
-                        keyNodes.get(keyIndex + 1).getX(),
-                        keyNodes.get(keyIndex + 1).getY());
-                    keyIndex++;
-                } else {
-                    System.out.printf(
-                        "[UAV%d DEBUG] Stall resolved: triggering full A* replan from (%.1f, %.1f)%n",
-                        uavId, uavPos.getX(), uavPos.getY());
+                
+                Coord escape = dwaEscapePoint(uavPos, subGoal);
+                if (escape.distance(uavPos) < 1.0) {
                     replanNeeded = true;
-                }
-            }
-        } else {
-            stallCount = 0;
-        }
-
-        if (nextPos.distance(subGoal) < gridCellM * 1.5) {
-            uavPos = subGoal.clone();
-            historyFill = 0; historyHead = 0;
-            if (++keyIndex >= keyNodes.size()) {
-                if (++poiIndex >= poiTour.size()) {
-                    if (uavPos.distance(finalGoal) <= finalGoalTolerance) {
-                        reachedFinalGoal = true;
-                        lastVx = 0.0; lastVy = 0.0;
-                        if (uavId >= 0)
-                            PEER_REGISTRY.put(uavId,
-                                new double[]{ uavPos.getX(), uavPos.getY(), 0.0, 0.0 });
-                        Path path = new Path(0);
-                        path.addWaypoint(uavPos.clone());
-                        path.addWaypoint(uavPos.clone());
-                        return path;
+                } else {
+                    if (keyNodes != null) {
+                        keyNodes.add(keyIndex, escape);
                     } else {
-                        poiIndex = 0;
-                        poiTour  = buildMissionPoiTour(uavPos);
+                        replanNeeded = true;
                     }
                 }
-                planToNextPoi();
             }
-        } else {
-            uavPos = nextPos.clone();
+
+            boolean reachedSubGoal = false;
+            boolean isFinalNode = (keyIndex == keyNodes.size() - 1);
+            
+            if (isFinalNode) {
+                // For the final goal, require exact arrival without premature teleportation
+                if (nextPos.distance(subGoal) <= Math.max(speedMax, finalGoalTolerance)) {
+                    uavPos = subGoal.clone();
+                    reachedSubGoal = true;
+                } else {
+                    uavPos = nextPos.clone();
+                }
+            } else {
+                uavPos = nextPos.clone();
+                // For intermediate waypoints, advance smoothly when close
+                if (nextPos.distance(subGoal) < gridCellM * 1.5) {
+                    reachedSubGoal = true;
+                }
+            }
+
+            if (reachedSubGoal) {
+                historyFill = 0; historyHead = 0;
+                minSubGoalDist = Double.MAX_VALUE;
+                progressStallCount = 0;
+                if (++keyIndex >= keyNodes.size()) {
+                    if (++poiIndex >= poiTour.size()) {
+                        if (uavPos.distance(finalGoal) <= finalGoalTolerance) {
+                            reachedFinalGoal = true;
+                        if (getHost() != null) {
+                            System.out.println("Drone " + getHost().getAddress() + " successfully reached its goal at " + core.SimClock.getTime() + "s!");
+                        }
+                            lastVx = 0.0;
+                            lastVy = 0.0;
+                            if (uavId >= 0)
+                                PEER_REGISTRY.remove(uavId);
+                            Path path = new Path(0);
+                            path.addWaypoint(uavPos.clone());
+                            path.addWaypoint(uavPos.clone());
+                            return path;
+                        } else {
+                            poiIndex = 0;
+                            poiTour  = buildMissionPoiTour(uavPos);
+                        }
+                    }
+                    planToNextPoi();
+                }
+            }
+    
+            lastVx = uavPos.getX() - prevX;
+            lastVy = uavPos.getY() - prevY;
+            if (uavId >= 0)
+                PEER_REGISTRY.put(uavId,
+                    new double[]{ uavPos.getX(), uavPos.getY(), lastVx, lastVy });
+    
+            if (trailPath == null) {
+                trailPath = new Path(sampleSpeed());
+                trailPath.addWaypoint(new Coord(prevX, prevY));
+            }
+            trailPath.addWaypoint(uavPos.clone());
+    
+            Path path = new Path(sampleSpeed());
+            path.addWaypoint(new Coord(prevX, prevY));
+            path.addWaypoint(uavPos.clone());
+    
+            if (uavId >= 0 && trailPath != null) {
+                TRAIL_REGISTRY.put(uavId, trailPath);
+            }
+    
+            return path;
+        } finally {
+            this.totalComputeTimeNs += (System.nanoTime() - _startNs);
         }
-
-        lastVx = uavPos.getX() - prevX;
-        lastVy = uavPos.getY() - prevY;
-        if (uavId >= 0)
-            PEER_REGISTRY.put(uavId,
-                new double[]{ uavPos.getX(), uavPos.getY(), lastVx, lastVy });
-
-        if (trailPath == null) {
-            trailPath = new Path(sampleSpeed());
-            trailPath.addWaypoint(new Coord(prevX, prevY));
-        }
-        trailPath.addWaypoint(uavPos.clone());
-
-        Path path = new Path(sampleSpeed());
-        path.addWaypoint(new Coord(prevX, prevY));
-        path.addWaypoint(uavPos.clone());
-
-        if (uavId >= 0 && trailPath != null)
-            TRAIL_REGISTRY.put(uavId, trailPath);
-
-        return path;
     }
 
     @Override
@@ -709,7 +802,12 @@ public class UAVWaypointMovement extends MovementModel {
         for (Map.Entry<Integer, double[]> e : PEER_REGISTRY.entrySet()) {
             if (e.getKey() == uavId) continue;
             double[] p = e.getValue();
-            if (Math.hypot(p[0] - pos.getX(), p[1] - pos.getY()) < threshold) return true;
+
+            // Ignore peers that are located exactly at our target (e.g., the target DTNHosts themselves)
+            if (Math.hypot(p[0] - targetX, p[1] - targetY) <= Math.max(2.5, finalGoalTolerance)) continue;
+
+            double dist = Math.hypot(p[0] - pos.getX(), p[1] - pos.getY());
+            if (dist < threshold) return true;
         }
         return false;
     }
@@ -913,6 +1011,10 @@ public class UAVWaypointMovement extends MovementModel {
         for (Map.Entry<Integer, double[]> e : PEER_REGISTRY.entrySet()) {
             if (e.getKey() == uavId) continue;
             double[] p = e.getValue();
+            
+            // Ignore peers that are located at our target to prevent repulsion from target DTNHosts
+            if (Math.hypot(p[0] - targetX, p[1] - targetY) <= Math.max(2.5, finalGoalTolerance)) continue;
+
             double px = p[0], py = p[1], pvx = p[2], pvy = p[3];
             double pvm = Math.hypot(pvx, pvy);
             if (pvm > 1e-9) { px += (pvx / pvm) * step; py += (pvy / pvm) * step; }
@@ -1108,6 +1210,464 @@ public class UAVWaypointMovement extends MovementModel {
         PEER_REGISTRY.clear();
         TRAIL_REGISTRY.clear();
         ID_COUNTER.set(0);
+        geoMinX = Double.MAX_VALUE;  geoMaxX = -Double.MAX_VALUE;
+        geoMinY = Double.MAX_VALUE;  geoMaxY = -Double.MAX_VALUE;
+        geoScaleInitialised = false;
+        geoOriginLon   = 78.300;
+        geoOriginLat   = 17.480;
+        geoScaleFactor = 100000.0;
+    }
+
+    // ================================================================ //
+    //  Self-contained WKT obstacle loader
+    // ================================================================ //
+
+    private static final java.nio.charset.Charset[] WKT_CHARSETS = {
+        java.nio.charset.StandardCharsets.UTF_8,
+        java.nio.charset.Charset.forName("Windows-1252"),
+        java.nio.charset.StandardCharsets.ISO_8859_1
+    };
+
+    private void loadObstaclesFromWkt(String rel) {
+        java.nio.file.Path path = java.nio.file.Paths.get(rel);
+        if (!path.isAbsolute())
+            path = java.nio.file.Paths.get(System.getProperty("user.dir", ".")).resolve(path);
+
+        if (!java.nio.file.Files.exists(path)) {
+            throw new SimError(
+                "UAVWaypointMovement: WKT file not found: " + path
+                + "\n  Check that the path in your settings file is correct"
+                + " and that the file exists relative to the ONE root directory.");
+        }
+        if (!java.nio.file.Files.isReadable(path)) {
+            throw new SimError(
+                "UAVWaypointMovement: WKT file exists but is not readable"
+                + " (check OS permissions): " + path);
+        }
+
+        List<String> lines = null;
+        IOException  lastEx = null;
+        for (java.nio.charset.Charset cs : WKT_CHARSETS) {
+            try {
+                lines = java.nio.file.Files.readAllLines(path, cs);
+                break;
+            } catch (java.nio.charset.MalformedInputException mie) {
+                lastEx = mie;
+            } catch (IOException e) {
+                throw new SimError(
+                    "UAVWaypointMovement: I/O error reading WKT file: " + path
+                    + "\n  " + e.getMessage());
+            }
+        }
+        if (lines == null) {
+            throw new SimError(
+                "UAVWaypointMovement: WKT file could not be decoded with any"
+                + " supported charset (UTF-8, Windows-1252, ISO-8859-1): " + path
+                + (lastEx != null ? "\n  " + lastEx.getMessage() : ""));
+        }
+
+        List<double[]>       points      = new ArrayList<>();
+        List<List<double[]>> linestrings = new ArrayList<>();
+        List<List<double[]>> polygons    = new ArrayList<>();
+
+        for (int lineNo = 0; lineNo < lines.size(); lineNo++) {
+            String line = lines.get(lineNo).trim();
+            if (line.isEmpty() || line.startsWith("#") || line.startsWith("//")) continue;
+            try {
+                wktExtractGeometry(line, points, linestrings, polygons);
+            } catch (Exception e) {
+                System.err.println("[UAVWaypointMovement] Skipping malformed geometry"
+                    + " at " + path.getFileName() + " line " + (lineNo + 1)
+                    + ": " + e.getMessage());
+            }
+        }
+
+        normaliseCoordinatesIfGeographic(points, linestrings, polygons);
+
+        for (double[] pt : points) {
+            rasterizeDiscOnGrid(pt[0], pt[1], pointObstacleRadius);
+            obstacleDiscs.add(new double[]{ pt[0], pt[1], pointObstacleRadius });
+            if (obstacleRenderData != null)
+                obstacleRenderData.add(new ObstacleRenderData(
+                    ObstacleRenderData.Type.POINT,
+                    java.util.Arrays.asList(new Coord(pt[0], pt[1])),
+                    pointObstacleRadius));
+        }
+        for (List<double[]> ls : linestrings) {
+            List<Coord> lsCoords = obstacleRenderData != null
+                                   ? new ArrayList<>(ls.size()) : null;
+            for (int i = 0; i < ls.size() - 1; i++) {
+                double[] a = ls.get(i), b = ls.get(i + 1);
+                rasterizeStripOnGrid(a[0], a[1], b[0], b[1], lineObstacleHalfWidth);
+                obstacleSegBuf.add(new double[]{ a[0], a[1], b[0], b[1], lineObstacleHalfWidth });
+            }
+            if (lsCoords != null) {
+                for (double[] p : ls) lsCoords.add(new Coord(p[0], p[1]));
+                if (lsCoords.size() >= 2)
+                    obstacleRenderData.add(new ObstacleRenderData(
+                        ObstacleRenderData.Type.LINE, lsCoords, lineObstacleHalfWidth));
+            }
+        }
+        for (List<double[]> ring : polygons) {
+            rasterizeFilledPolygon(ring);
+            for (int i = 0; i < ring.size() - 1; i++) {
+                double[] a = ring.get(i), b = ring.get(i + 1);
+                obstacleSegBuf.add(new double[]{ a[0], a[1], b[0], b[1], 0.0 });
+            }
+            if (obstacleRenderData != null) {
+                List<Coord> pgCoords = new ArrayList<>(ring.size());
+                for (double[] p : ring) pgCoords.add(new Coord(p[0], p[1]));
+                if (pgCoords.size() >= 3)
+                    obstacleRenderData.add(new ObstacleRenderData(
+                        ObstacleRenderData.Type.POLYGON, pgCoords, 0.0));
+            }
+        }
+    }
+
+    private void normaliseCoordinatesIfGeographic(List<double[]>       points,
+                                                   List<List<double[]>> linestrings,
+                                                   List<List<double[]>> polygons) {
+        double fileMinX = Double.MAX_VALUE, fileMaxX = -Double.MAX_VALUE;
+        double fileMinY = Double.MAX_VALUE, fileMaxY = -Double.MAX_VALUE;
+
+        for (double[] p : points) {
+            fileMinX = Math.min(fileMinX, p[0]); fileMaxX = Math.max(fileMaxX, p[0]);
+            fileMinY = Math.min(fileMinY, p[1]); fileMaxY = Math.max(fileMaxY, p[1]);
+        }
+        for (List<double[]> ls : linestrings)
+            for (double[] p : ls) {
+                fileMinX = Math.min(fileMinX, p[0]); fileMaxX = Math.max(fileMaxX, p[0]);
+                fileMinY = Math.min(fileMinY, p[1]); fileMaxY = Math.max(fileMaxY, p[1]);
+            }
+        for (List<double[]> pg : polygons)
+            for (double[] p : pg) {
+                fileMinX = Math.min(fileMinX, p[0]); fileMaxX = Math.max(fileMaxX, p[0]);
+                fileMinY = Math.min(fileMinY, p[1]); fileMaxY = Math.max(fileMaxY, p[1]);
+            }
+
+        if (fileMinX == Double.MAX_VALUE) return;
+
+        double spanX = fileMaxX - fileMinX, spanY = fileMaxY - fileMinY;
+
+        boolean isGeographic = (spanX <= 5.0 && spanY <= 5.0)
+                && (fileMinX >= -180.0 && fileMinX <= 180.0)
+                && (fileMinY >= -90.0  && fileMinY <= 90.0);
+        if (!isGeographic) return;
+
+        if (!geoScaleInitialised) {
+            geoScaleInitialised = true;
+            System.out.printf("[UAVWaypointMovement] Geographic transform locked:"
+                + " originLon=%.4f  originLat=%.4f  scale=%.1f%n",
+                geoOriginLon, geoOriginLat, geoScaleFactor);
+        }
+
+        double ox = geoOriginLon, oy = geoOriginLat, sc = geoScaleFactor;
+
+        for (double[] p : points) {
+            double lon = p[0], lat = p[1];
+            p[0] = (lon - ox) * sc;
+            p[1] = (oy - lat) * sc;
+        }
+        for (List<double[]> ls : linestrings)
+            for (double[] p : ls) {
+                double lon = p[0], lat = p[1];
+                p[0] = (lon - ox) * sc;
+                p[1] = (oy - lat) * sc;
+            }
+        for (List<double[]> pg : polygons)
+            for (double[] p : pg) {
+                double lon = p[0], lat = p[1];
+                p[0] = (lon - ox) * sc;
+                p[1] = (oy - lat) * sc;
+            }
+    }
+
+    private static void wktExtractGeometry(String wkt,
+                                           List<double[]>       points,
+                                           List<List<double[]>> linestrings,
+                                           List<List<double[]>> polygons) {
+        String upper = wkt.trim().replaceAll("\\s+", " ").toUpperCase(java.util.Locale.ROOT);
+        upper = upper.replaceAll("\\b(Z M|ZM|M|Z)\\s*(?=\\()", "");
+
+        if (upper.startsWith("GEOMETRYCOLLECTION")) {
+            String inner = extractOuterBody(wkt);
+            if (inner == null) return;
+            for (String member : splitTopLevelCommas(inner)) {
+                wktExtractGeometry(member.trim(), points, linestrings, polygons);
+            }
+
+        } else if (upper.startsWith("MULTIPOLYGON")) {
+            String inner = extractOuterBody(wkt);
+            if (inner == null) return;
+            for (String polyBody : splitTopLevelCommas(inner)) {
+                wktExtractGeometry("POLYGON " + polyBody.trim(), points, linestrings, polygons);
+            }
+
+        } else if (upper.startsWith("POLYGON")) {
+            String inner = extractOuterBody(wkt);
+            if (inner == null) return;
+            List<String> rings = splitTopLevelCommas(inner);
+            for (int ri = 0; ri < rings.size(); ri++) {
+                String stripped = rings.get(ri).trim();
+                if (stripped.startsWith("(") && stripped.endsWith(")"))
+                    stripped = stripped.substring(1, stripped.length() - 1);
+                List<double[]> ring = parseCoordSequence(stripped);
+                if (ring.size() >= 3) {
+                    if (ri == 0) {
+                        polygons.add(ring);
+                    }
+                }
+            }
+
+        } else if (upper.startsWith("MULTILINESTRING") || upper.startsWith("MULTISTRING")) {
+            String inner = extractOuterBody(wkt);
+            if (inner == null) return;
+            for (String lsBody : splitTopLevelCommas(inner)) {
+                String stripped = lsBody.trim();
+                if (stripped.startsWith("(")) {
+                    String candidate = extractOuterBody(stripped);
+                    if (candidate != null) stripped = candidate;
+                }
+                List<double[]> ls = parseCoordSequence(stripped);
+                if (ls.size() >= 2) linestrings.add(ls);
+            }
+
+        } else if (upper.startsWith("LINESTRING")) {
+            String inner = extractOuterBody(wkt);
+            if (inner == null) return;
+            List<double[]> ls = parseCoordSequence(inner);
+            if (ls.size() >= 2) linestrings.add(ls);
+
+        } else if (upper.startsWith("MULTIPOINT")) {
+            String inner = extractOuterBody(wkt);
+            if (inner == null) return;
+            for (String ptToken : splitTopLevelCommas(inner)) {
+                String stripped = ptToken.trim();
+                if (stripped.startsWith("(") && stripped.endsWith(")"))
+                    stripped = stripped.substring(1, stripped.length() - 1);
+                double[] pt = parseOneCoord(stripped.trim());
+                if (pt != null) points.add(pt);
+            }
+
+        } else if (upper.startsWith("POINT")) {
+            String inner = extractOuterBody(wkt);
+            if (inner == null) return;
+            double[] pt = parseOneCoord(inner.trim());
+            if (pt != null) points.add(pt);
+
+        } else {
+            System.err.println("[UAVWaypointMovement] Skipping unsupported WKT type: "
+                    + upper.split("\\s+|\\(")[0]);
+        }
+    }
+
+    private static String extractOuterBody(String wkt) {
+        int open = wkt.indexOf('(');
+        if (open < 0) return null;
+        int depth = 0;
+        for (int i = open; i < wkt.length(); i++) {
+            char c = wkt.charAt(i);
+            if      (c == '(') depth++;
+            else if (c == ')') {
+                depth--;
+                if (depth == 0) return wkt.substring(open + 1, i);
+            }
+        }
+        return null;
+    }
+
+    private static List<String> splitTopLevelCommas(String s) {
+        List<String> parts = new ArrayList<>();
+        int depth = 0, start = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if      (c == '(') depth++;
+            else if (c == ')') depth--;
+            else if (c == ',' && depth == 0) {
+                parts.add(s.substring(start, i));
+                start = i + 1;
+            }
+        }
+        if (start < s.length()) parts.add(s.substring(start));
+        return parts;
+    }
+
+    private static List<double[]> parseCoordSequence(String seq) {
+        List<double[]> coords = new ArrayList<>();
+        if (seq == null || seq.trim().isEmpty()) return coords;
+        for (String token : seq.split(",")) {
+            double[] c = parseOneCoord(token.trim());
+            if (c != null) coords.add(c);
+        }
+        return coords;
+    }
+
+    private static double[] parseOneCoord(String token) {
+        if (token == null || token.isEmpty()) return null;
+        String[] parts = token.trim().split("\\s+");
+        if (parts.length < 2) return null;
+        try {
+            return new double[]{ Double.parseDouble(parts[0]),
+                                 Double.parseDouble(parts[1]) };
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static double[] computeWktBoundingBox(String relPath) {
+        try {
+            java.nio.file.Path path = java.nio.file.Paths.get(relPath);
+            if (!path.isAbsolute())
+                path = java.nio.file.Paths.get(System.getProperty("user.dir", "."))
+                           .resolve(path).normalize();
+            if (!java.nio.file.Files.exists(path)) return null;
+
+            List<double[]>       pts = new ArrayList<>();
+            List<List<double[]>> lss = new ArrayList<>(), pgs = new ArrayList<>();
+
+            List<String> lines;
+            try {
+                lines = java.nio.file.Files.readAllLines(
+                    path, java.nio.charset.StandardCharsets.UTF_8);
+            } catch (java.nio.charset.MalformedInputException e) {
+                lines = java.nio.file.Files.readAllLines(
+                    path, java.nio.charset.StandardCharsets.ISO_8859_1);
+            }
+
+            for (String line : lines) {
+                line = line.trim();
+                if (line.isEmpty() || line.startsWith("#") || line.startsWith("//")) continue;
+                try { wktExtractGeometry(line, pts, lss, pgs); }
+                catch (Exception ignored) {}
+            }
+
+            double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
+            double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+            for (double[] p : pts) {
+                minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+                minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
+            }
+            for (List<double[]> ls : lss)
+                for (double[] p : ls) {
+                    minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+                    minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
+                }
+            for (List<double[]> pg : pgs)
+                for (double[] p : pg) {
+                    minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+                    minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
+                }
+
+            if (minX == Double.MAX_VALUE) return null;
+
+            double sx = maxX - minX, sy = maxY - minY;
+            boolean geo = (sx <= 5.0 && sy <= 5.0)
+                       && (minX >= -180.0 && minX <= 180.0)
+                       && (minY >= -90.0  && minY <= 90.0);
+            return geo ? new double[]{ minX, minY, maxX, maxY } : null;
+
+        } catch (Exception e) {
+            System.err.println("[UAVWaypointMovement] Could not scan bbox of: "
+                + relPath + " (" + e.getMessage() + ")");
+            return null;
+        }
+    }
+
+    private void rasterizeDiscOnGrid(double cx, double cy, double r) {
+        double r2=r*r;
+        int c0=worldToGridCol(cx-r-gridCellM), c1=worldToGridCol(cx+r+gridCellM);
+        int r0=worldToGridRow(cy-r-gridCellM), r1=worldToGridRow(cy+r+gridCellM);
+        for (int row=Math.max(0,r0); row<=Math.min(gridH-1,r1); row++)
+            for (int col=Math.max(0,c0); col<=Math.min(gridW-1,c1); col++) {
+                Coord c=gridToWorld(col,row);
+                double dx=c.getX()-cx, dy=c.getY()-cy;
+                if (dx*dx+dy*dy<=r2) obstacleGrid[row][col]=true;
+            }
+    }
+
+    private void rasterizeStripOnGrid(double x0,double y0,double x1,double y1,double hw){
+        double pad=hw+gridCellM;
+        int c0=worldToGridCol(Math.min(x0,x1)-pad), c1=worldToGridCol(Math.max(x0,x1)+pad);
+        int r0=worldToGridRow(Math.min(y0,y1)-pad), r1=worldToGridRow(Math.max(y0,y1)+pad);
+        for (int row=Math.max(0,r0); row<=Math.min(gridH-1,r1); row++)
+            for (int col=Math.max(0,c0); col<=Math.min(gridW-1,c1); col++) {
+                Coord c=gridToWorld(col,row);
+                if (pointToSegmentDist(c, new Coord(x0,y0), new Coord(x1,y1))<=hw)
+                    obstacleGrid[row][col]=true;
+            }
+    }
+
+    private void rasterizeFilledPolygon(List<double[]> ring) {
+        if (ring == null || ring.size() < 3) return;
+
+        double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+        for (double[] p : ring) {
+            minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+            minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
+        }
+        int colMin = Math.max(0, worldToGridCol(minX));
+        int colMax = Math.min(gridW - 1, worldToGridCol(maxX));
+        int rowMin = Math.max(0, worldToGridRow(minY));
+        int rowMax = Math.min(gridH - 1, worldToGridRow(maxY));
+
+        int n = ring.size();
+
+        for (int row = rowMin; row <= rowMax; row++) {
+            double cy = (row + 0.5) * gridCellM;
+
+            List<Double> xs = new ArrayList<>();
+            for (int i = 0, j = n - 1; i < n; j = i++) {
+                double y0 = ring.get(i)[1], y1 = ring.get(j)[1];
+                double x0 = ring.get(i)[0], x1 = ring.get(j)[0];
+                if ((y0 <= cy && y1 > cy) || (y1 <= cy && y0 > cy)) {
+                    double t = (cy - y0) / (y1 - y0);
+                    xs.add(x0 + t * (x1 - x0));
+                }
+            }
+            if (xs.isEmpty()) continue;
+            Collections.sort(xs);
+
+            for (int k = 0; k + 1 < xs.size(); k += 2) {
+                double xLeft  = xs.get(k);
+                double xRight = xs.get(k + 1);
+                int cLeft  = Math.max(colMin, worldToGridCol(xLeft));
+                int cRight = Math.min(colMax, worldToGridCol(xRight));
+                for (int col = cLeft; col <= cRight; col++)
+                    obstacleGrid[row][col] = true;
+            }
+        }
+    }
+
+    // ================================================================ //
+    //  Snap / free-cell BFS
+    // ================================================================ //
+
+    private Coord snapToNearestFreeCell(Coord c) {
+        int[] s=worldToGrid(c);
+        s[0]=Math.max(0,Math.min(gridW-1,s[0]));
+        s[1]=Math.max(0,Math.min(gridH-1,s[1]));
+        if (!obstacleGrid[s[1]][s[0]]) return c.clone(); // If already free, keep exact coordinate instead of snapping to cell center
+        ArrayDeque<int[]> q=new ArrayDeque<>();
+        boolean[][] seen=new boolean[gridH][gridW];
+        q.add(s); seen[s[1]][s[0]]=true;
+        int[][] dirs={{1,0},{-1,0},{0,1},{0,-1},{1,1},{1,-1},{-1,1},{-1,-1}};
+        while (!q.isEmpty()) {
+            int[] cur=q.poll();
+            if (!obstacleGrid[cur[1]][cur[0]]) return gridToWorld(cur[0],cur[1]);
+            for (int[] d:dirs) {
+                int nc=cur[0]+d[0], nr=cur[1]+d[1];
+                if (!inBounds(nc,nr)||seen[nr][nc]) continue;
+                seen[nr][nc]=true; q.add(new int[]{nc,nr});
+            }
+        }
+        throw new SimError("UAVWaypointMovement: no free cell near "+c);
+    }
+
+    private boolean isBlockedWorldXY(double x, double y) {
+        int col = worldToGridCol(x);
+        int row = worldToGridRow(y);
+        return obstacleGrid[row][col];
     }
 
     // ================================================================ //
@@ -1198,5 +1758,9 @@ public class UAVWaypointMovement extends MovementModel {
 
     public static List<ObstacleRenderData> getObstacleRenderData() {
         return UavObstacleGrid.getRenderData();
+    }
+
+    public double getComputeTimeSeconds() {
+        return this.totalComputeTimeNs / 1e9;
     }
 }

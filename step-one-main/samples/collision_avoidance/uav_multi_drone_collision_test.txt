@@ -1,4 +1,4 @@
-## ============================================================
+0## ============================================================
 ##  Scenario — Multi-Drone Collision Test (5 UAVs)
 ##  Five drones navigate through a complex urban environment with
 ##  overlapping paths designed to maximize collision probability.
@@ -82,7 +82,7 @@ UAVWaypointMovement.finalGoalTolerance    = 2.5
 
 # ── Velocity Obstacle (VO) — CRITICAL for inter-drone collision avoidance ──
 # ENABLED for multi-drone scenario
-UAVWaypointMovement.uavSeparationM        = 35.0
+UAVWaypointMovement.uavSeparationM        = 10.0
 UAVWaypointMovement.voWeight              = 3.0
 
 # ── Launch Configuration ────────────────────────────────────────
@@ -241,9 +241,11 @@ MapBasedMovement.mapFile7 = samples/gdrrt/manmadepowerlines.wkt
 
 
 
-Group7.groupID= Uav32Target
-Group7.movementModel= StationaryMovement
-Group7.nodeLocation=3000,1400 
+Group7.groupID = Targets
+Group7.nrofHosts = 5
+Group7.movementModel = StationaryMovement
+Group7.nodeLocations = [2000,2000; 2750,2550; 3000,1400; 3500,2500; 3426,2016]
+
 # ================================================================
 #  Events / Reports
 # ================================================================
