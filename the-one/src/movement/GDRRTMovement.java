@@ -34,6 +34,9 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
     private boolean isWaiting = false;
     private boolean isDead = false;
     private double currentPriority = -1.0;
+    private long totalComputeTimeNs = 0;
+    private double totalTurnCost = 0.0;
+    private Double lastHeading = null;
 
     /**
      * Creates a new movement model based on a Settings object's settings.
@@ -108,60 +111,66 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
 
     @Override
     public Path getPath() {
-        if (reachedEnd || isDead) {
-            return null;
-        }
-
-        // Check if the drone has physically reached the destination
-        if (getHost() != null && getHost().getLocation().distance(endLoc) < 1.0) {
-            reachedEnd = true;
-            DronePathManager.setStationary(getHost().getAddress());
-            System.out.println("Drone " + getHost().getAddress() + " successfully reached its goal at " + core.SimClock.getTime() + "s!");
-
-            return null;
-        }
-
-        if (gdrrt == null) {
-            gdrrt = new GDRRTPlanner(this.obstacleFilePath);
-        }
-
-        if (!gdrrt.isInitialized()) {
-            gdrrt.init(getHost().getLocation(), endLoc);
-        }
-
-        // Plan the next move without committing
-        GDRRTPlanner.PlannedSegment proposedSegment = gdrrt.planNextSegment();
-
-        if (proposedSegment == null) { // Planner couldn't find a path
-            reachedEnd = true;
-            System.out.println("Drone " + getHost().getAddress()
-                    + " planner returned null. Setting reachedEnd = true and giving up.");
-            DronePathManager.setStationary(getHost().getAddress());
-            return null;
-        }
-
-        // Request permission from the path manager
-        if (DronePathManager.requestPath(getHost().getAddress(), proposedSegment.path)) {
-            // Permission granted: commit and move
-            isWaiting = false;
-            gdrrt.commit(proposedSegment);
-
-            if (proposedSegment.isFinalPath) {
-                // This drone has now reached its final destination and is stationary.
-                // Its path should be cleared from the manager so it doesn't block others.
-                DronePathManager.setStationary(getHost().getAddress());
+        long startNs = System.nanoTime();
+        try {
+            if (reachedEnd || isDead) {
+                return null;
             }
 
-            return proposedSegment.path;
-        } else {
-            // Permission denied: wait
-            isWaiting = true;
-            DronePathManager.setStationary(getHost().getAddress());
+            // Check if the drone has physically reached the destination
+            if (getHost() != null && getHost().getLocation().distance(endLoc) < 1.0) {
+                reachedEnd = true;
+                DronePathManager.setStationary(getHost().getAddress());
+                System.out.println("Drone " + getHost().getAddress() + " successfully reached its goal at " + core.SimClock.getTime() + "s!");
 
-            // Return a path that keeps the drone stationary
-            Path waitingPath = new Path(0);
-            waitingPath.addWaypoint(getHost().getLocation());
-            return waitingPath;
+                return null;
+            }
+
+            if (gdrrt == null) {
+                gdrrt = new GDRRTPlanner(this.obstacleFilePath);
+            }
+
+            if (!gdrrt.isInitialized()) {
+                gdrrt.init(getHost().getLocation(), endLoc);
+            }
+
+            // Plan the next move without committing
+            GDRRTPlanner.PlannedSegment proposedSegment = gdrrt.planNextSegment();
+
+            if (proposedSegment == null) { // Planner couldn't find a path
+                reachedEnd = true;
+                System.out.println("Drone " + getHost().getAddress()
+                        + " planner returned null. Setting reachedEnd = true and giving up.");
+                DronePathManager.setStationary(getHost().getAddress());
+                return null;
+            }
+
+            // Request permission from the path manager
+            if (DronePathManager.requestPath(getHost().getAddress(), proposedSegment.path)) {
+                // Permission granted: commit and move
+                isWaiting = false;
+                gdrrt.commit(proposedSegment);
+
+                if (proposedSegment.isFinalPath) {
+                    // This drone has now reached its final destination and is stationary.
+                    // Its path should be cleared from the manager so it doesn't block others.
+                    DronePathManager.setStationary(getHost().getAddress());
+                }
+
+                updateTurnCost(proposedSegment.path);
+                return proposedSegment.path;
+            } else {
+                // Permission denied: wait
+                isWaiting = true;
+                DronePathManager.setStationary(getHost().getAddress());
+
+                // Return a path that keeps the drone stationary
+                Path waitingPath = new Path(0);
+                waitingPath.addWaypoint(getHost().getLocation());
+                return waitingPath;
+            }
+        } finally {
+            this.totalComputeTimeNs += (System.nanoTime() - startNs);
         }
     }
 
@@ -244,7 +253,34 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
 
     @Override
     public Coord getInitialLocation() {
-        return this.startLoc.clone();
+        long startNs = System.nanoTime();
+        try {
+            this.totalTurnCost = 0.0;
+            this.lastHeading = null;
+            return this.startLoc.clone();
+        } finally {
+            this.totalComputeTimeNs += (System.nanoTime() - startNs);
+        }
+    }
+
+    private void updateTurnCost(Path p) {
+        if (p == null || p.getCoords().size() < 2) return;
+        List<Coord> coords = p.getCoords();
+        for (int i = 0; i < coords.size() - 1; i++) {
+            Coord c1 = coords.get(i);
+            Coord c2 = coords.get(i + 1);
+            double dx = c2.getX() - c1.getX();
+            double dy = c2.getY() - c1.getY();
+            if (Math.hypot(dx, dy) > 1e-3) {
+                double heading = Math.atan2(dy, dx);
+                if (lastHeading != null) {
+                    double diff = Math.abs(heading - lastHeading);
+                    while (diff > Math.PI) diff -= 2 * Math.PI;
+                    totalTurnCost += Math.abs(diff);
+                }
+                lastHeading = heading;
+            }
+        }
     }
 
     @Override
@@ -275,5 +311,13 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
 
     public Coord getEndLocation() {
         return this.endLoc;
+    }
+
+    public double getComputeTimeSeconds() {
+        return this.totalComputeTimeNs / 1e9;
+    }
+
+    public double getPathSmoothness() {
+        return this.totalTurnCost;
     }
 }

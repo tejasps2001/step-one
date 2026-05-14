@@ -3,6 +3,7 @@ package report;
 import core.Coord;
 import core.DTNHost;
 import core.UpdateListener;
+import core.SimScenario;
 import movement.DroneMovement;
 import movement.GDRRTMovement;
 import movement.UAVWaypointMovement;
@@ -16,9 +17,13 @@ import java.util.Set;
 public class UavPathPlanningReport extends Report implements UpdateListener {
 
     public static final String COLLISION_THRESHOLD_S = "collisionThreshold";
+    public static final String TRACK_EXEC_TIME_S = "trackExecutionTime";
+    public static final String TRACK_SMOOTHNESS_S = "trackSmoothness";
     private static final double DEFAULT_COLLISION_THRESHOLD = 20.0;
 
     private double collisionThreshold;
+    private boolean trackExecutionTime = false;
+    private boolean trackSmoothness = false;
 
     private Map<Integer, Double> startTimes = new HashMap<>();
     private Map<Integer, Double> finishTimes = new HashMap<>();
@@ -35,6 +40,12 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
             this.collisionThreshold = getSettings().getDouble(COLLISION_THRESHOLD_S);
         } else {
             this.collisionThreshold = DEFAULT_COLLISION_THRESHOLD;
+        }
+        if (getSettings().contains(TRACK_EXEC_TIME_S)) {
+            this.trackExecutionTime = getSettings().getBoolean(TRACK_EXEC_TIME_S);
+        }
+        if (getSettings().contains(TRACK_SMOOTHNESS_S)) {
+            this.trackSmoothness = getSettings().getBoolean(TRACK_SMOOTHNESS_S);
         }
     }
 
@@ -142,12 +153,37 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
             }
         }
 
+        double totalExecTime = 0.0;
+        double totalSmoothness = 0.0;
+        int execCount = 0;
+
+        for (DTNHost host : SimScenario.getInstance().getHosts()) {
+            if (startTimes.containsKey(host.getAddress())) {
+                movement.MovementModel mm = host.getMovement();
+                if (mm instanceof GDRRTMovement) {
+                    totalExecTime += ((GDRRTMovement) mm).getComputeTimeSeconds();
+                    totalSmoothness += ((GDRRTMovement) mm).getPathSmoothness();
+                    execCount++;
+                } else if (mm instanceof UAVWaypointMovement) {
+                    totalExecTime += ((UAVWaypointMovement) mm).getComputeTimeSeconds();
+                    totalSmoothness += ((UAVWaypointMovement) mm).getPathSmoothness();
+                    execCount++;
+                }
+            }
+        }
+
         write("-------------------------------------------------");
         write("Total Tracked UAVs: " + trackedCount);
         write("Total UAVs Finished: " + finishedCount);
         if (finishedCount > 0) {
             write("Average Distance (Finished): " + format(totalDistance / finishedCount) + "m");
             write("Average Travel Time (Finished): " + format(totalTime / finishedCount) + "s");
+        }
+        if (trackExecutionTime && execCount > 0) {
+            write("Computational Overhead (Execution Time): " + format(totalExecTime / execCount) + " s");
+        }
+        if (trackSmoothness && execCount > 0) {
+            write("Path Smoothness / Turn Cost: " + format(totalSmoothness / execCount));
         }
         write("Total Inter-UAV Collisions: " + totalCollisions);
         write("=================================================");

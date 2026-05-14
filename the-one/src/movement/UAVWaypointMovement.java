@@ -323,6 +323,8 @@ public class UAVWaypointMovement extends MovementModel {
     private int           historyFill = 0;
 
     private long          totalComputeTimeNs = 0;
+    private double        totalTurnCost = 0.0;
+    private Double        lastHeading = null;
     private boolean       failureLogPrinted = false;
 
     // ================================================================ //
@@ -535,6 +537,8 @@ public class UAVWaypointMovement extends MovementModel {
         this.failureLogPrinted     = false;
 
         this.totalComputeTimeNs    = 0;
+        this.totalTurnCost         = 0.0;
+        this.lastHeading           = null;
 
         this.uavId = ID_COUNTER.getAndIncrement();
     }
@@ -561,6 +565,8 @@ public class UAVWaypointMovement extends MovementModel {
             progressStallCount = 0;
             reachedFinalGoal = false;
             failureLogPrinted = false;
+            this.totalTurnCost = 0.0;
+            this.lastHeading = null;
             trailPath    = new Path(sampleSpeed());
             trailPath.addWaypoint(uavPos.clone());
             historyHead = 0;
@@ -754,6 +760,17 @@ public class UAVWaypointMovement extends MovementModel {
     
             lastVx = uavPos.getX() - prevX;
             lastVy = uavPos.getY() - prevY;
+
+            if (Math.hypot(lastVx, lastVy) > 1e-3) {
+                double heading = Math.atan2(lastVy, lastVx);
+                if (lastHeading != null) {
+                    double diff = Math.abs(heading - lastHeading);
+                    while (diff > Math.PI) diff -= 2 * Math.PI;
+                    totalTurnCost += Math.abs(diff);
+                }
+                lastHeading = heading;
+            }
+
             if (uavId >= 0)
                 PEER_REGISTRY.put(uavId,
                     new double[]{ uavPos.getX(), uavPos.getY(), lastVx, lastVy });
@@ -1762,5 +1779,9 @@ public class UAVWaypointMovement extends MovementModel {
 
     public double getComputeTimeSeconds() {
         return this.totalComputeTimeNs / 1e9;
+    }
+
+    public double getPathSmoothness() {
+        return this.totalTurnCost;
     }
 }

@@ -8,7 +8,7 @@
 Scenario.name = %%Group.movementModel%%_Seed%%MovementModel.rngSeed%%
 Scenario.simulateConnections = false
 Scenario.updateInterval = 1.0
-Scenario.endTime = 10000
+Scenario.endTime = 20000
 Scenario.nrofHostGroups = 9
 
 # -------------------------------------------------------------------------
@@ -126,3 +126,5 @@ Report.nrofReports = 1
 Report.reportDir = reports/batch_results
 Report.report1 = UavPathPlanningReport
 UavPathPlanningReport.collisionThreshold = 5.0
+UavPathPlanningReport.trackExecutionTime = true
+UavPathPlanningReport.trackSmoothness = true
