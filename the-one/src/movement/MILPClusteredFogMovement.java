@@ -163,7 +163,7 @@ public class MILPClusteredFogMovement extends MovementModel {
         GDRRTPlanner.PlannedSegment proposedSegment = gdrrt.planNextSegment();
 
         if (proposedSegment == null) {
-            DronePathManager.setStationary(getHost().getAddress(), getHost().getLocation());
+            DronePathManager.setStationary(getHost().getAddress());
             return null;
         }
 
@@ -175,8 +175,11 @@ public class MILPClusteredFogMovement extends MovementModel {
         } else {
             // Wait if a collision is detected by the Path Manager
             isWaiting = true;
-            DronePathManager.setStationary(getHost().getAddress(), getHost().getLocation());
+            DronePathManager.setStationary(getHost().getAddress());
             
+            // FIX: Clear the tree so it doesn't grow infinitely while stuck
+            gdrrt.init(getHost().getLocation(), currentOptimalTarget);
+
             Path waitingPath = new Path(0);
             waitingPath.addWaypoint(getHost().getLocation());
             return waitingPath;

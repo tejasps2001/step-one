@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import core.Coord;
 import java.awt.geom.Line2D;
+import core.DTNSim;
 
 /**
  * Manages active drone paths to detect and prevent collisions.
@@ -15,6 +16,14 @@ public class DronePathManager {
     
     // Safety buffer around drone paths. If two paths come within this distance, it's a collision.
     private static final double DRONE_BUFFER = 5.0; 
+    
+    static {
+        DTNSim.registerForReset(DronePathManager.class.getCanonicalName());
+    }
+
+    public static void reset() {
+        activePaths.clear();
+    }
 
     /**
      * A drone requests permission to take a path.

@@ -164,6 +164,9 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
                 isWaiting = true;
                 DronePathManager.setStationary(getHost().getAddress());
 
+                // FIX: Clear the tree so it doesn't grow infinitely while stuck
+                gdrrt.init(getHost().getLocation(), endLoc);
+
                 // Return a path that keeps the drone stationary
                 Path waitingPath = new Path(0);
                 waitingPath.addWaypoint(getHost().getLocation());

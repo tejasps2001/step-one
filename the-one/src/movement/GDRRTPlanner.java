@@ -74,9 +74,11 @@ public class GDRRTPlanner {
     private boolean isInitialized = false;
     private Coord posTemp;
     private double distMin;
-    private List<java.awt.geom.Line2D.Double> obstacleLines = null;
-    private List<Path> obstaclePaths = null;
-    private List<Color> pathColors = null;
+    
+    private static List<java.awt.geom.Line2D.Double> obstacleLines = null;
+    private static List<Path> obstaclePaths = null;
+    private static List<Color> pathColors = null;
+    private static String cachedObstacleFilePath = null;
     private double droneBuffer = 0.5; // Radius of the drone's boundary
 
     public GDRRTPlanner(String obstacleFilePath) {
@@ -110,12 +112,15 @@ public class GDRRTPlanner {
         Random rand = new Random();
 
         int maxNodesLimit = 1000; // Allow massive expansion if trapped
+        int maxIterations = maxNodesLimit * 10; // Prevent infinite loops if completely trapped
+        int iterations = 0;
 
         int nodesInBatch = 0;
         Node finalGoalNode = null;
 
         // Expansion Phase
-        while (nodesInBatch < maxNodesLimit) {
+        while (nodesInBatch < maxNodesLimit && iterations < maxIterations) {
+            iterations++;
             // Smart sampling based on posTemp and range d
             Coord xRand = smartSample(posTemp, delta, rand);
             // Find node nearest to the sample in the tree
@@ -314,9 +319,13 @@ public class GDRRTPlanner {
     }
     
     private void loadObstacles() {
+        if (obstacleLines != null && this.obstacleFilePath != null && this.obstacleFilePath.equals(cachedObstacleFilePath)) {
+            return; // Already loaded and cached globally
+        }
         obstacleLines = new ArrayList<>();
         obstaclePaths = new ArrayList<>();
         pathColors = new ArrayList<>();
+        cachedObstacleFilePath = this.obstacleFilePath;
         if (this.obstacleFilePath == null) return;
         
         String[] files = this.obstacleFilePath.split(",");

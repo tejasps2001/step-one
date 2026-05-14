@@ -311,7 +311,7 @@ public class WOAFogMovement extends MovementModel {
         // ------------------------------------------------------------------
         GDRRTPlanner.PlannedSegment proposed = gdrrt.planNextSegment();
         if (proposed == null) {
-            DronePathManager.setStationary(getHost().getAddress(), getHost().getLocation());
+            DronePathManager.setStationary(getHost().getAddress());
             return null;
         }
 
@@ -324,7 +324,11 @@ public class WOAFogMovement extends MovementModel {
             return proposed.path;
         } else {
             isWaiting = true;
-            DronePathManager.setStationary(getHost().getAddress(), getHost().getLocation());
+            DronePathManager.setStationary(getHost().getAddress());
+            
+            // FIX: Clear the tree so it doesn't grow infinitely while stuck
+            gdrrt.init(getHost().getLocation(), currentOptimalTarget);
+
             Path hold = new Path(0);
             hold.addWaypoint(getHost().getLocation());
             return hold;
@@ -334,6 +338,15 @@ public class WOAFogMovement extends MovementModel {
     @Override
     public WOAFogMovement replicate() {
         return new WOAFogMovement(this);
+    }
+
+    @Override
+    public double nextPathAvailable() {
+        if (isWaiting) {
+            // Try again after a short delay to prevent infinite replanning loops
+            return core.SimClock.getTime() + 1.0;
+        }
+        return 0;
     }
 
     public Coord getCurrentOptimalTarget() { return currentOptimalTarget; }
