@@ -14,10 +14,10 @@ import core.DTNSim;
  */
 public class DronePathManager {
     // Maps drone ID to its currently approved and active path segment
-    private static final Map<Integer, Path> activePaths = new HashMap<>();
+    protected static final Map<Integer, Path> activePaths = new HashMap<>();
     
-    // Safety buffer around drone paths. If two paths come within this distance, it's a collision.
-    private static final double DRONE_BUFFER = 5.0; 
+    // Creates a buffer around drone paths. If two paths come within this distance, it's a collision.
+    protected static final double DRONE_BUFFER = 5.0; 
     
     static {
         DTNSim.registerForReset(DronePathManager.class.getCanonicalName());
@@ -89,7 +89,7 @@ public class DronePathManager {
         return false;
     }
 
-    private static double getSegmentToSegmentDistance(Line2D.Double l1, Line2D.Double l2) {
+    protected static double getSegmentToSegmentDistance(Line2D.Double l1, Line2D.Double l2) {
         if (l1.intersectsLine(l2)) return 0.0;
         
         double d1 = l1.ptSegDist(l2.getP1());
