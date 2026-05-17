@@ -873,11 +873,12 @@ public class UAVWaypointMovement extends MovementModel {
             if (col == goal[0] && row == goal[1])
                 return reconstructPath(parentIdx, goal, start);
 
-            for (int di = 0; di < 8; di++) {
-                int nc = col + dirs[di][0], nr = row + dirs[di][1];
-                if (!inBounds(nc, nr) || UavObstacleGrid.obstacleGrid[nr][nc]) continue;
-                if (di >= 4 && (UavObstacleGrid.obstacleGrid[row][nc]
-                             || UavObstacleGrid.obstacleGrid[nr][col])) continue;
+            int pDir = parentDir[idx];
+            int[] activeDirs = getActiveNeighbours(pDir);
+            for (int di : activeDirs) {
+                int nc = col+dirs[di][0], nr = row+dirs[di][1];
+                if (!inBounds(nc,nr) || obstacleGrid[nr][nc]) continue;
+                if (di >= 4 && (obstacleGrid[row][nc] || obstacleGrid[nr][col])) continue;
                 int ni = cellIndex(nc, nr);
                 if (closed[ni]) continue;
                 double tg = gCost[idx] + moveCost[di] * gridCellM;
@@ -916,7 +917,22 @@ public class UAVWaypointMovement extends MovementModel {
         return total == 0 ? 0.0 : (double) obs / total;
     }
 
-    private List<int[]> reconstructPath(int[] pi, int[] goal, int[] start) {
+    private int[] getActiveNeighbours(int d) {
+        if (d < 0) return new int[]{ 0,1,2,3,4,5,6,7 };
+        switch (d) {
+            case 0: return new int[]{ 0, 4, 5 };
+            case 1: return new int[]{ 1, 6, 7 };
+            case 2: return new int[]{ 2, 4, 6 };
+            case 3: return new int[]{ 3, 5, 7 };
+            case 4: return new int[]{ 4, 0, 2 };
+            case 5: return new int[]{ 5, 0, 3 };
+            case 6: return new int[]{ 6, 1, 2 };
+            case 7: return new int[]{ 7, 1, 3 };
+            default: return new int[]{ 0,1,2,3,4,5,6,7 };
+        }
+    }
+
+    private List<int[]> reconstructPath(int[] pi, int[] pd, int[] goal, int[] start) {
         LinkedList<int[]> path = new LinkedList<>();
         int idx = cellIndex(goal[0], goal[1]);
         while (idx != cellIndex(start[0], start[1])) {
