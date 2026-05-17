@@ -14,22 +14,22 @@ import java.awt.RenderingHints;
 import java.util.List;
 
 /**
- * Draws obstacle shapes (points, lines, polygons) from
- * {@link UavObstacleGrid#getObstacleRenderData()} using original WKT
- * world coordinates.
- *
- * <p>This graphic is rendered by {@link UavPlanningGridRenderer} on every
- * repaint, regardless of whether the planning-grid toggle is ON or OFF.
- * It is separate from {@link PlanningGridOverlayGraphic}, which handles
- * grid lines and is gated by the toggle.
+ * Draws obstacle shapes (points, lines, polygons) on the GUI.
+ * Uses data from {@link UavObstacleGrid} and original WKT coordinates.
  */
 public class ObstacleOverlayGraphic extends PlayFieldGraphic {
 
+    // Colors for drawing obstacles
     private static final Color OBSTACLE_FILL   = new Color(220, 60, 60, 110);
     private static final Color OBSTACLE_STROKE = new Color(180, 30, 30, 180);
 
+    // List of obstacle data to render
     private final List<UavObstacleGrid.ObstacleRenderData> obstacles;
 
+    /**
+     * Constructor.
+     * @param obstacles List of obstacle data to draw.
+     */
     public ObstacleOverlayGraphic(List<UavObstacleGrid.ObstacleRenderData> obstacles) {
         this.obstacles = obstacles;
     }
@@ -42,12 +42,15 @@ public class ObstacleOverlayGraphic extends PlayFieldGraphic {
 
         Graphics2D g = (Graphics2D) g2.create();
         try {
+            // Enable anti-aliasing for smoother lines
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                                RenderingHints.VALUE_ANTIALIAS_ON);
 
+            // Iterate through each obstacle and draw it based on its type
             for (UavObstacleGrid.ObstacleRenderData obs : obstacles) {
                 if (obs.coords == null || obs.coords.isEmpty()) continue;
 
+                // Draw different obstacle types
                 switch (obs.type) {
 
                     case POINT: {
@@ -64,6 +67,7 @@ public class ObstacleOverlayGraphic extends PlayFieldGraphic {
                     }
 
                     case LINE: {
+                        // Draw line segments with a thick fill and a thin stroke
                         // Thick stroke representing the half-width buffer
                         int halfW = Math.max(1, scale(obs.radius));
                         g.setStroke(new BasicStroke(halfW * 2,
@@ -89,6 +93,7 @@ public class ObstacleOverlayGraphic extends PlayFieldGraphic {
                     }
 
                     case POLYGON: {
+                        // Draw filled polygons with an outline
                         // Filled polygon
                         int n = obs.coords.size();
                         int[] xs = new int[n];

@@ -6,32 +6,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Grid-coordinate conversion utilities and pure-geometry helpers used by
- * {@link UAVWaypointMovement} and {@link UavObstacleGrid}.
- *
- * <p>An instance of this class is created once per movement-model instance,
- * capturing the fixed grid parameters ({@code gridCellM}, {@code gridW},
- * {@code gridH}) and the world dimensions.  The two static methods
- * ({@link #pointToSegmentDist} and {@link #normaliseAngle}) are stateless
- * geometry routines.
+ * Grid-coordinate conversion and geometry helpers for UAV movement.
  */
 public class UavPathUtils {
 
-    /** Side length of one A* grid cell (metres). */
-    final double gridCellM;
+    final double gridCellM; // Cell size in meters
+    final int gridW;        // Grid columns
+    final int gridH;        // Grid rows
+    final double worldW;    // World width in meters
+    final double worldH;    // World height in meters
 
-    /** Number of grid columns. */
-    final int gridW;
-
-    /** Number of grid rows. */
-    final int gridH;
-
-    /** World width (metres). */
-    final double worldW;
-
-    /** World height (metres). */
-    final double worldH;
-
+    /**
+     * Initializes grid and world parameters.
+     */
     public UavPathUtils(double gridCellM, int gridW, int gridH,
                         double worldW, double worldH) {
         this.gridCellM = gridCellM;
@@ -41,60 +28,52 @@ public class UavPathUtils {
         this.worldH    = worldH;
     }
 
-    // ================================================================ //
-    //  World ↔ Grid conversions
-    // ================================================================ //
-
-    /** Converts a world coordinate to grid (col, row). */
+    /** Convert world coordinates to grid (col, row). */
     public int[] worldToGrid(Coord c) {
         return new int[]{ worldToGridCol(c.getX()), worldToGridRow(c.getY()) };
     }
 
-    /** Converts a world X value to a grid column index, clamped to [0, gridW-1]. */
+    /** Convert world X to grid column index. */
     public int worldToGridCol(double x) {
         return Math.max(0, Math.min((int)(x / gridCellM), gridW - 1));
     }
 
-    /** Converts a world Y value to a grid row index, clamped to [0, gridH-1]. */
+    /** Convert world Y to grid row index. */
     public int worldToGridRow(double y) {
         return Math.max(0, Math.min((int)(y / gridCellM), gridH - 1));
     }
 
-    /** Converts grid (col, row) back to the centre of that cell in world coords. */
+    /** Convert grid (col, row) to world coordinates (cell center). */
     public Coord gridToWorld(int col, int row) {
         return new Coord((col + 0.5) * gridCellM, (row + 0.5) * gridCellM);
     }
 
-    /** Converts a list of grid cells to world-coordinate waypoints. */
+    /** Convert a list of grid cells to world waypoints. */
     public List<Coord> gridPathToWorld(List<int[]> cells) {
         List<Coord> wps = new ArrayList<>(cells.size());
         for (int[] c : cells) wps.add(gridToWorld(c[0], c[1]));
         return wps;
     }
 
-    /** Flattens (col, row) into a single array index. */
+    /** Flatten (col, row) to a 1D array index. */
     public int cellIndex(int col, int row) {
         return row * gridW + col;
     }
 
-    /** Returns {@code true} if (col, row) is inside the grid. */
+    /** Check if a grid coordinate is within bounds. */
     public boolean inBounds(int col, int row) {
         return col >= 0 && col < gridW && row >= 0 && row < gridH;
     }
 
-    /** Clamps a world coordinate to the valid world area (1-pixel inset). */
+    /** Clamp coordinates to the world area. */
     public Coord clampToWorld(Coord c) {
         return new Coord(
             Math.max(1, Math.min(Math.max(2, worldW - 1), c.getX())),
             Math.max(1, Math.min(Math.max(2, worldH - 1), c.getY())));
     }
 
-    // ================================================================ //
-    //  Pure-static geometry helpers
-    // ================================================================ //
-
     /**
-     * Shortest distance from point {@code p} to segment {@code a–b}.
+     * Distance from point p to line segment a-b.
      */
     public static double pointToSegmentDist(Coord p, Coord a, Coord b) {
         double ax = a.getX(), ay = a.getY(), bx = b.getX(), by = b.getY();
@@ -107,7 +86,7 @@ public class UavPathUtils {
     }
 
     /**
-     * Normalises an angle to the range (−π, +π].
+     * Normalize an angle to [-PI, PI].
      */
     public static double normaliseAngle(double a) {
         while (a >  Math.PI) a -= 2 * Math.PI;

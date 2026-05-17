@@ -11,14 +11,22 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 
-/** Draws A* cell boundaries and blocked cells from a {@link UavObstacleGrid} snapshot. */
+/** 
+ * Draws the A* planning grid and blocked cells on the GUI.
+ * Uses a static snapshot from the UavObstacleGrid.
+ */
 public class PlanningGridOverlayGraphic extends PlayFieldGraphic {
 
+    // Colors for the grid lines and blocked areas
     private static final Color GRID_LINE   = new Color(90, 110, 160);
     private static final Color BLOCK_FILL  = new Color(220, 60, 60, 110);
 
     private final UavObstacleGrid.PlanningGridSnapshot snap;
 
+    /**
+     * Constructor.
+     * @param snap The planning grid snapshot to render.
+     */
     public PlanningGridOverlayGraphic(UavObstacleGrid.PlanningGridSnapshot snap) {
         this.snap = snap;
     }
@@ -34,6 +42,7 @@ public class PlanningGridOverlayGraphic extends PlayFieldGraphic {
 
         Graphics2D g = (Graphics2D) g2.create();
         try {
+            // Draw vertical and horizontal grid lines
             java.awt.Stroke oldStroke = g.getStroke();
             g.setStroke(new BasicStroke(1f));
             g.setColor(GRID_LINE);
@@ -47,6 +56,7 @@ public class PlanningGridOverlayGraphic extends PlayFieldGraphic {
             }
             g.setStroke(oldStroke);
 
+            // Fill in the blocked cells based on the snapshot data
             g.setColor(BLOCK_FILL);
             for (int row = 0; row < snap.gridH; row++) {
                 for (int col = 0; col < snap.gridW; col++) {

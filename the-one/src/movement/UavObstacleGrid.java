@@ -10,28 +10,12 @@ import java.nio.file.Paths;
 import java.util.*;
 
 /**
- * Manages the shared, static obstacle grid used by all
- * {@link UAVWaypointMovement} instances.
- *
- * <p><b>Static state</b> (shared across every UAV in the simulation):
- * the rasterised obstacle grid, disc/segment buffers, render data,
- * geographic-transform parameters, and the planning-grid snapshot
- * consumed by the GUI overlay.
- *
- * <p><b>Instance state</b>: a reference to the per-group
- * {@link UavPathUtils} (for grid conversions) and the obstacle-radius
- * parameters read from the settings file.
- *
- * <p>Thread-safety: all mutations to static state are performed inside
- * {@code synchronized (UavObstacleGrid.class)} blocks.
+ * Manages the shared static obstacle grid for UAV movement.
+ * Stores rasterized obstacles, render data, and geographic transform parameters.
  */
 public class UavObstacleGrid {
 
-    // ================================================================ //
-    //  Inner classes  (moved from UAVWaypointMovement)
-    // ================================================================ //
-
-    /** Immutable snapshot of the A* planning grid for the GUI overlay. */
+    // Snapshot of the A* grid for the GUI
     public static final class PlanningGridSnapshot {
         public final double      gridCellM;
         public final int         gridW, gridH;
@@ -42,7 +26,7 @@ public class UavObstacleGrid {
         }
     }
 
-    /** Descriptor for one WKT obstacle shape, used by the GUI renderer. */
+    // Data for rendering WKT obstacles
     public static final class ObstacleRenderData {
         public enum Type { POINT, LINE, POLYGON }
 
@@ -57,14 +41,8 @@ public class UavObstacleGrid {
         }
     }
 
-    // ================================================================ //
     //  Shared static obstacle state
-    // ================================================================ //
-
-    /** The rasterised A* grid — {@code true} means blocked.  Package-private
-     *  so that {@link UAVWaypointMovement} can read cells in tight A* DWA loops
-     *  without a method-call overhead. */
-    static boolean[][]    obstacleGrid   = null;
+    static boolean[][]    obstacleGrid   = null; // Rasterized grid (true = blocked)
     static List<double[]> obstacleDiscs  = null;
     static List<double[]> obstacleSegBuf = null;
 
@@ -76,7 +54,7 @@ public class UavObstacleGrid {
     private static PlanningGridSnapshot planningGridSnapshot = null;
     private static boolean gridRenderingEnabled = true;
 
-    // ── Geographic transform fields ─────────────────────────────────
+    // Geographic transform parameters
     static double geoMinX = Double.MAX_VALUE;
     static double geoMaxX = -Double.MAX_VALUE;
     static double geoMinY = Double.MAX_VALUE;
@@ -87,25 +65,13 @@ public class UavObstacleGrid {
     static double geoOriginLat   = 17.480;
     static double geoScaleFactor = 100000.0;
 
-    // ================================================================ //
-    //  Instance fields (per-group parameters)
-    // ================================================================ //
-
     private final UavPathUtils pathUtils;
     private final double       pointObstacleRadius;
     private final double       lineObstacleHalfWidth;
     private final double       distAlert;
 
-    // ================================================================ //
-    //  Constructor
-    // ================================================================ //
-
     /**
-     * @param pathUtils            grid-conversion helper for this group
-     * @param pointObstacleRadius  buffer radius for POINT obstacles
-     * @param lineObstacleHalfWidth half-width for LINESTRING obstacles
-     * @param distAlert            DWA alert distance (used as fallback in
-     *                             {@link #nearestObstacleDistance})
+     * Initializes with per-group parameters.
      */
     public UavObstacleGrid(UavPathUtils pathUtils,
                            double pointObstacleRadius,
@@ -116,10 +82,6 @@ public class UavObstacleGrid {
         this.lineObstacleHalfWidth = lineObstacleHalfWidth;
         this.distAlert            = distAlert;
     }
-
-    // ================================================================ //
-    //  Static accessors (GUI & external)
-    // ================================================================ //
 
     public static PlanningGridSnapshot getPlanningGridSnapshot() {
         return gridRenderingEnabled ? planningGridSnapshot : null;
@@ -143,18 +105,13 @@ public class UavObstacleGrid {
         return Collections.unmodifiableSet(loadedWktFiles);
     }
 
-    /** Returns the live grid reference (for read-only use in A * DWA). */
+    /** Returns the live grid reference. */
     public static boolean[][] getGrid() {
         return obstacleGrid;
     }
 
-    // ================================================================ //
-    //  Geographic scale initialisation
-    // ================================================================ //
-
-    /**
-     * Sets the geographic origin and scale factor, but only on the first
-     * call (subsequent calls are no-ops until {@link #reset()}).
+ /**
+     * Sets geo-scale parameters (once per simulation).
      */
     public static synchronized void initGeoScaleIfNeeded(
             double originLon, double originLat, double scaleFactor) {
@@ -165,13 +122,8 @@ public class UavObstacleGrid {
         }
     }
 
-    // ================================================================ //
-    //  Obstacle merge / load
-    // ================================================================ //
-
     /**
-     * Union-merges the given WKT obstacle files into the shared grid.
-     * Files already loaded (by canonical path) are skipped.
+     * Merges WKT obstacle files into the shared grid.
      */
     public void mergeObstaclesIfNeeded(List<String> wktFiles) {
         synchronized (UavObstacleGrid.class) {
@@ -179,6 +131,7 @@ public class UavObstacleGrid {
         }
     }
 
+    /** Internal locked merge logic. */
     private void mergeObstaclesIfNeededLocked(List<String> wktFiles) {
         if (obstacleGrid == null) {
             obstacleGrid      = new boolean[pathUtils.gridH][pathUtils.gridW];
@@ -219,10 +172,7 @@ public class UavObstacleGrid {
         }
     }
 
-    // ================================================================ //
-    //  WKT file → rasterised grid
-    // ================================================================ //
-
+     /** Reads and rasterizes geometries from a WKT file. */
     private void loadObstaclesFromWkt(String rel) {
         Path path = Paths.get(rel);
         if (!path.isAbsolute())
@@ -295,10 +245,7 @@ public class UavObstacleGrid {
         }
     }
 
-    // ================================================================ //
-    //  Geographic coordinate normalisation
-    // ================================================================ //
-
+    /** Normalizes coordinates if the file contains geographic (lat/lon) data. */
     private void normaliseCoordinatesIfGeographic(
             List<double[]>       points,
             List<List<double[]>> linestrings,
@@ -365,10 +312,7 @@ public class UavObstacleGrid {
             }
     }
 
-    // ================================================================ //
-    //  Rasterisation helpers
-    // ================================================================ //
-
+  /** Rasterizes a circle on the grid. */
     private void rasterizeDiscOnGrid(double cx, double cy, double r) {
         double r2 = r * r;
         int c0 = pathUtils.worldToGridCol(cx - r - pathUtils.gridCellM);
@@ -385,6 +329,7 @@ public class UavObstacleGrid {
             }
     }
 
+    /** Rasterizes a line segment with a half-width buffer. */
     private void rasterizeStripOnGrid(double x0, double y0,
                                       double x1, double y1, double hw) {
         double pad = hw + pathUtils.gridCellM;
@@ -403,6 +348,7 @@ public class UavObstacleGrid {
             }
     }
 
+    /** Rasterizes a filled polygon. */
     private void rasterizeFilledPolygon(List<double[]> ring) {
         if (ring == null || ring.size() < 3) return;
 
@@ -449,10 +395,7 @@ public class UavObstacleGrid {
         }
     }
 
-    // ================================================================ //
-    //  Planning-grid snapshot (for GUI)
-    // ================================================================ //
-
+    /** Publishes a snapshot of the grid for GUI rendering. */
     private void publishPlanningGridSnapshot() {
         boolean[][] copy = new boolean[pathUtils.gridH][pathUtils.gridW];
         for (int r = 0; r < pathUtils.gridH; r++)
@@ -461,14 +404,8 @@ public class UavObstacleGrid {
             pathUtils.gridCellM, pathUtils.gridW, pathUtils.gridH, copy);
     }
 
-    // ================================================================ //
-    //  Snap / free-cell BFS
-    // ================================================================ //
-
-    /**
-     * Returns the nearest free grid cell to {@code c} using a BFS expansion.
-     * If {@code c} itself is free, it is returned unchanged (preserving the
-     * exact coordinate rather than snapping to cell centre).
+    /*
+     * Finds the nearest free cell to a coordinate using BFS.
      */
     public Coord snapToNearestFreeCell(Coord c) {
         int[] s = pathUtils.worldToGrid(c);
@@ -494,11 +431,7 @@ public class UavObstacleGrid {
         throw new SimError("UAVWaypointMovement: no free cell near " + c);
     }
 
-    // ================================================================ //
-    //  Obstacle queries
-    // ================================================================ //
-
-    /** Returns {@code true} if the world position (x, y) is blocked. */
+    /** Checks if a world position is blocked. */
     public boolean isBlockedWorldXY(double x, double y) {
         int col = pathUtils.worldToGridCol(x);
         int row = pathUtils.worldToGridRow(y);
@@ -506,8 +439,7 @@ public class UavObstacleGrid {
     }
 
     /**
-     * Returns the shortest distance from {@code p} to any obstacle surface.
-     * If no obstacles exist, returns {@code distAlert * 2} (safe fallback).
+     * Calculates shortest distance to any obstacle surface.
      */
     public double nearestObstacleDistance(Coord p) {
         double minD = Double.MAX_VALUE, px = p.getX(), py = p.getY();
@@ -524,14 +456,8 @@ public class UavObstacleGrid {
         return minD == Double.MAX_VALUE ? distAlert * 2 : minD;
     }
 
-    // ================================================================ //
-    //  Reset (called between batch runs)
-    // ================================================================ //
-
-    /**
-     * Clears all shared obstacle state.  Called from
-     * {@link UAVWaypointMovement#reset()} which is registered with
-     * {@code DTNSim.registerForReset}.
+     /**
+     * Resets shared static state between simulation runs.
      */
     public static synchronized void reset() {
         obstacleGrid         = null;

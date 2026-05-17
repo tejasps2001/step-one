@@ -14,38 +14,20 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Pure-static utility class that handles all WKT (Well-Known Text) geometry
- * parsing for {@link UAVWaypointMovement}.
- *
- * <p>Supported geometry types: POINT, MULTIPOINT, LINESTRING,
- * MULTILINESTRING (and the non-standard alias MULTISTRING), POLYGON,
- * MULTIPOLYGON, GEOMETRYCOLLECTION.
- *
- * <p>This class has <b>no mutable state</b> — every method is either
- * {@code static} or a constant.
+ * Utility for parsing WKT (Well-Known Text) geometries.
+ * Supports POINT, LINESTRING, POLYGON, and their MULTI-variants.
  */
 public final class WktObstacleParser {
 
     private WktObstacleParser() { /* utility class */ }
 
-    // ================================================================ //
-    //  Charset fallback order for reading WKT files
-    // ================================================================ //
-
-    static final Charset[] WKT_CHARSETS = {
+    static final Charset[] WKT_CHARSETS = { // Charsets for reading WKT files
         StandardCharsets.UTF_8,
         Charset.forName("Windows-1252"),
         StandardCharsets.ISO_8859_1
     };
 
-    // ================================================================ //
-    //  Obstacle-file-path CSV parser
-    // ================================================================ //
-
-    /**
-     * Splits a raw comma-separated string of file paths into a trimmed list,
-     * discarding empty tokens.
-     */
+    /** Parses a CSV string of file paths into a list. */
     public static List<String> parseObstacleFilePaths(String raw) {
         List<String> result = new ArrayList<>();
         if (raw == null || raw.trim().isEmpty()) return result;
@@ -56,14 +38,7 @@ public final class WktObstacleParser {
         return result;
     }
 
-    // ================================================================ //
-    //  WKT file reader with charset fallback
-    // ================================================================ //
-
-    /**
-     * Reads all lines of a WKT file, trying UTF-8 first, then Windows-1252,
-     * then ISO-8859-1.  Throws {@link SimError} on missing file or I/O error.
-     */
+    /** Reads WKT file lines with charset fallback. Throws SimError on failure. */
     public static List<String> readWktFile(Path path) {
         if (!Files.exists(path)) {
             throw new SimError(
@@ -100,15 +75,7 @@ public final class WktObstacleParser {
         return lines;
     }
 
-    // ================================================================ //
-    //  Top-level geometry extractor
-    // ================================================================ //
-
-    /**
-     * Parses a single WKT geometry string and appends the results to the
-     * supplied accumulator lists.  Handles recursive types
-     * (MULTI*, GEOMETRYCOLLECTION) by calling itself.
-     */
+    /** Parses a WKT string and extracts points, lines, and polygons. */
     public static void extractGeometry(String wkt,
                                        List<double[]> points,
                                        List<List<double[]>> linestrings,
@@ -191,15 +158,7 @@ public final class WktObstacleParser {
         }
     }
 
-    // ================================================================ //
-    //  Bounding-box scanner (for geographic auto-detection)
-    // ================================================================ //
-
-    /**
-     * Scans a WKT file and returns its geographic bounding box
-     * {@code [minX, minY, maxX, maxY]} if the data looks like lat/lon
-     * coordinates, or {@code null} otherwise.
-     */
+    /** Calculates the geographic bounding box [minX, minY, maxX, maxY] of a WKT file. */
     public static double[] computeBoundingBox(String relPath) {
         try {
             Path path = Paths.get(relPath);
@@ -258,10 +217,7 @@ public final class WktObstacleParser {
         }
     }
 
-    // ================================================================ //
-    //  Internal WKT string helpers
-    // ================================================================ //
-
+    /** Extracts the content inside the outermost parentheses. */
     static String extractOuterBody(String wkt) {
         int open = wkt.indexOf('(');
         if (open < 0) return null;
@@ -277,6 +233,7 @@ public final class WktObstacleParser {
         return null;
     }
 
+    /** Splits a string by top-level commas (not nested in parentheses). */
     static List<String> splitTopLevelCommas(String s) {
         List<String> parts = new ArrayList<>();
         int depth = 0, start = 0;
@@ -293,6 +250,7 @@ public final class WktObstacleParser {
         return parts;
     }
 
+    /** Parses a comma-separated sequence of coordinates. */
     static List<double[]> parseCoordSequence(String seq) {
         List<double[]> coords = new ArrayList<>();
         if (seq == null || seq.trim().isEmpty()) return coords;
@@ -303,6 +261,7 @@ public final class WktObstacleParser {
         return coords;
     }
 
+    /** Parses a single "X Y" coordinate pair. */
     static double[] parseOneCoord(String token) {
         if (token == null || token.isEmpty()) return null;
         String[] parts = token.trim().split("\\s+");
