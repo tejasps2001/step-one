@@ -15,9 +15,9 @@ import java.util.Comparator;
  * Using Mixed-Integer Linear Programming" (Premkumar & Van Scoy, 2025).
  * 
  * This model groups active drones into clusters to manage scalability and computational 
- * complexity. It evaluates the clusters based on drone priority weights and positions 
- * the Fog UAV at the weighted centroid of the highest-priority cluster to maximize 
- * connectivity time with the most critical targets.
+ * complexity using k-means clustering method. It evaluates the clusters based on drone
+ * priority weights and positions the Fog UAV at the weighted centroid of the 
+ * highest-priority cluster to maximize connectivity time with the most critical targets.
  * 
  * Navigation to the optimal position is handled via the GDRRT algorithm.
  */
@@ -111,8 +111,6 @@ public class MILPClusteredFogMovement extends MovementModel {
     public double nextPathAvailable() {
         if (isWaiting) {
             // Try again shortly to see if collision paths have cleared
-            // Fog UAV to the ONE simulator: "The airspace is packed 
-            // right now and hence I am stuck. Come back after sometime"
             return SimClock.getTime() + 1.0;
         }
         return 0;
@@ -138,7 +136,7 @@ public class MILPClusteredFogMovement extends MovementModel {
             triggerRandomShutdown();
         }
 
-        // 1. Recalculate optimal position if the interval has elapsed
+        // Recalculate optimal position if the interval has elapsed
         if (lastUpdateTime < 0 || (currentTime - lastUpdateTime) >= updateInterval) {
             Coord newOptimalTarget = calculateOptimalPosition();
             
@@ -151,7 +149,7 @@ public class MILPClusteredFogMovement extends MovementModel {
         }
 
         if (currentOptimalTarget == null) {
-            return null; // Nowhere to go, remain stationary
+            return null; // Nowhere to go therefore, remain stationary
         }
 
         if (!gdrrt.isInitialized()) {
@@ -159,7 +157,7 @@ public class MILPClusteredFogMovement extends MovementModel {
         }
         gdrrt.init(getHost().getLocation(), currentOptimalTarget);
 
-        // 2. Plan path segment using GDRRT Planner
+        // Plan path segment using GDRRT Planner
         GDRRTPlanner.PlannedSegment proposedSegment = gdrrt.planNextSegment();
 
         if (proposedSegment == null) {
@@ -167,7 +165,7 @@ public class MILPClusteredFogMovement extends MovementModel {
             return null;
         }
 
-        // 3. Collision Avoidance & Path Commitment
+        // Collision Avoidance & Path Commitment
         if (ExtendedDronePathManager.requestPath(getHost().getAddress(), proposedSegment.path)) {
             isWaiting = false;
             gdrrt.commit(proposedSegment);
@@ -177,7 +175,7 @@ public class MILPClusteredFogMovement extends MovementModel {
             isWaiting = true;
             ExtendedDronePathManager.setStationary(getHost().getAddress());
             
-            // FIX: Clear the tree so it doesn't grow infinitely while stuck
+            // Clear the tree so it doesn't grow infinitely if it is stuck
             gdrrt.init(getHost().getLocation(), currentOptimalTarget);
 
             Path waitingPath = new Path(0);
@@ -205,7 +203,7 @@ public class MILPClusteredFogMovement extends MovementModel {
 
         if (activeDrones.isEmpty()) return;
 
-        // 1. Pick a random active drone to shut down
+        // Pick a random active drone to shut down
         java.util.Collections.shuffle(activeDrones, new java.util.Random((long)SimClock.getTime()));
         DTNHost killedDrone = activeDrones.get(0);
         ExtendedGDRRTMovement killedMm = (ExtendedGDRRTMovement) killedDrone.getMovement();
@@ -216,17 +214,18 @@ public class MILPClusteredFogMovement extends MovementModel {
         System.out.println(">>> CRITICAL EVENT: Drone " + killedDrone.getName() + " HAS FAILED! <<<");
         killedMm.kill();
 
-        // 2. Scan for a lower priority replacement drone in range
+        // Scan for a lower priority replacement drone in range
         DTNHost replacement = null;
         double bestPriority = Integer.MAX_VALUE;
-        double fogWifiRange = 500.0; // Matched with wifiInterface.transmitRange from settings
+        double fogWifiRange = 500.0; // Matched with wifiInterface.transmitRange from settings file
 
         for (DTNHost host : activeDrones) {
             if (host == killedDrone) continue;
             ExtendedGDRRTMovement mm = (ExtendedGDRRTMovement) host.getMovement();
             double priority = mm.getPriority();
             
-            // Check: not done, not dead, lower priority than killed drone, AND in physical range
+            // The below if condition is triggered only if the drone is not done, not dead, has a 
+            // lower priority than the killed drone and is in Wi-Fi range of the Fog UAV
             if (!mm.isDone() && !mm.isDead() && priority < killedPriority) {
                 if (host.getLocation().distance(getHost().getLocation()) <= fogWifiRange) {
                     // Pick the lowest priority out of the available lower-priority candidates
@@ -238,7 +237,7 @@ public class MILPClusteredFogMovement extends MovementModel {
             }
         }
 
-        // 3. Reassign if a suitable drone was found
+        // Reassign if a suitable drone was found
         if (replacement != null) {
             System.out.println(">>> FOG UAV ACTION: Reassigning higher priority target " + killedTarget + 
                                " to lower priority in-range Drone " + replacement.getName() + " <<<");
@@ -252,15 +251,15 @@ public class MILPClusteredFogMovement extends MovementModel {
     }
 
     /**
-     * Extracts drones, groups them into K clusters, and returns the weighted 
+     * Extracts drones, groups them into 'K' clusters, and returns the weighted 
      * centroid of the highest-priority cluster.
      */
     private Coord calculateOptimalPosition() {
-        long startTime = System.nanoTime();
+        long startTime = System.nanoTime(); // For peformance profiling
         DTNHost fogHost = getHost();
         if (fogHost == null) {
             lastExecutionTimeMs = (System.nanoTime() - startTime) / 1_000_000.0;
-            return null; // Stay put if no host exists
+            return null; // Stay still if no host exists
         }
 
         List<DroneData> droneDataList = new ArrayList<>();
@@ -268,7 +267,7 @@ public class MILPClusteredFogMovement extends MovementModel {
         if (!initialPrioritiesPrinted) {
             System.out.println("--- Drone Priorities and Target Assignments ---");
 
-            // 1. Build a map of target locations to their names
+            // Build a mapping of target locations to their names
             Map<Coord, String> targetLocations = new java.util.HashMap<>();
             for (DTNHost host : core.SimScenario.getInstance().getHosts()) {
                 if (host.getMovement() instanceof StationaryMovement) {
@@ -276,17 +275,17 @@ public class MILPClusteredFogMovement extends MovementModel {
                 }
             }
 
-            // 2. Collect all drones
+            // Collect all drones
             List<DTNHost> drones = new ArrayList<>();
             for (DTNHost host : core.SimScenario.getInstance().getHosts()) {
-                if (host.getMovement() instanceof GDRRTMovement || host.getMovement() instanceof DroneMovement) { // This covers FogDeployedGDRRTMovement
+                if (host.getMovement() instanceof GDRRTMovement || host.getMovement() instanceof DroneMovement) { 
                     drones.add(host);
                 }
             }
-            // Sort by address for ordered output (D0, D1, ...)
+            // Sort by address for ordered output eg: D0, D1, and so on
             drones.sort(Comparator.comparingInt(DTNHost::getAddress));
 
-            // 3. Iterate through sorted drones, find their target, and print info
+            // Iterate through sorted drones, find their target, and print info
             for (DTNHost drone : drones) {
                 ExtendedGDRRTMovement gdrrtMm = (ExtendedGDRRTMovement) drone.getMovement();
                 Coord endLoc = gdrrtMm.getEndLocation();
@@ -303,7 +302,8 @@ public class MILPClusteredFogMovement extends MovementModel {
                             targetName = entry.getValue();
                         }
                     }
-                    // If no target is reasonably close, something is wrong with the setup
+                    // If no target is reasonably close, there is some logical error. Therefore, 
+                    // print "unmatched".
                     if (min_dist > 1.0) {
                         targetName = "unmatched";
                     }
@@ -318,7 +318,6 @@ public class MILPClusteredFogMovement extends MovementModel {
         }
 
         // Evaluate ALL active drones globally by checking all hosts in the scenario
-        // This bypasses FogVehicleSystem which stays empty when using FogDeployedGDRRTMovement
         for (DTNHost host : core.SimScenario.getInstance().getHosts()) {
             if (host == fogHost) continue; // Skip itself
             
@@ -327,7 +326,7 @@ public class MILPClusteredFogMovement extends MovementModel {
             boolean hasReached = false;
             double priority = 1.0;
             
-            if (mm instanceof ExtendedGDRRTMovement || mm instanceof DroneMovement) { // Covers FogDeployedGDRRTMovement
+            if (mm instanceof ExtendedGDRRTMovement || mm instanceof DroneMovement) {
                 isDrone = true;
                 hasReached = ((ExtendedGDRRTMovement) mm).isDone();
                 priority = ((ExtendedGDRRTMovement) mm).getPriority();
@@ -338,7 +337,6 @@ public class MILPClusteredFogMovement extends MovementModel {
             }
 
             if (isDrone && !hasReached) {
-                // System.out.println(host.getName() + " is active and considered for clustering.");
                 Coord loc = host.getLocation();
                 // Drones with higher priorities exert more gravity on the Fog UAV.
                 droneDataList.add(new DroneData(host.getName(), loc, priority));
@@ -401,7 +399,7 @@ public class MILPClusteredFogMovement extends MovementModel {
                 for (DroneData dd : clusters.get(i)) {
                     sumX += dd.loc.getX() * dd.priority;
                     sumY += dd.loc.getY() * dd.priority;
-                    clusterScore += dd.priority; // Cluster's importance metric
+                    clusterScore += dd.priority;
                 }
                 centroids.set(i, new Coord(sumX / clusterScore, sumY / clusterScore));
 
@@ -413,7 +411,9 @@ public class MILPClusteredFogMovement extends MovementModel {
             }
             finalBestScore = bestScore;
             // In a strict K-Means we would check for convergence here.
-            // We allow it to run for `maxIterations` for safety in dynamic moving targets.
+            // But since we have dynamic moving drones with different priorities, there
+            // is a probability that trying to converge will form a ping-pong infinite loop.
+            // Therefore, we will just run a fixed number of iterations to get a good enough clustering.
         }
 
         if (bestCluster != null && !bestCluster.isEmpty()) {
@@ -423,7 +423,6 @@ public class MILPClusteredFogMovement extends MovementModel {
                 if (i < bestCluster.size() - 1) sb.append(", ");
             }
             sb.append(" (Cluster Priority Score: ").append(finalBestScore).append(")");
-            // System.out.println(sb.toString());
         }
 
         lastExecutionTimeMs = (System.nanoTime() - startTime) / 1_000_000.0;
