@@ -10,6 +10,7 @@ sourceSets {
         resources {
             srcDirs = ["src"]
             includes = ["**/*.gif"]
+            exclude 'test/**'
         }
         java {
             srcDirs = ['src']
