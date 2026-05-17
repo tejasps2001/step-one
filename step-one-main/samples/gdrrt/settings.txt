@@ -117,10 +117,10 @@ Report.report1 = UavPathPlanningReport
 ## GUI settings
 
 # GUI underlay image settings
-# GUI.UnderlayImage.fileName = samples/milp/UOH2.png
+GUI.UnderlayImage.fileName = samples/milp/UOH2.png
 # Image offset in pixels (x, y)
-# GUI.UnderlayImage.offset = -250, 25
+GUI.UnderlayImage.offset = -373, 5
 # Scaling factor for the image
-# GUI.UnderlayImage.scale = 5
+GUI.UnderlayImage.scale = 6.5
 # Image rotation (radians)
-# GUI.UnderlayImage.rotate = 0
+GUI.UnderlayImage.rotate = 0
