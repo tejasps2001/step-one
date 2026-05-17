@@ -7,11 +7,9 @@ import core.SettingsError;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Exact clone of GDRRTMovement, decoupled for MILP and WOA scenarios.
- */
 public class ExtendedGDRRTMovement extends MovementModel implements SwitchableMovement {
-    // Maintain exact same namespace prefix so existing settings files work immediately!
+    // ExtendedGDRRTMovement will use the same namespace as GDRRTMovement so that the 
+    // settings files work without needing any modification.
     public static final String GDRRT_MOVEMENT_NS = "GDRRTMovement.";
 
     public static final String START_LOCATION_S = "startLocation";
