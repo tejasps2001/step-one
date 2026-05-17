@@ -1,3 +1,4 @@
+
 package movement;
 
 import core.Coord;
@@ -11,326 +12,367 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * ============================================================
- *  UAVWaypointMovement — Full Fusion Algorithm Implementation
- *  ONE Simulator Custom Movement Model
- * ============================================================
- *
+ 
  * Implements the double-layer path planning algorithm from:
  *
- *   He, Hou & Wang (2024). "A new method for unmanned aerial
+ *   He, Hou &amp; Wang (2024). "A new method for unmanned aerial
  *   vehicle path planning in complex environments."
- *   Scientific Reports 14:9257.
- *
- * ── Algorithm layers ──────────────────────────────────────────
- *
- *  LAYER 1 — Improved A* (global planner)
- *    • Grid-based A* over MovementModel.worldSize at gridCellM resolution.
- *    • Adaptive heuristic: f(n) = g(n) + (1 + sigmoid(ξ)) * h(n)
- *      where ξ is the obstacle coverage rate in the bounding box
- *      between current node and goal (paper Eq. 7–9).
- *    • Neighbour clipping: straight/diagonal pruning rules that skip
- *      nodes reachable more cheaply without passing through the current
- *      node (paper Fig. 1).
- *    • Bresenham key-node extraction: line-of-sight checks compress the
- *      raw A* path to only the critical turning-point waypoints (paper Fig. 2).
- *
- *  LAYER 2 — Improved DWA (local planner)
- *    • Discrete velocity sampling in [speedMin, speedMax].
- *    • Evaluation function:
- *        G = α·heading + β·vel + λ·dist_obs + η·dist_fol + VO_penalty
- *      dist_fol pulls the local path toward the global A* path (paper Eq. 10).
- *    • Adaptive weights λ and η based on proximity to nearest obstacle
- *      (paper Table 4, steps a–d).
- *
- *  FUSION — Dynamic Re-planning (paper Fig. 3)
- *    Key nodes from Layer 1 become sequential DWA sub-goals.
- *    Bresenham LOS check triggers re-plan when a sub-goal is blocked.
- *    Stall counter forces re-plan after STALL_LIMIT idle steps.
- *    When A* finds no route a DWA escape step moves the drone away and
- *    schedules a retry.
- *
- * ── Inter-UAV Collision Avoidance (Velocity Obstacle) ─────────
- *
- *  Every UAV writes {x, y, vx, vy} to the shared PEER_REGISTRY at the
- *  end of each getPath() call.  During dwaStep() every candidate velocity
- *  is tested against each peer:
- *    1. Relative velocity v_rel = v_candidate − v_peer
- *    2. VO cone half-angle sin θ = uavSeparationM / dist(self, peer)
- *    3. If angle(v_rel, peer−self) < θ → inside cone → penalty applied
- *    4. Penetration depth and proximity scale the penalty.
- *    5. ID-based tiebreaker prevents symmetric head-on oscillation.
- *
- * ── Supporting classes ─────────────────────────────────────────
- *
- *  {@link UavObstacleGrid}  — all WKT loading, rasterization, geo-transform,
- *                              render-data, and grid snapshot management.
- *  {@link UavPathUtils}     — pure stateless geometry: grid↔world conversions,
- *                              distance queries, Bresenham LOS, BFS snap,
- *                              POI tour construction.
- *
- * ── Per-group configuration ────────────────────────────────────
- *
- *  ONE calls new UAVWaypointMovement(Settings s) once per GroupN block.
- *  Every parameter is read via readDouble/readInt/readBoolean/readString
- *  which checks s (per-group) first, then falls back to the shared
- *  UAVWaypointMovement.* namespace (cfg).
- *
- * ── Config keys ───────────────────────────────────────────────
- *
- *    spawn               csv(x,y)  required — drone start position (metres)
- *    target              csv(x,y)  required — drone goal position (metres)
- *    obstacleWktFile     string "" — WKT obstacle file; union-merged globally
- *    dwellMin            double 5.0     s    hover time at POI, min
- *    dwellMax            double 15.0    s    hover time at POI, max
- *    speedMin            double 0.8  m/s    cruise speed, min
- *    speedMax            double 1.0  m/s    cruise speed, max
- *    cruiseAlt           double 30.0    m   cruise altitude (metadata)
- *    gridCellM           double 5.0     m   A* grid cell side length
- *    pointObstacleRadius double gridCellM   POINT obstacle buffer radius
- *    lineObstacleHalfWidth double gridCellM LINESTRING obstacle half-width
- *    poiGridCols         int    0           POI lattice columns (0 = off)
- *    poiGridRows         int    0           POI lattice rows
- *    snapLocationsToGrid bool   true        snap spawn/goal/POIs to free cell
- *    showPlanningGrid    bool   false       GUI: draw A* grid overlay
- *    dwaSteps            int    8           DWA velocity samples
- *    distAlert           double 25.0    m   DWA alert distance
- *    distRisk            double 12.0    m   DWA danger distance
- *    uavSeparationM      double 20.0    m   VO cone radius / min peer separation
- *    voWeight            double 2.0         VO penalty multiplier
- *    launchStaggerS      double 8.0     s   per-UAV launch delay offset
- *    spawnStrideM        double 20.0    m   X-axis stride when per-group spawn
- *                                          is NOT set (all drones share the
- *                                          UAVWaypointMovement.spawn fallback)
- *
- * ── Installation ──────────────────────────────────────────────
- *
- *  1. Copy UAVWaypointMovement.java, UavObstacleGrid.java, UavPathUtils.java
- *     to  <ONE_ROOT>/movement/
- *  2. Recompile ONE normally (ant / gradlew).
- *  3. In settings:  Group1.movementModel = UAVWaypointMovement
- *
- * ============================================================
+ 
  */
 public class UAVWaypointMovement extends MovementModel {
 
-    /** Namespace for shared / fallback settings keys. */
+    
+
+    /** Shared settings namespace; used as a fallback when a key is absent
+     *  from the per-group block. */
     public static final String SETTINGS_NS = "UAVWaypointMovement";
 
-    // ================================================================ //
-    //  Settings key constants
-    // ================================================================ //
 
+    /** Settings key for the minimum hover (dwell) duration at a POI . */
     public static final String DWELL_MIN_S          = "dwellMin";
+    /** Settings key for the maximum hover (dwell) duration at a POI . */
     public static final String DWELL_MAX_S          = "dwellMax";
+    /** Settings key for the minimum cruise speed in m/s . */
     public static final String SPEED_MIN_S          = "speedMin";
+    /** Settings key for the maximum cruise speed in m/s . */
     public static final String SPEED_MAX_S          = "speedMax";
+    /** Settings key for the cruise altitude in metres . */
     public static final String CRUISE_ALT_S         = "cruiseAlt";
+    /** Settings key for the A* grid cell side length in metres . */
     public static final String GRID_CELL_S          = "gridCellM";
+    /** Settings key for the number of DWA velocity samples . */
     public static final String DWA_STEPS_S          = "dwaSteps";
+    /** Settings key for the DWA obstacle alert distance in metres . */
     public static final String DIST_ALERT_S         = "distAlert";
+    /** Settings key for the DWA obstacle danger (risk) distance in metres . */
     public static final String DIST_RISK_S          = "distRisk";
+    /** Settings key for the path to the WKT obstacle file . */
     public static final String OBSTACLE_WKT_S       = "obstacleWktFile";
+    /** Settings key for the drone spawn position as a csv pair (x, y) . */
     public static final String SPAWN_S              = "spawn";
+    /** Settings key for the drone target position as a csv pair (x, y) . */
     public static final String TARGET_S             = "target";
+    /** Settings key for the buffer radius around POINT obstacles in metres . */
     public static final String POINT_RADIUS_S       = "pointObstacleRadius";
+    /** Settings key for the half-width of LINESTRING obstacle rasterisation . */
     public static final String LINE_HALF_WIDTH_S    = "lineObstacleHalfWidth";
+    /** Settings key for the number of POI lattice columns (0 disables the grid) . */
     public static final String POI_GRID_COLS_S      = "poiGridCols";
+    /** Settings key for the number of POI lattice rows (0 disables the grid) . */
     public static final String POI_GRID_ROWS_S      = "poiGridRows";
+    /** Settings key controlling whether spawn/goal/POI coords are snapped to
+     *  the nearest free grid cell . */
     public static final String SNAP_TO_GRID_S       = "snapLocationsToGrid";
+    /** Settings key controlling whether the A* grid overlay is drawn in the GUI . */
     public static final String SHOW_PLANNING_GRID_S = "showPlanningGrid";
+    /** Settings key for the minimum inter-UAV separation used by the VO cone
+     *  and hard-collision guard, in metres . */
     public static final String UAV_SEP_S            = "uavSeparationM";
+    /** Settings key for the Velocity Obstacle penalty multiplier . */
     public static final String VO_WEIGHT_S          = "voWeight";
+    /** Settings key for the per-UAV staggered launch delay in seconds . */
     public static final String LAUNCH_STAGGER_S     = "launchStaggerS";
+    /** Settings key for the X-axis stride (metres) used to offset spawn positions
+     *  when all drones fall back to the shared UAVWaypointMovement.spawn value . */
     public static final String SPAWN_STRIDE_S       = "spawnStrideM";
+    /** Settings key for explicit geographic extents as a csv quad
+     *  (minLon, minLat, maxLon, maxLat) . */
     public static final String GEO_EXTENTS_S        = "geoExtents";
+    /** Settings key for one or more WKT files that define geographic extents . */
     public static final String GEO_EXTENT_FILES_S   = "geoExtentFiles";
+    /** Settings key for the geographic origin longitude used for coordinate
+     *  projection . */
     public static final String GEO_ORIGIN_LON_S     = "geoOriginLon";
+    /** Settings key for the geographic origin latitude used for coordinate
+     *  projection . */
     public static final String GEO_ORIGIN_LAT_S     = "geoOriginLat";
+    /** Settings key for the metres-per-degree scale factor applied during
+     *  geographic coordinate projection . */
     public static final String GEO_SCALE_FACTOR_S   = "geoScaleFactor";
 
-    // ================================================================ //
-    //  Defaults
-    // ================================================================ //
+    
+    //  Defaults values 
 
+    /** Default minimum hover time at a POI in seconds. */
     private static final double DEF_DWELL_MIN       = 5.0;
+    /** Default maximum hover time at a POI in seconds. */
     private static final double DEF_DWELL_MAX       = 15.0;
+    /** Default minimum cruise speed in m/s. */
     private static final double DEF_SPEED_MIN       = 0.8;
+    /** Default maximum cruise speed in m/s. */
     private static final double DEF_SPEED_MAX       = 1.0;
+    /** Default cruise altitude in metres (metadata only; not used in 2-D planning). */
     private static final double DEF_CRUISE_ALT      = 30.0;
+    /** Default A* grid cell side length in metres. */
     private static final double DEF_GRID_CELL       = 5.0;
+    /** Default number of DWA velocity samples per step. */
     private static final int    DEF_DWA_STEPS       = 8;
+    /** Default obstacle alert distance in metres (transitions to W_ALERT weights). */
     private static final double DEF_DIST_ALERT      = 25.0;
+    /** Default obstacle danger distance in metres (transitions to W_DANGER weights). */
     private static final double DEF_DIST_RISK       = 12.0;
+    /** Default minimum inter-UAV separation for the VO cone, in metres. */
     private static final double DEF_UAV_SEP         = 20.0;
+    /** Default Velocity Obstacle penalty multiplier. */
     private static final double DEF_VO_WEIGHT       = 3.0;
+    /** Default per-UAV staggered launch delay in seconds. */
     private static final double DEF_LAUNCH_STAGGER  = 8.0;
+    /** Default X-axis spawn stride in metres when drones share a fallback spawn point. */
     private static final double DEF_SPAWN_STRIDE    = 20.0;
     private static final double DEFAULT_FINAL_GOAL_TOLERANCE = 2.0;
 
-    // ================================================================ //
-    //  DWA adaptive weight sets  (paper Table 4)
-    //  index: 0=α(heading) 1=β(vel) 2=λ(obs) 3=η(follow)
-    // ================================================================ //
+    
 
+    /** DWA weights used in open space: prioritises heading and velocity. */
     private static final double[] W_FOLLOW = { 0.30, 0.30, 0.20, 0.20 };
+    /** DWA weights used when within distAlert of an obstacle: increases obstacle
+     *  avoidance term. */
     private static final double[] W_ALERT  = { 0.20, 0.30, 0.40, 0.10 };
+    /** DWA weights used when within distRisk of an obstacle: maximises obstacle
+     *  avoidance at the expense of path-following. */
     private static final double[] W_DANGER = { 0.20, 0.25, 0.50, 0.05 };
 
-    private static final int    STALL_LIMIT      = 6;
-    private static final double PEER_CHECK_RATIO = 1.5;
-    private static final int    HISTORY_SIZE     = 16;
-    private static final double STALL_LOG_INTERVAL = 5.0;
+    /** Number of consecutive idle DWA steps before a stall is declared and
+     *  an escape manoeuvre is attempted. */
+    private static final int STALL_LIMIT = 6;
 
-    // ================================================================ //
-    //  Per-instance parameters
-    // ================================================================ //
+    
 
+    /** Minimum and maximum hover time at a POI in seconds. */
     private double  dwellMin, dwellMax;
+    /** Minimum and maximum cruise speed in m/s. */
     private double  speedMin, speedMax;
-    @SuppressWarnings("unused")
+    /** Cruise altitude in metres (stored as metadata; planning is 2-D). */
     private double  cruiseAlt;
+    /** A* grid cell side length in metres. */
     private double  gridCellM;
+    /** Grid dimensions in cells derived from worldSize / gridCellM. */
     private int     gridW, gridH;
+    /** Number of candidate velocities sampled per DWA step. */
     private int     dwaSteps;
-    private double  distAlert, distRisk;
+    /** Distance threshold in metres at which DWA switches from W_FOLLOW
+     *  to W_ALERT obstacle-avoidance weights. */
+    private double  distAlert;
+    /** Distance threshold in metres at which DWA switches from W_ALERT
+     *  to W_DANGER obstacle-avoidance weights. */
+    private double  distRisk;
+    /** Minimum inter-UAV separation in metres; defines the VO cone radius. */
     private double  uavSeparationM;
+    /** Scaling multiplier applied to the VO cone penalty score. */
     private double  voWeight;
+    /** Per-UAV launch delay offset in seconds, indexed by UAV ID. */
     private double  launchStaggerS;
+    /** X-axis offset in metres applied between drones that share the fallback
+     *  UAVWaypointMovement.spawn position. */
     private double  spawnStrideM;
+    /** World-space spawn coordinates (metres). */
     private double  spawnX, spawnY;
+    /** World-space goal coordinates (metres). */
     private double  targetX, targetY;
+    /** Buffer radius in metres used when rasterising POINT obstacles. */
     private double  pointObstacleRadius;
+    /** Half-width in metres used when rasterising LINESTRING obstacles. */
     private double  lineObstacleHalfWidth;
-    private int     poiGridCols, poiGridRows;
+    /** Number of POI lattice columns; 0 disables the POI grid. */
+    private int     poiGridCols;
+    /** Number of POI lattice rows; 0 disables the POI grid. */
+    private int     poiGridRows;
+    /** It is true, spawn, goal, and POI coordinates are snapped to the
+     *  nearest obstacle-free grid cell before use. */
     private boolean snapLocationsToGrid;
+    /**It is  true , when a per-group spawn coordinate was explicitly set in the
+     *  GroupN config block (as opposed to inheriting the shared fallback). */
     private boolean perGroupSpawnSet = false;
-    private double  finalGoalTolerance;
-
+    /** WKT obstacle file paths loaded for this group; merged into the shared
+     *  grid at initialisation time. */
     private List<String> groupObstacleWktFiles = new ArrayList<>();
+    /** WKT files that define geographic extent polygons for coordinate clamping. */
     private List<String> geoExtentFiles = new ArrayList<>();
+    /** Explicit four-element geographic bounding box [minLon, minLat, maxLon, maxLat],
+     *  or  null when not specified in the settings file. */
     private double[] explicitGeoExtents = null;
 
-    // ================================================================ //
-    //  Sub-module helpers
-    //
-    //  One UavPathUtils + UavObstacleGrid pair is created per replicated
-    //  instance.  They share grid parameters derived from this group's
-    //  settings.  All static obstacle state lives inside UavObstacleGrid
-    //  and is shared across every instance automatically.
-    // ================================================================ //
+    
 
     /** Grid-coordinate conversion helper for this instance's grid parameters. */
     private UavPathUtils    pathUtils;
 
     /**
      * Obstacle-grid manager.  Wraps the shared static grid held in
-     * {@link UavObstacleGrid} and exposes obstacle queries and rasterisation.
+     *  UavObstacleGrid and exposes obstacle queries and rasterisation.
      */
     private UavObstacleGrid obstacleGridHelper;
 
     static {
-        // Automatically register this class to be reset between batch runs
+        
         core.DTNSim.registerForReset(UAVWaypointMovement.class.getName());
     }
 
-    // ================================================================ //
-    //  Peer-UAV registry  (Velocity Obstacle)
-    // ================================================================ //
+    
 
+    /**
+     * Shared registry of all active UAVs' positions and velocities.
+     * Each entry maps a UAV ID to a  double[4] array
+     * e {x, y, vx, vy} in world coordinates.  Updated at the end
+     * of every getPath() call so that peers see current state
+     * during the next DWA step.
+     */
     private static final ConcurrentHashMap<Integer, double[]> PEER_REGISTRY
             = new ConcurrentHashMap<>();
 
+    /**
+     * Shared registry of each UAV's accumulated flight trail, keyed by UAV ID.
+     * Updated every getPath() call and exposed to the GUI via
+     * getTrailRegistry().
+     */
     private static final ConcurrentHashMap<Integer, Path> TRAIL_REGISTRY
             = new ConcurrentHashMap<>();
 
+    /**
+     * It return  , a map from UAV ID to its accumulated flight-trail Path
+     */
+    public static Map<Integer, Path> getTrailRegistry() {
+        return Collections.unmodifiableMap(TRAIL_REGISTRY);
+    }
+
+    /** Monotonically increasing counter used to assign unique IDs to replicated
+     *  UAV instances. */
     private static final AtomicInteger ID_COUNTER = new AtomicInteger(0);
 
-    private int    uavId  = -1;
+    /** Unique identifier for this UAV instance, assigned during replication. */
+    private int    uavId = -1;
+    /** Last step's velocity components, published for VO calculations. */
     private double lastVx = 0.0, lastVy = 0.0;
 
+    /** Reference to the simulator GUI;  */
     private static gui.DTNSimGUI gui = null;
 
-    public static void setGui(gui.DTNSimGUI g) { gui = g; }
+    /**
+     * Injects a reference to the simulator GUI so that movement-model code
+     * can trigger overlay redraws. 
+     */
+    public static void setGui(gui.DTNSimGUI g) {
+        gui = g;
+    }
 
-    // ================================================================ //
-    //  GUI overlay — delegated to UavObstacleGrid
-    // ================================================================ //
 
     /**
      * Returns the current planning-grid snapshot for the GUI obstacle overlay,
-     * or {@code null} when grid rendering is disabled.
-     * Delegates to {@link UavObstacleGrid#getPlanningGridSnapshot()}.
      */
     public static UavObstacleGrid.PlanningGridSnapshot getPlanningGridSnapshot() {
         return UavObstacleGrid.getPlanningGridSnapshot();
     }
 
-    /** Delegates to {@link UavObstacleGrid#setGridRenderingEnabled(boolean)}. */
+    /**
+     * Enables or disables rendering of the A* planning grid in the GUI.
+     
+     */
     public static void setGridRenderingEnabled(boolean enabled) {
         UavObstacleGrid.setGridRenderingEnabled(enabled);
     }
 
-    /** Delegates to {@link UavObstacleGrid#isGridRenderingEnabled()}. */
+    /**
+     * Returns whether the A* planning grid overlay is currently enabled.
+     */
     public static boolean isGridRenderingEnabled() {
         return UavObstacleGrid.isGridRenderingEnabled();
     }
 
-    /** Delegates to {@link UavObstacleGrid#getObstacleRenderData()}. */
+    /**
+     * Returns render data for all obstacles currently loaded into the shared
+     * grid.  Used by the GUI to draw the obstacle overlay.
+     */
     public static List<UavObstacleGrid.ObstacleRenderData> getObstacleRenderData() {
         return UavObstacleGrid.getObstacleRenderData();
     }
 
-    // ================================================================ //
-    //  Planning state
-    // ================================================================ //
+    
 
+    /** Ordered sequence of waypoints (POIs + final goal) that this UAV
+     *  must visit during a mission tour. */
     private List<Coord> poiTour;
+    /** Index into poiTour  identifying the current target POI. */
     private int         poiIndex;
+    /** Key nodes extracted by Bresenham LOS compression from the raw A* path
+     *  to the current POI; these become sequential DWA sub-goals. */
     private List<Coord> keyNodes;
+    /** Index into keyNodes identifying the current DWA sub-goal. */
     private int         keyIndex;
+    /** Current world-space position of this UAV, updated every
+     *  getPath() call. */
     private Coord       uavPos;
+    /** It is  true ,  while the UAV is hovering at a POI between movements. */
     private boolean     hovering   = false;
+    /** Simulation time at which the current hover ends and movement resumes. */
     private double      hoverUntil = 0;
+    /** Flag set when the current key-node sequence is invalid and a full
+     *  Layer-1 re-plan is required at the start of the next getPath()
+     *  call. */
     private boolean     replanNeeded = false;
+    /** Number of consecutive getPath() calls during which the UAV
+     *  has made no discernible forward progress (physical stall counter). */
     private int         stallCount   = 0;
+    /** Closest distance to the current sub-goal observed so far; used to
+     *  detect net-progress oscillations that are too slow to trip the
+     *  physical stall counter. */
     private double      minSubGoalDist = Double.MAX_VALUE;
+    /** Number of consecutive ticks during which the UAV has not beaten
+     * minSubGoalDist triggers oscillation-based re-planning. */
     private int         progressStallCount = 0;
 
+    /** Default arrival tolerance in metres used when checking whether the UAV
+     *  has reached its final goal. */
     private static final double DEFAULT_FINAL_GOAL_TOLERANCE = 2.0;
+    /** Settings key for the final-goal arrival tolerance in metres . */
     public  static final String FINAL_GOAL_TOLERANCE_S = "finalGoalTolerance";
+    /** Configured arrival tolerance in metres */
     private double  finalGoalTolerance;
 
+    /** It is true, when once the UAV has arrived within finalGoalTolerance
+     *  of the last POI (the mission goal). */
     private boolean reachedFinalGoal = false;
 
+    /** Accumulated flight-trail path for this UAV; appended every tick */
     private Path trailPath = null;
 
-    /** Circular position history — used to penalise revisiting cells in DWA. */
+    /** Capacity of the circular grid-cell position history used to penalise
+     *  recently visited cells in DWA candidate scoring. */
+    private static final int HISTORY_SIZE = 16;
+    /** Circular buffer storing the last HISTORY_SIZE grid cells visited
+     *  by this UAV; each entry is a  [col, row] pair. */
     private final int[][] posHistory  = new int[HISTORY_SIZE][2];
+    /** Write head for the circular posHistory buffer. */
     private int           historyHead = 0;
+    /** Number of valid entries currently stored in posHistory. */
     private int           historyFill = 0;
 
+    /** Cumulative nanoseconds spent inside getInitialLocation() and
+     *  getPath() ; exposed via getComputeTimeSeconds(). */
     private long          totalComputeTimeNs = 0;
+    /** Cumulative sum of absolute heading-change angles (radians) across all
+     *  movement steps; a lower value indicates a smoother path. */
     private double        totalTurnCost = 0.0;
+    /** Previous step's heading in radians, or null initially. */
     private Double        lastHeading = null;
+    /** IT is true ,when after the mission-failure message has been printed for
+     *  this UAV; prevents duplicate log lines at simulation end. */
     private boolean       failureLogPrinted = false;
 
-    // ================================================================ //
-    //  FIX: Peer-proximity check threshold for direct-walk bypass
-    //
-    //  When a peer UAV is closer than this fraction of uavSeparationM,
-    //  the direct-walk primary mover hands off to DWA (which includes VO).
-    //  This ensures VO fires even when there are no static obstacles
-    //  between two converging drones — the original code only invoked
-    //  DWA when the direct step landed in obstacleGrid, but peer UAVs
-    //  are never written to obstacleGrid.
-    // ================================================================ //
+ 
+
+    /** Multiplier applied to uavSeparationM to form the peer-proximity
+     *  check radius; when any peer falls within this radius the primary mover
+     *  delegates to DWA so that VO avoidance activates before physical contact. */
     private static final double PEER_CHECK_RATIO = 1.5;
 
-    // ================================================================ //
-    //  Two-level settings helpers
-    // ================================================================ //
+    
 
+    /**
+     * Reads a  double setting, preferring the per-group scope  s
+     * over the shared namespace  cfg and returning  def} when
+     * the key is absent from both.
+     
+     */
     private static double readDouble(Settings s, Settings cfg,
                                      String key, double def) {
         if (s   != null && s.contains(key))   return s.getDouble(key);
@@ -338,6 +380,12 @@ public class UAVWaypointMovement extends MovementModel {
         return def;
     }
 
+    /**
+     * Reads an  int setting, preferring the per-group scope s
+     * over the shared namespace  cfg, and returning  def when
+     * the key is absent from both.
+     
+     */
     private static int readInt(Settings s, Settings cfg,
                                String key, int def) {
         if (s   != null && s.contains(key))   return s.getInt(key);
@@ -345,6 +393,11 @@ public class UAVWaypointMovement extends MovementModel {
         return def;
     }
 
+    /**
+     * Reads a  boolean setting, preferring the per-group scope s
+     * over the shared namespace  cfg ,  and returning def when
+     * the key is absent from both.
+     */
     private static boolean readBoolean(Settings s, Settings cfg,
                                        String key, boolean def) {
         if (s   != null && s.contains(key))   return s.getBoolean(key, def);
@@ -352,6 +405,12 @@ public class UAVWaypointMovement extends MovementModel {
         return def;
     }
 
+    /**
+     * Reads a String setting, preferring the per-group scope  s
+     * over the shared namespace  cfg, and returning  def when
+     * the key is absent from both.
+     
+     */
     private static String readString(Settings s, Settings cfg,
                                      String key, String def) {
         if (s   != null && s.contains(key))   return s.getSetting(key);
@@ -359,6 +418,13 @@ public class UAVWaypointMovement extends MovementModel {
         return def;
     }
 
+    /**
+     * Reads a raw comma-separated obstacle file setting, attempting
+     *  getCsvSetting() first (which honours all tokens in a
+     * comma-separated value) and falling back to readString if
+     * the CSV call throws.  This is necessary because
+     *  getSetting() returns only the first token.
+     */
     private static String readRawObstacleFileSetting(Settings s, Settings cfg, String key) {
         try {
             if (s != null && s.contains(key)) {
@@ -375,6 +441,11 @@ public class UAVWaypointMovement extends MovementModel {
         return readString(s, cfg, key, "");
     }
 
+    /**
+     * Reads a csv-double array setting, preferring the per-group scope
+     *  s over the shared namespace cfg.
+     
+     */
     private static double[] readCsvDoubles(Settings s, Settings cfg,
                                            String key, int count) {
         if (s   != null && s.contains(key))   return s.getCsvDoubles(key, count);
@@ -382,15 +453,20 @@ public class UAVWaypointMovement extends MovementModel {
         return null;
     }
 
+    /**
+     * Reads and de-duplicates all obstacle WKT file paths from the two-level
+     */
     private static List<String> readObstacleFilePaths(Settings s, Settings cfg) {
         String raw = readRawObstacleFileSetting(s, cfg, OBSTACLE_WKT_S);
         return WktObstacleParser.parseObstacleFilePaths(raw);
     }
 
-    // ================================================================ //
-    //  Constructors
-    // ================================================================ //
 
+    /**
+     * Prototype constructor called by ONE once per GroupN block.
+     * Reads all per-group and shared settings, computes the grid dimensions,
+     * and initialises the path-utility and obstacle-grid helper instances.     
+     */
     public UAVWaypointMovement(Settings s) {
         super(s);
         Settings cfg = new Settings(SETTINGS_NS);
@@ -405,6 +481,8 @@ public class UAVWaypointMovement extends MovementModel {
         spawnX  = sp[0]; spawnY  = sp[1];
         targetX = tg[0]; targetY = tg[1];
 
+        // Track whether a per-group spawn was given to avoid applying spawnStrideM
+        // to drones that already have explicit independent start positions.
         perGroupSpawnSet = (s != null && s.contains(SPAWN_S));
 
         dwellMin   = readDouble(s, cfg, DWELL_MIN_S,     DEF_DWELL_MIN);
@@ -432,6 +510,7 @@ public class UAVWaypointMovement extends MovementModel {
         finalGoalTolerance = readDouble(s, cfg, FINAL_GOAL_TOLERANCE_S,
                                         DEFAULT_FINAL_GOAL_TOLERANCE);
 
+        // Derive grid dimensions from world size and cell resolution.
         gridW = (int) Math.ceil(worldW() / gridCellM);
         gridH = (int) Math.ceil(worldH() / gridCellM);
 
@@ -442,7 +521,7 @@ public class UAVWaypointMovement extends MovementModel {
 
         groupObstacleWktFiles = readObstacleFilePaths(s, cfg);
 
-        // ── Optional explicit geo extents ──────────────────────────────
+        // Parse optional explicit geographic extents.
         String geoExtStr = readString(s, cfg, GEO_EXTENTS_S, "");
         if (!geoExtStr.trim().isEmpty()) {
             String[] parts = geoExtStr.split(",");
@@ -470,6 +549,12 @@ public class UAVWaypointMovement extends MovementModel {
             readDouble(s, cfg, GEO_ORIGIN_LAT_S,   17.480),
             readDouble(s, cfg, GEO_SCALE_FACTOR_S, 100000.0));
     }
+
+    /**
+     * Copy constructor called by ONE via replicate() to create one
+     * instance per host node in the group.  Copies all per-group parameters
+     * from the prototype, assigns a new unique UAV ID from ID_COUNTER,
+     */
 
     public UAVWaypointMovement(UAVWaypointMovement proto) {
         super(proto);
@@ -503,9 +588,10 @@ public class UAVWaypointMovement extends MovementModel {
         this.explicitGeoExtents    = proto.explicitGeoExtents != null
                                      ? proto.explicitGeoExtents.clone() : null;
         this.finalGoalTolerance    = proto.finalGoalTolerance;
+
+        // Per-instance planning state is not inherited from the prototype.
         this.reachedFinalGoal      = false;
         this.failureLogPrinted     = false;
-
         this.totalComputeTimeNs    = 0;
         this.totalTurnCost         = 0.0;
         this.lastHeading           = null;
@@ -520,16 +606,19 @@ public class UAVWaypointMovement extends MovementModel {
                                                        this.lineObstacleHalfWidth, this.distAlert);
     }
 
-    // ================================================================ //
-    //  ONE MovementModel interface
-    // ================================================================ //
+    
 
+    /**
+     * Returns the initial world-space position of this UAV and completes all
+     * one-time initialisation that depends on having a concrete UAV ID.
+     */
     @Override
     public Coord getInitialLocation() {
         long _startNs = System.nanoTime();
         try {
             obstacleGridHelper.mergeObstaclesIfNeeded(groupObstacleWktFiles);
 
+            // Apply the stride offset only when drones share the fallback spawn.
             double offsetX = (!perGroupSpawnSet && uavId >= 0) ? uavId * spawnStrideM : 0.0;
             uavPos = new Coord(spawnX + offsetX, spawnY);
             if (snapLocationsToGrid) uavPos = obstacleGridHelper.snapToNearestFreeCell(uavPos);
@@ -562,6 +651,9 @@ public class UAVWaypointMovement extends MovementModel {
         }
     }
 
+    /**
+     * Computes and returns the next one-step movement path for this UAV.
+     */
     @Override
     public Path getPath() {
         long _startNs = System.nanoTime();
@@ -575,7 +667,7 @@ public class UAVWaypointMovement extends MovementModel {
                 }
             }
 
-            // ── FIX 1: Already stopped at goal? Stay put. ───────────────────────
+            // ── Already stopped at goal: stay put indefinitely. ─────────────────
             if (reachedFinalGoal) {
                 Path path = new Path(0);
                 path.addWaypoint(uavPos.clone());
@@ -583,7 +675,7 @@ public class UAVWaypointMovement extends MovementModel {
                 return path;
             }
 
-            // ── FIX 1: Are we close enough to the final goal right now? ─────────
+            // ── Early arrival check: are we already close enough to the final goal? ─
             Coord finalGoal = poiTour.get(poiTour.size() - 1);
             if (poiIndex == poiTour.size() - 1
                     && uavPos.distance(finalGoal) <= finalGoalTolerance) {
@@ -607,6 +699,7 @@ public class UAVWaypointMovement extends MovementModel {
             Coord subGoal = keyNodes.get(keyIndex);
 
             if (replanNeeded) {
+                // Clear flags and run a fresh Layer-1 plan before proceeding.
                 replanNeeded = false; stallCount = 0;
                 progressStallCount = 0;
                 minSubGoalDist = Double.MAX_VALUE;
@@ -617,7 +710,7 @@ public class UAVWaypointMovement extends MovementModel {
             double prevX = uavPos.getX(), prevY = uavPos.getY();
             double distToSub = uavPos.distance(subGoal);
 
-            // Track net progress toward the subgoal to detect large oscillations
+            // Track net progress toward the sub-goal to detect oscillations.
             if (distToSub < minSubGoalDist - 0.1) {
                 minSubGoalDist = distToSub;
                 progressStallCount = 0;
@@ -625,17 +718,19 @@ public class UAVWaypointMovement extends MovementModel {
                 progressStallCount++;
             }
 
-            // ── FIX: Peer-proximity VO gate for direct-walk primary mover ────────
+            // ── Peer-proximity VO gate for direct-walk primary mover ─────────────
             boolean peerThreat = isPeerWithinRange(uavPos, PEER_CHECK_RATIO * uavSeparationM);
 
             double stepSize  = Math.min(speedMax, distToSub);
             Coord nextPos;
             if (distToSub < 0.1) {
+                // Already at the sub-goal; snap exactly.
                 nextPos = subGoal.clone();
             } else if (peerThreat) {
-                // Peer nearby: use DWA so the VO penalty influences direction choice
+                // Peer nearby: use DWA so the VO penalty influences direction choice.
                 nextPos = dwaStep(uavPos, subGoal);
             } else {
+                // Attempt a direct step; fall back to DWA if it lands in an obstacle.
                 double dx = (subGoal.getX() - uavPos.getX()) / distToSub;
                 double dy = (subGoal.getY() - uavPos.getY()) / distToSub;
                 Coord direct = pathUtils.clampToWorld(new Coord(
@@ -656,7 +751,7 @@ public class UAVWaypointMovement extends MovementModel {
             historyHead = (historyHead + 1) % HISTORY_SIZE;
             if (historyFill < HISTORY_SIZE) historyFill++;
 
-            // ── Stall & Oscillation detection → skip waypoint then replan ────────
+            // ── Stall and oscillation detection → escape then re-plan ────────────
             boolean isPhysicalStall = (nextPos.distance(uavPos) < speedMax * 0.1);
             boolean isOscillating = (progressStallCount >= STALL_LIMIT * 4);
 
@@ -664,7 +759,7 @@ public class UAVWaypointMovement extends MovementModel {
             else stallCount = 0;
 
             if (stallCount >= STALL_LIMIT || isOscillating) {
-
+                // Reset counters and attempt a DWA escape manoeuvre.
                 stallCount  = 0;
                 progressStallCount = 0;
                 minSubGoalDist = Double.MAX_VALUE;
@@ -673,9 +768,11 @@ public class UAVWaypointMovement extends MovementModel {
 
                 Coord escape = dwaEscapePoint(uavPos, subGoal);
                 if (escape.distance(uavPos) < 1.0) {
+                    // No usable escape point; schedule a full re-plan.
                     replanNeeded = true;
                 } else {
                     if (keyNodes != null) {
+                        // Insert the escape point immediately before the blocked sub-goal.
                         keyNodes.add(keyIndex, escape);
                     } else {
                         replanNeeded = true;
@@ -687,7 +784,7 @@ public class UAVWaypointMovement extends MovementModel {
             boolean isFinalNode = (keyIndex == keyNodes.size() - 1);
 
             if (isFinalNode) {
-                // For the final goal, require exact arrival without premature teleportation
+                // For the final goal, require exact arrival without premature teleportation.
                 if (nextPos.distance(subGoal) <= Math.max(speedMax, finalGoalTolerance)) {
                     uavPos = subGoal.clone();
                     reachedSubGoal = true;
@@ -696,13 +793,14 @@ public class UAVWaypointMovement extends MovementModel {
                 }
             } else {
                 uavPos = nextPos.clone();
-                // For intermediate waypoints, advance smoothly when close
+                // For intermediate waypoints, advance smoothly when within 1.5 cells.
                 if (nextPos.distance(subGoal) < gridCellM * 1.5) {
                     reachedSubGoal = true;
                 }
             }
 
             if (reachedSubGoal) {
+                // Reset per-sub-goal tracking state and advance indices.
                 historyFill = 0; historyHead = 0;
                 minSubGoalDist = Double.MAX_VALUE;
                 progressStallCount = 0;
@@ -722,6 +820,7 @@ public class UAVWaypointMovement extends MovementModel {
                             path.addWaypoint(uavPos.clone());
                             return path;
                         } else {
+                            // Rebuild the tour from the current position and try again.
                             poiIndex = 0;
                             poiTour  = buildMissionPoiTour(uavPos);
                         }
@@ -730,9 +829,11 @@ public class UAVWaypointMovement extends MovementModel {
                 }
             }
 
+            // Derive velocity from the positional delta and publish to the peer registry.
             lastVx = uavPos.getX() - prevX;
             lastVy = uavPos.getY() - prevY;
 
+            // Accumulate heading-change cost for path-smoothness metric.
             if (Math.hypot(lastVx, lastVy) > 1e-3) {
                 double heading = Math.atan2(lastVy, lastVx);
                 if (lastHeading != null) {
@@ -747,12 +848,14 @@ public class UAVWaypointMovement extends MovementModel {
                 PEER_REGISTRY.put(uavId,
                     new double[]{ uavPos.getX(), uavPos.getY(), lastVx, lastVy });
 
+            // Append waypoint to the accumulated trail path.
             if (trailPath == null) {
                 trailPath = new Path(sampleSpeed());
                 trailPath.addWaypoint(new Coord(prevX, prevY));
             }
             trailPath.addWaypoint(uavPos.clone());
 
+            // Build and return the single-segment path for this tick.
             Path path = new Path(sampleSpeed());
             path.addWaypoint(new Coord(prevX, prevY));
             path.addWaypoint(uavPos.clone());
@@ -767,25 +870,11 @@ public class UAVWaypointMovement extends MovementModel {
         }
     }
 
-    @Override
-    public double nextPathAvailable() {
-        double dwell = dwellMin + this.rng.nextDouble() * (dwellMax - dwellMin);
-        if (uavId >= 0 && SimClock.getTime() < 1.0) dwell += uavId * launchStaggerS;
-        hoverUntil = SimClock.getTime() + dwell;
-        hovering   = true;
-        return hoverUntil;
-    }
-
-    @Override
-    public UAVWaypointMovement replicate() { return new UAVWaypointMovement(this); }
-
-    // ================================================================ //
-    //  Peer proximity check helper
-    // ================================================================ //
 
     /**
-     * Returns {@code true} if any peer UAV other than this one is currently
-     * within {@code threshold} metres of {@code pos}.
+     * Returns true if any peer UAV other than this one is currently
+     * within  threshold} metres of  pos.
+     
      */
     private boolean isPeerWithinRange(Coord pos, double threshold) {
         for (Map.Entry<Integer, double[]> e : PEER_REGISTRY.entrySet()) {
@@ -798,34 +887,46 @@ public class UAVWaypointMovement extends MovementModel {
         return false;
     }
 
+    /**
+     * Returns the simulation time at which the next path will be available,
+     * implementing the POI dwell (hover) behaviour.
+     */
     @Override
     public double nextPathAvailable() {
         double dwell = dwellMin + this.rng.nextDouble() * (dwellMax - dwellMin);
+        // Stagger launches so drones do not depart simultaneously at T=0.
         if (uavId >= 0 && SimClock.getTime() < 1.0) dwell += uavId * launchStaggerS;
         hoverUntil = SimClock.getTime() + dwell;
         hovering   = true;
         return hoverUntil;
     }
 
+    /**
+     * Creates a per-host copy of this movement model.
+     * @return a new {@link UAVWaypointMovement} initialised from this instance
+     */
     @Override
     public UAVWaypointMovement replicate() { return new UAVWaypointMovement(this); }
 
+    /** @return world width in metres, as reported by the parent {@link MovementModel}. */
     private double worldW() { return getMaxX(); }
+    /** @return world height in metres, as reported by the parent {@link MovementModel}. */
     private double worldH() { return getMaxY(); }
 
-    // ================================================================ //
-    //  LAYER 1 — Improved A*
-    // ================================================================ //
 
+    /**
+     * Runs the Layer-1 A* planner from uavPos to the current POI
+     * and stores the resulting key nodes in keyNodes, resetting
+     * keyIndex to 0.
+     
+     */
     private void planToNextPoi() {
         Coord goal = poiTour.get(poiIndex);
         List<int[]> raw = aStarSearch(pathUtils.worldToGrid(uavPos), pathUtils.worldToGrid(goal));
         if (raw == null || raw.isEmpty()) {
+            // No path found: insert an escape point and let the drone move first.
             keyNodes = new ArrayList<>();
             keyNodes.add(dwaEscapePoint(uavPos, goal));
-            // Fix: Do not instantly trigger replanNeeded = true here, otherwise
-            // the A* algorithm will continuously run every single tick until it escapes,
-            // freezing the simulation. Let the drone physically move to the escape point first.
         } else {
             List<Coord> wp = pathUtils.gridPathToWorld(raw);
             wp.add(goal.clone());
@@ -835,6 +936,15 @@ public class UAVWaypointMovement extends MovementModel {
         keyIndex = 0;
     }
 
+    /**
+     * Executes the improved A* search (Layer 1) from start to
+     * goal on the shared obstacle grid.
+     * The heuristic is adaptive: f(n) = g(n) + (1 + sigmoid(ξ)) * h(n)
+     * where ξ is the obstacle coverage rate along the straight line from
+     *  n to  goal
+     *
+     
+     */
     private List<int[]> aStarSearch(int[] start, int[] goal) {
         int total = gridW * gridH;
         double[] gCost  = new double[total]; Arrays.fill(gCost, Double.MAX_VALUE);
@@ -848,8 +958,9 @@ public class UAVWaypointMovement extends MovementModel {
         gCost[si] = 0;
         open.offer(new double[]{ adaptiveHeuristic(start, goal), start[0], start[1] });
 
-        int[][] dirs      = { {1,0},{-1,0},{0,1},{0,-1},{1,1},{1,-1},{-1,1},{-1,-1} };
-        double[] moveCost = { 1, 1, 1, 1,
+        // Direction vectors: [E, W, N, S, NE, SE, NW, SW] with corresponding move costs.
+        int[][] dirs     = { {1,0},{-1,0},{0,1},{0,-1},{1,1},{1,-1},{-1,1},{-1,-1} };
+        double[] moveCost= { 1,1,1,1,
             Math.sqrt(2), Math.sqrt(2), Math.sqrt(2), Math.sqrt(2) };
 
         while (!open.isEmpty()) {
@@ -860,11 +971,14 @@ public class UAVWaypointMovement extends MovementModel {
             if (col == goal[0] && row == goal[1])
                 return reconstructPath(parentIdx, goal, start);
 
+            // Apply neighbour clipping: only expand the subset of directions
+            // that cannot be reached more cheaply via the current node's parent.
             int pDir = parentDir[idx];
             int[] activeDirs = getActiveNeighbours(pDir);
             for (int di : activeDirs) {
                 int nc = col+dirs[di][0], nr = row+dirs[di][1];
                 if (!pathUtils.inBounds(nc,nr) || UavObstacleGrid.obstacleGrid[nr][nc]) continue;
+                // Block diagonal moves that cut through obstacle corners.
                 if (di >= 4 && (UavObstacleGrid.obstacleGrid[row][nc]
                              || UavObstacleGrid.obstacleGrid[nr][col])) continue;
                 int ni = pathUtils.cellIndex(nc, nr);
@@ -872,15 +986,24 @@ public class UAVWaypointMovement extends MovementModel {
                 double tg = gCost[idx] + moveCost[di] * gridCellM;
                 if (tg < gCost[ni]) {
                     gCost[ni] = tg; parentIdx[ni] = idx; parentDir[ni] = di;
+                    // Small jitter breaks f-value ties stochastically.
                     double jitter = (this.rng.nextDouble() - 0.5) * gridCellM * 0.01;
                     open.offer(new double[]{
                         tg + adaptiveHeuristic(new int[]{nc, nr}, goal) + jitter, nc, nr });
                 }
             }
         }
-        return null;
+        return null; // No path found.
     }
 
+    /**
+     * Computes the adaptive A* heuristic for node  n toward code g.
+     * Uses Manhattan distance scaled by (1 + sigmoid(ξ)) where ξ is the
+     * fraction of obstacle-occupied cells along the Bresenham line from
+     *  n to  g .  This inflates the heuristic
+     * in obstacle-dense regions, guiding the search away from blocked areas
+     * faster than a plain Manhattan heuristic.
+     */
     private double adaptiveHeuristic(int[] n, int[] g) {
         double manhattan = (Math.abs(n[0] - g[0]) + Math.abs(n[1] - g[1])) * gridCellM;
         double xi = obstacleCoverageRate(n, g);
@@ -888,6 +1011,14 @@ public class UAVWaypointMovement extends MovementModel {
         return multiplier * manhattan;
     }
 
+    /**
+     * Computes the obstacle coverage rate ξ along the Bresenham line from
+     * grid cell  n to grid cell g.
+     *
+     * ξ = (number of obstacle cells intersected) / (total cells traversed).
+     * Used as the obstacle-density input to the sigmoid in
+     * adaptiveHeuristic(int[], int[])
+     */
     private double obstacleCoverageRate(int[] n, int[] g) {
         int x0 = n[0], y0 = n[1], x1 = g[0], y1 = g[1];
         int dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
@@ -905,6 +1036,16 @@ public class UAVWaypointMovement extends MovementModel {
         return total == 0 ? 0.0 : (double) obs / total;
     }
 
+    /**
+     * Returns the subset of the eight movement directions that should be
+     * expanded from a node whose parent arrived from direction d.
+     *
+     * This implements the neighbour-clipping pruning rule from paper Fig. 1:
+     * when a parent direction is known, only the directions that cannot be
+     * reached via a cheaper path bypassing the current node are considered.
+     * All eight directions are returned for the start node (d &lt; 0).
+     
+     */
     private int[] getActiveNeighbours(int d) {
         if (d < 0) return new int[]{ 0,1,2,3,4,5,6,7 };
         switch (d) {
@@ -920,6 +1061,10 @@ public class UAVWaypointMovement extends MovementModel {
         }
     }
 
+    /**
+     * Reconstructs the A* path from the parent-index and parent-direction
+     * arrays by walking backward from the goal to the start.
+     */
     private List<int[]> reconstructPath(int[] pi, int[] pd, int[] goal, int[] start) {
         LinkedList<int[]> path = new LinkedList<>();
         int idx = pathUtils.cellIndex(goal[0], goal[1]);
@@ -931,10 +1076,19 @@ public class UAVWaypointMovement extends MovementModel {
         return new ArrayList<>(path);
     }
 
-    // ================================================================ //
-    //  Bresenham key-node extraction
-    // ================================================================ //
+    
 
+    /**
+     * Compresses a raw A* waypoint list to only the critical turning-point
+     * (key) nodes using iterative Bresenham line-of-sight checks 
+     *
+     * Starting from each confirmed key node, the method walks forward
+     * through the raw waypoints and retains the furthest reachable waypoint
+     * that has an unobstructed line-of-sight.  The result is a minimal set
+     * of waypoints that captures every necessary turn while eliminating
+     * redundant intermediate nodes.
+     
+     */
     private List<Coord> bresenhamExtractKeyNodes(List<Coord> raw) {
         List<Coord> keys = new ArrayList<>();
         if (raw.size() <= 1) { keys.addAll(raw); return keys; }
@@ -949,6 +1103,11 @@ public class UAVWaypointMovement extends MovementModel {
         return keys;
     }
 
+    /**
+     * It returns  true , if there is an unobstructed line of sight between
+     * world-space coordinates a  and  b, tested on the obstacle
+     * grid using the Bresenham line algorithm.
+     */
     private boolean bresenhamLOS(Coord a, Coord b) {
         int[] ca = pathUtils.worldToGrid(a), cb = pathUtils.worldToGrid(b);
         int x0=ca[0], y0=ca[1], x1=cb[0], y1=cb[1];
@@ -964,16 +1123,28 @@ public class UAVWaypointMovement extends MovementModel {
         return true;
     }
 
-    // ================================================================ //
-    //  LAYER 2 — Improved DWA with VO inter-UAV penalty
-    // ================================================================ //
 
+    /**
+     * Executes a single Layer-2 DWA step from  pos toward  subGoal,
+     * using the restricted angular sweep (±π/2 around the goal bearing).
+     * Falls back to a full 2π sweep via waStepInternal(Coord, Coord, boolean
+     * when the restricted sweep produces no net movement.
+     
+     */
     private Coord dwaStep(Coord pos, Coord subGoal) {
         return dwaStepInternal(pos, subGoal, false);
     }
 
+    /**
+     * Evaluates and selects the optimal immediate movement step.
+          * input ---     the drone's current position , 
+     *    where the drone is trying to go right now , 
+     *  to look in a full circle instead of just forward
+     * return --- best, safest position to move to next
+     */
     private Coord dwaStepInternal(Coord pos, Coord subGoal, boolean fullSweep) {
         double d = obstacleGridHelper.nearestObstacleDistance(pos);
+        // Select adaptive weight set based on distance to nearest obstacle.
         double[] w = d<=distRisk ? W_DANGER : d<=distAlert ? W_ALERT : W_FOLLOW;
         double alpha=w[0], beta=w[1], lambda=w[2], eta=w[3];
 
@@ -981,12 +1152,14 @@ public class UAVWaypointMovement extends MovementModel {
         Coord  bestPos   = pos.clone();
         double step = Math.min(speedMax, Math.max(speedMin, pos.distance(subGoal)));
 
-        double idBias  = (uavId % 2 == 0) ? 0.35 : -0.35;
-        double base    = Math.atan2(subGoal.getY() - pos.getY(),
-                                    subGoal.getX() - pos.getX());
-        int nSamples   = fullSweep ? dwaSteps * 2 : dwaSteps;
+        // ID-based tiebreaker: even-ID drones yield slightly left, odd-ID right,
+        // preventing symmetric oscillation in head-on encounters.
+        double idBias = (uavId % 2 == 0) ? 0.35 : -0.35;
 
-        // ── Build peer snapshots (predict one step forward) ──────────────
+        double base     = Math.atan2(subGoal.getY()-pos.getY(), subGoal.getX()-pos.getX());
+        int    nSamples = fullSweep ? dwaSteps * 2 : dwaSteps;
+
+        // Forward-extrapolate peer positions by one step along their last velocity.
         List<double[]> peerSnapshots = new ArrayList<>();
         for (Map.Entry<Integer, double[]> e : PEER_REGISTRY.entrySet()) {
             if (e.getKey() == uavId) continue;
@@ -1010,7 +1183,8 @@ public class UAVWaypointMovement extends MovementModel {
             int[] cell = pathUtils.worldToGrid(cand);
             if (UavObstacleGrid.obstacleGrid[cell[1]][cell[0]]) continue;
 
-            // HARD COLLISION AVOIDANCE
+            // ── HARD COLLISION AVOIDANCE ─────────────────────────────────────────
+            // Skip candidates that bring this drone closer to a peer than 5.5 m.
             boolean hardCollision = false;
             for (double[] peer : peerSnapshots) {
                 double curDist = Math.hypot(peer[0] - pos.getX(), peer[1] - pos.getY());
@@ -1022,6 +1196,8 @@ public class UAVWaypointMovement extends MovementModel {
             }
             if (hardCollision) continue;
 
+            // ── History penalty ──────────────────────────────────────────────────
+            // Penalise recently visited grid cells to discourage re-traversal.
             double histPenalty = 0.0;
             for (int h = 0; h < historyFill; h++) {
                 int hi = (historyHead - 1 - h + HISTORY_SIZE) % HISTORY_SIZE;
@@ -1029,8 +1205,8 @@ public class UAVWaypointMovement extends MovementModel {
                     histPenalty -= 1.2 * (1.0 - (double) h / HISTORY_SIZE);
             }
 
-            // ── VO peer penalties ────────────────────────────────────────
-            double peerPenalty  = 0.0;
+            // ── Velocity Obstacle penalty ────────────────────────────────────────
+            double peerPenalty = 0.0;
             boolean peerTooClose = false;
             double myVx = cand.getX() - pos.getX();
             double myVy = cand.getY() - pos.getY();
@@ -1043,13 +1219,15 @@ public class UAVWaypointMovement extends MovementModel {
                 double rx = px - pos.getX(), ry = py - pos.getY();
 
                 if (sd < uavSeparationM * 0.7) {
-                    double dot = (myVx * rx + myVy * ry)
-                                 / Math.max(1e-9, myVM * sd);
+                    // Within the danger zone: apply a strong repulsion penalty.
+                    double dot = (myVx*rx + myVy*ry) /
+                                 Math.max(1e-9, myVM * sd);
                     peerPenalty -= voWeight * 5.0 * Math.max(0, dot);
                     peerTooClose = true;
                     continue;
                 }
 
+                // Compute the VO cone: sin θ = uavSeparationM / dist(self, peer).
                 double pvm = Math.hypot(pvx, pvy);
                 double rvx, rvy;
                 if (myVM < 1e-9 || pvm < 1e-9) { rvx = myVx - pvx; rvy = myVy - pvy; }
@@ -1061,25 +1239,31 @@ public class UAVWaypointMovement extends MovementModel {
                 double cosT = Math.sqrt(Math.max(0, 1 - sinT * sinT));
                 double cosA = (rvx * rx + rvy * ry) / (rvm * sd);
                 if (cosA > cosT) {
+                    // Relative velocity is inside the VO cone; scale penalty by
+                    // penetration depth and proximity.
                     double pen  = (cosA - cosT) / Math.max(1e-9, 1 - cosT);
                     double prox = 1 - Math.min(1, sd / (uavSeparationM * 5));
                     peerPenalty -= voWeight * pen * (1 + prox);
                 }
             }
 
-            // ── Repulsion bonus ──────────────────────────────────────────
+            // ── Repulsion bonus for moving away from nearby peers ────────────────
             double repulsionBonus = 0.0;
             for (double[] peer : peerSnapshots) {
                 double sd = Math.hypot(peer[0] - pos.getX(), peer[1] - pos.getY());
                 if (sd < 0.5 || sd > uavSeparationM * 3) continue;
-                double rx = peer[0] - pos.getX(), ry = peer[1] - pos.getY();
-                double dot = (myVx * rx + myVy * ry) / Math.max(1e-9, myVM * sd);
+                double rx = peer[0]-pos.getX(), ry = peer[1]-pos.getY();
+                double dot = (myVx*rx + myVy*ry) /
+                             Math.max(1e-9, myVM * sd);
+                // Reward velocity components that point away from the peer.
                 if (dot < 0) repulsionBonus += 0.15 * (-dot);
             }
 
+            // ID tiebreaker is only applied when peer interactions are active.
             double tb = (peerPenalty < 0 || peerTooClose)
                         ? idBias * Math.signum(off + 1e-12) : 0;
 
+            // ── Evaluate the candidate ───────────────────────────────────────────
             double bear    = Math.atan2(subGoal.getY()-cand.getY(),
                                         subGoal.getX()-cand.getX());
             double heading = Math.PI - Math.abs(UavPathUtils.normaliseAngle(bear - angle));
@@ -1094,12 +1278,22 @@ public class UAVWaypointMovement extends MovementModel {
             if (score > bestScore) { bestScore = score; bestPos = cand; }
         }
 
-        if (!fullSweep && bestPos.distance(pos) < 0.5)
+        // If the restricted sweep produced no movement, retry with a full 2π sweep.
+        if (!fullSweep && bestPos.distance(pos) < 0.5) {
             return dwaStepInternal(pos, subGoal, true);
 
         return bestPos;
     }
 
+    /**
+     * Selects an escape waypoint when the UAV is stalled or oscillating.
+     *Samples candidate positions on a circle of radius 3 * gridCellM
+     * around  pos, discarding any that land in an obstacle cell or
+     * within uavSeparationM of a peer.  Candidates are scored by a
+     * weighted combination of obstacle clearance and alignment with the goal
+     * bearing, and the highest-scoring free candidate is returned.
+     
+     */
     private Coord dwaEscapePoint(Coord pos, Coord goal) {
         double best=Double.NEGATIVE_INFINITY; Coord out=pos.clone();
         double step=gridCellM*3;
@@ -1111,6 +1305,7 @@ public class UAVWaypointMovement extends MovementModel {
                 pos.getX()+step*Math.cos(angle), pos.getY()+step*Math.sin(angle)));
             int[] cell=pathUtils.worldToGrid(c); if(UavObstacleGrid.obstacleGrid[cell[1]][cell[0]]) continue;
 
+            // Discard candidates too close to any peer.
             boolean peerTooClose = false;
             for (Map.Entry<Integer, double[]> e : PEER_REGISTRY.entrySet()) {
                 if (e.getKey() == uavId) continue;
@@ -1122,17 +1317,21 @@ public class UAVWaypointMovement extends MovementModel {
             }
             if (peerTooClose) continue;
 
+            // Score: 75 % obstacle clearance, 25 % alignment with goal bearing.
             double sc=0.75*Math.min(1,obstacleGridHelper.nearestObstacleDistance(c)/distAlert)
                     +0.25*0.5*(1+Math.cos(angle-gb));
             if (sc>best) { best=sc; out=c; }
         }
         return out;
     }
+    
 
-    // ================================================================ //
-    //  POI tour
-    // ================================================================ //
-
+    /**
+     * Builds the list of POI lattice waypoints by dividing the world into a
+     * poiGridCols × poiGridRows grid and placing one
+     * waypoint at the centre of each cell that is not blocked by an obstacle.
+     * Returns an empty list when either dimension is zero (POI grid disabled).
+     */
     private List<Coord> buildPoiGridWaypoints() {
         if (poiGridCols<=0||poiGridRows<=0) return new ArrayList<>();
         double W=worldW(), H=worldH();
@@ -1148,6 +1347,11 @@ public class UAVWaypointMovement extends MovementModel {
         return out;
     }
 
+    /**
+     * Take input  the starting position used as the tour's departure point
+     *               for the nearest-neighbour ordering
+     * return ,  ordered list of world-space waypoints ending at the final goal
+     */
     private List<Coord> buildMissionPoiTour(Coord origin) {
         List<Coord> lattice=buildPoiGridWaypoints();
         List<Coord> tour=new ArrayList<>();
@@ -1158,14 +1362,25 @@ public class UAVWaypointMovement extends MovementModel {
         return tour;
     }
 
-    // ================================================================ //
-    //  Simulation reset
-    // ================================================================ //
+    /**
+     * Orders a list of POI coordinates using a greedy nearest-neighbour
+     * heuristic, starting from  start.
+     */
+    private List<Coord> nearestNeighbourTour(Coord start, List<Coord> pois) {
+        List<Coord> rem=new ArrayList<>(pois), ord=new ArrayList<>(pois.size());
+        Coord cur=start;
+        while (!rem.isEmpty()) {
+            Coord nn=null; double md=Double.MAX_VALUE;
+            for (Coord c:rem) { double d=cur.distance(c); if(d<md){md=d;nn=c;} }
+            ord.add(nn); rem.remove(nn); cur=nn;
+        }
+        return ord;
+    }
+
+    
 
     /**
-     * Clears all shared obstacle state and resets peer/trail registries.
-     * Called automatically via {@code DTNSim.registerForReset}.
-     * Obstacle state is cleared by delegating to {@link UavObstacleGrid#reset()}.
+     * Clears all shared obstacle state and resets peer and trail registries.
      */
     public static synchronized void reset() {
         UavObstacleGrid.reset();
@@ -1174,48 +1389,113 @@ public class UAVWaypointMovement extends MovementModel {
         ID_COUNTER.set(0);
     }
 
+    /**
+     * return , Samples a cruise speed uniformly from speedMin ,speedMax.
+     */
     private double sampleSpeed() {
         return speedMin + this.rng.nextDouble() * (speedMax - speedMin);
     }
 
-    // ================================================================ //
-    //  Public accessors
-    // ================================================================ //
+    
 
-    /** Returns the current A* key-node list (unmodifiable). */
+    /**
+     * it return ,  the key nodes for the current POI segment, or an empty list
+     *         if planning has not yet started
+     */
     public List<Coord> getKeyNodes() {
-        return keyNodes == null ? Collections.emptyList()
-                                : Collections.unmodifiableList(keyNodes);
+        return keyNodes==null ? Collections.emptyList()
+                              : Collections.unmodifiableList(keyNodes);
     }
 
-    public int         getKeyIndex()         { return keyIndex; }
-    public int         getPoiIndex()         { return poiIndex; }
-    public List<Coord> getPoiTour()          {
-        return poiTour == null ? Collections.emptyList()
-                               : Collections.unmodifiableList(poiTour);
+    /**
+     * Returns the index of the current key node within keyNodes.
+     */
+    public int getKeyIndex()     { return keyIndex; }
+
+    /**
+     * Returns the index of the current POI within poiTour.
+     
+     */
+    public int getPoiIndex()     { return poiIndex; }
+
+    /**
+     * Returns an unmodifiable view of the current mission POI tour.
+     * it return ,  the ordered tour waypoints, or an empty list before initialisation
+     */
+    public List<Coord> getPoiTour()  {
+        return poiTour==null ? Collections.emptyList()
+                             : Collections.unmodifiableList(poiTour);
     }
-    public boolean isHovering()              { return hovering && SimClock.getTime() < hoverUntil; }
-    public boolean isReplanPending()         { return replanNeeded; }
-    public boolean isReachedFinalGoal()      { return reachedFinalGoal; }
-    public int     getStallCount()           { return stallCount; }
-    public Coord   getUavPos()               { return uavPos == null ? null : uavPos.clone(); }
-    public int     getUavId()                { return uavId; }
 
-    public Path    getTrailPath()            { return trailPath; }
+    /**
+     * Returns  true while the UAV is hovering at a POI and the hover
+     * period has not yet expired.
+     */
+    public boolean isHovering()      { return hovering && SimClock.getTime()<hoverUntil; }
 
-    public static Map<Integer, double[]> getPeerRegistry() {
+    /**
+     * Returns {true} when a Layer-1 re-plan has been scheduled for
+     * the next getPath() call.
+
+     */
+    public boolean isReplanPending() { return replanNeeded; }
+
+    /**
+     * Returns {} true} once the UAV has arrived within
+     */
+    public boolean isReachedFinalGoal() { return reachedFinalGoal; }
+
+    /**
+     * Returns the current physical stall count.
+     * it, return number of consecutive ticks with no net forward movement
+     */
+    public int getStallCount()   { return stallCount; }
+
+    /**
+     * Returns a defensive copy of the current UAV world-space position.
+    */
+    public Coord getUavPos()       { return uavPos==null ? null : uavPos.clone(); }
+
+    /**
+     * Returns the unique integer ID assigned to this UAV instance.
+    */
+    public int getUavId()        { return uavId; }
+
+    /**
+     * Returns the accumulated flight-trail path for GUI rendering.
+     */
+    public Path getTrailPath() {
+        return trailPath;
+    }
+
+    /**
+     * Returns an unmodifiable view of the shared peer registry.
+     */
+    public static Map<Integer,double[]> getPeerRegistry() {
         return Collections.unmodifiableMap(PEER_REGISTRY);
     }
 
-    /** Delegates to {@link UavObstacleGrid#getLoadedWktFiles()}. */
+    /**
+     * Returns the set of WKT obstacle file paths that have been loaded into
+     * the shared grid.  
+     */
     public static Set<String> getLoadedWktFiles() {
         return UavObstacleGrid.getLoadedWktFiles();
     }
 
+    /**
+     * Returns the total CPU time spent inside getInitialLocation() and
+     * getPath() for this instance, in seconds.
+     
+     */
     public double getComputeTimeSeconds() {
         return this.totalComputeTimeNs / 1e9;
     }
 
+    /**
+     * Returns the cumulative sum of absolute heading-change angles (in radians)
+     * across all movement steps.  Lower values indicate a smoother flight path.
+     */
     public double getPathSmoothness() {
         return this.totalTurnCost;
     }
