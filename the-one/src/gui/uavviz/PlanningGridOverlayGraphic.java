@@ -5,21 +5,21 @@
 package gui.uavviz;
 
 import gui.playfield.PlayFieldGraphic;
-import movement.UAVWaypointMovement;
+import movement.UavObstacleGrid;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 
-/** Draws A* cell boundaries and blocked cells from a {@link UAVWaypointMovement} snapshot. */
+/** Draws A* cell boundaries and blocked cells from a {@link UavObstacleGrid} snapshot. */
 public class PlanningGridOverlayGraphic extends PlayFieldGraphic {
 
     private static final Color GRID_LINE   = new Color(90, 110, 160);
     private static final Color BLOCK_FILL  = new Color(220, 60, 60, 110);
 
-    private final UAVWaypointMovement.PlanningGridSnapshot snap;
+    private final UavObstacleGrid.PlanningGridSnapshot snap;
 
-    public PlanningGridOverlayGraphic(UAVWaypointMovement.PlanningGridSnapshot snap) {
+    public PlanningGridOverlayGraphic(UavObstacleGrid.PlanningGridSnapshot snap) {
         this.snap = snap;
     }
 

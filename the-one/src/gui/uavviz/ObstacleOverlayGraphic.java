@@ -5,7 +5,7 @@
 package gui.uavviz;
 
 import gui.playfield.PlayFieldGraphic;
-import movement.UAVWaypointMovement;
+import movement.UavObstacleGrid;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  * Draws obstacle shapes (points, lines, polygons) from
- * {@link UAVWaypointMovement#getObstacleRenderData()} using original WKT
+ * {@link UavObstacleGrid#getObstacleRenderData()} using original WKT
  * world coordinates.
  *
  * <p>This graphic is rendered by {@link UavPlanningGridRenderer} on every
@@ -28,9 +28,9 @@ public class ObstacleOverlayGraphic extends PlayFieldGraphic {
     private static final Color OBSTACLE_FILL   = new Color(220, 60, 60, 110);
     private static final Color OBSTACLE_STROKE = new Color(180, 30, 30, 180);
 
-    private final List<UAVWaypointMovement.ObstacleRenderData> obstacles;
+    private final List<UavObstacleGrid.ObstacleRenderData> obstacles;
 
-    public ObstacleOverlayGraphic(List<UAVWaypointMovement.ObstacleRenderData> obstacles) {
+    public ObstacleOverlayGraphic(List<UavObstacleGrid.ObstacleRenderData> obstacles) {
         this.obstacles = obstacles;
     }
 
@@ -45,7 +45,7 @@ public class ObstacleOverlayGraphic extends PlayFieldGraphic {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                                RenderingHints.VALUE_ANTIALIAS_ON);
 
-            for (UAVWaypointMovement.ObstacleRenderData obs : obstacles) {
+            for (UavObstacleGrid.ObstacleRenderData obs : obstacles) {
                 if (obs.coords == null || obs.coords.isEmpty()) continue;
 
                 switch (obs.type) {

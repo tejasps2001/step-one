@@ -2,6 +2,7 @@ package gui.uavviz;
 
 import core.Settings;
 import movement.UAVWaypointMovement;
+import movement.UavObstacleGrid;
 
 import java.awt.Graphics2D;
 
@@ -14,11 +15,11 @@ import java.awt.Graphics2D;
  * <ol>
  *   <li><b>Obstacle pass</b> — always runs when obstacles exist, regardless of
  *       whether the grid toggle is on or off.  Uses
- *       {@link UAVWaypointMovement#getObstacleRenderData()}, which is never
+ *       {@link UavObstacleGrid#getObstacleRenderData()}, which is never
  *       gated by {@code gridRenderingEnabled}.</li>
  *   <li><b>Grid pass</b> — runs only when {@code showPlanningGrid=true} in the
  *       settings AND the runtime toggle is ON.  Uses
- *       {@link UAVWaypointMovement#getPlanningGridSnapshot()}, which returns
+ *       {@link UavObstacleGrid#getPlanningGridSnapshot()}, which returns
  *       {@code null} when the toggle is OFF.</li>
  * </ol>
  *
@@ -42,8 +43,8 @@ public final class UavPlanningGridRenderer {
      */
     public static void renderIfEnabled(Graphics2D g2) {
         // ── Pass 1: Obstacles (always rendered, independent of grid toggle) ──
-        java.util.List<UAVWaypointMovement.ObstacleRenderData> obstacles =
-                UAVWaypointMovement.getObstacleRenderData();
+        java.util.List<UavObstacleGrid.ObstacleRenderData> obstacles =
+                UavObstacleGrid.getObstacleRenderData();
         if (!obstacles.isEmpty()) {
             new ObstacleOverlayGraphic(obstacles).draw(g2);
         }
@@ -53,8 +54,8 @@ public final class UavPlanningGridRenderer {
         if (!cfg.getBoolean(UAVWaypointMovement.SHOW_PLANNING_GRID_S, false)) {
             return;
         }
-        UAVWaypointMovement.PlanningGridSnapshot snap =
-                UAVWaypointMovement.getPlanningGridSnapshot();
+        UavObstacleGrid.PlanningGridSnapshot snap =
+                UavObstacleGrid.getPlanningGridSnapshot();
         if (snap == null) {
             // null means grid toggle is OFF — skip grid lines, obstacles already drawn above
             return;
