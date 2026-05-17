@@ -14,33 +14,37 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 
+/**
+ * Monitors and reports performance metrics for Fog-UAV-assisted swarms.
+ * Tracks coverage, priority-awareness, resilience, and computational efficiency.
+ */
 public class FogPerformanceReport extends Report implements UpdateListener {
 
-    private DTNHost fogUAV = null;
-    private double commRange = 500.0;
+    private DTNHost fogUAV = null;       // The central Fog coordinator
+    private double commRange = 500.0;    // Maximum communication distance
     
-    // Category 1
+    // Total Swarm Coverage Metric
     private int totalUpdates = 0;
     private double totalSwarmCoverageSum = 0;
     private Map<DTNHost, Double> totalDisconnectionTime = new HashMap<>();
     
-    // Category 2
+    // Starvation Metric
     private double totalWeightedCoverageScore = 0;
     private double maxHighPriorityStarvationTime = 0;
     private Map<DTNHost, Double> currentStarvationTime = new HashMap<>();
     
-    // Category 3
+    // Recovery Metrics
     private boolean shutdownLogged = false;
     private double timeToRecovery = -1;
     private boolean recoveryFound = false;
     
-    // Category 4
+    // Distance Metrics
     private double totalDistanceTraveled = 0;
     private core.Coord lastFogLoc = null;
     private core.Coord lastOptimalTarget = null;
-    private int targetChurnCount = 0;
+    private int targetChurnCount = 0; // how often Fog moves target
     
-    // Category 5
+    // Computational performance Metrics
     private double totalExecutionTimeMs = 0;
     private int executionCount = 0;
     
@@ -52,6 +56,7 @@ public class FogPerformanceReport extends Report implements UpdateListener {
 
     @Override
     public void updated(List<DTNHost> hosts) {
+        // Identify the Fog UAV host if not yet assigned
         if (fogUAV == null) {
             for (DTNHost h : hosts) {
                 if (h.getMovement() instanceof WOAFogMovement || h.getMovement() instanceof MILPClusteredFogMovement) {
@@ -63,9 +68,10 @@ public class FogPerformanceReport extends Report implements UpdateListener {
             if (fogUAV == null) return; // Still not found
         }
         
+        // Calculate time elapsed since last update
         double currentTime = SimClock.getTime();
         double updateInterval = currentTime - lastUpdate;
-        if (updateInterval <= 0) updateInterval = 1.0; // fallback if first update or 0
+        if (updateInterval <= 0) updateInterval = 1.0; // fallback if first update
         lastUpdate = currentTime;
         
         totalUpdates++;
@@ -73,7 +79,8 @@ public class FogPerformanceReport extends Report implements UpdateListener {
         List<DTNHost> activeDrones = new ArrayList<>();
         double highestPriority = -1;
         DTNHost highestPriorityDrone = null;
-        
+
+        // Identify active GDRRT drones and the highest priority target
         for (DTNHost h : hosts) {
             MovementModel mm = h.getMovement();
             if (mm instanceof GDRRTMovement || mm instanceof ExtendedGDRRTMovement) {
@@ -102,10 +109,11 @@ public class FogPerformanceReport extends Report implements UpdateListener {
         }
         
         if (activeDrones.isEmpty()) return;
-        
+
         int coveredCount = 0;
         double currentWeightedScore = 0;
-        
+
+        // Check connectivity and calculate coverage scores
         for (DTNHost drone : activeDrones) {
             double dist = drone.getLocation().distance(fogUAV.getLocation());
             if (dist <= commRange) {
@@ -126,7 +134,6 @@ public class FogPerformanceReport extends Report implements UpdateListener {
             }
         }
         
-        // Category 1 & 2 aggregations
         totalSwarmCoverageSum += (double) coveredCount / activeDrones.size();
         totalWeightedCoverageScore += currentWeightedScore * updateInterval;
         
@@ -137,18 +144,19 @@ public class FogPerformanceReport extends Report implements UpdateListener {
             }
         }
         
-        // Category 4: Distance & Churn
         double distMoved = fogUAV.getLocation().distance(lastFogLoc);
         totalDistanceTraveled += distMoved;
         lastFogLoc = fogUAV.getLocation().clone();
         
+        // Collect state from the Fog UAV
         MovementModel fogMm = fogUAV.getMovement();
         core.Coord currentTarget = null;
         double execTime = 0;
         boolean shutdownTriggered = false;
         boolean reassignmentSuccess = false;
         double shutdownTime = -1;
-        
+
+        // Different ways to collect information based on algorithm
         if (fogMm instanceof WOAFogMovement) {
             WOAFogMovement woa = (WOAFogMovement) fogMm;
             currentTarget = woa.getCurrentOptimalTarget();
@@ -165,6 +173,7 @@ public class FogPerformanceReport extends Report implements UpdateListener {
             shutdownTime = milp.getShutdownTime();
         }
         
+        // Track how often the target point shifts significantly
         if (currentTarget != null && lastOptimalTarget != null) {
             if (currentTarget.distance(lastOptimalTarget) > 10.0) {
                 targetChurnCount++;
@@ -174,20 +183,21 @@ public class FogPerformanceReport extends Report implements UpdateListener {
             lastOptimalTarget = currentTarget.clone();
         }
         
-        // Category 5
+        // Record computational overhead
         if (execTime > 0) {
             totalExecutionTimeMs += execTime;
             executionCount++;
         }
         
-        // Category 3: Resilience
+        // Log shutdown events
         if (shutdownTriggered && !shutdownLogged) {
             shutdownLogged = true;
             String status = reassignmentSuccess ? "SUCCESS" : "FAILED";
             write("--- SHUTDOWN EVENT DETECTED ---");
             write("Reassignment Status: " + status);
         }
-        
+
+        // Measure time to reach recovery target
         if (shutdownLogged && reassignmentSuccess && !recoveryFound) {
             if (currentTarget != null && fogUAV.getLocation().distance(currentTarget) <= 10.0) {
                 timeToRecovery = SimClock.getTime() - shutdownTime;
