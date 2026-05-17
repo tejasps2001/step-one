@@ -1,28 +1,14 @@
 package movement;
 
-import java.util.HashMap;
-import java.util.Map;
 import core.Coord;
 import java.awt.geom.Line2D;
-import core.DTNSim;
 
 /**
- * Exact clone of DronePathManager, decoupled for MILP and WOA scenarios.
+ * Manages active drone paths to detect and prevent collisions.
+ * This is an extension of the original DronePathManager.
+ * This is a static singleton class.
  */
-public class ExtendedDronePathManager {
-    // Maps drone ID to its currently approved and active path segment
-    private static final Map<Integer, Path> activePaths = new HashMap<>();
-    
-    // Safety buffer around drone paths. If two paths come within this distance, it's a collision.
-    private static final double DRONE_BUFFER = 5.0; 
-    
-    static {
-        DTNSim.registerForReset(ExtendedDronePathManager.class.getCanonicalName());
-    }
-
-    public static void reset() {
-        activePaths.clear();
-    }
+public class ExtendedDronePathManager extends DronePathManager {
 
     public static synchronized boolean requestPath(int droneId, Path requestedPath) {
         // First, remove the drone's old path so it doesn't collide with itself.
@@ -54,19 +40,12 @@ public class ExtendedDronePathManager {
             }
             Line2D.Double otherSegment = createLineFromPath(otherPath);
 
-            // Check proximity buffer (intersection is handled inside the helper method).
+            // Check proximity buffer (intersection is handled inside getSegmentToSegmentDistance method).
             if (getSegmentToSegmentDistance(requesterSegment, otherSegment) < DRONE_BUFFER) {
                 return true;
             }
         }
         return false;
-    }
-
-    private static double getSegmentToSegmentDistance(Line2D.Double l1, Line2D.Double l2) {
-        if (l1.intersectsLine(l2)) return 0.0;
-        double d1 = l1.ptSegDist(l2.getP1());  double d2 = l1.ptSegDist(l2.getP2());
-        double d3 = l2.ptSegDist(l1.getP1());  double d4 = l2.ptSegDist(l1.getP2());
-        return Math.min(Math.min(d1, d2), Math.min(d3, d4));
     }
 
     private static Line2D.Double createLineFromPath(Path path) {
