@@ -218,6 +218,9 @@ public class GDRRTPlanner {
         if (segment.isFinalPath) {
             // Goal reached, reset for next time
             isInitialized = false;
+            if (gui != null) {
+                gui.showPath(segment.path, Color.GREEN);
+            }
             return;
         }
 
@@ -230,7 +233,8 @@ public class GDRRTPlanner {
         z.addWaypoint(committedNode.position);
         tree = getSubTree(root, z);
         if (gui != null) {
-            gui.showPath(z, Color.PINK);
+            // gui.showPath(z, Color.PINK);
+            gui.showPath(segment.path, Color.GREEN);
             drawObstacles();
         }
 
