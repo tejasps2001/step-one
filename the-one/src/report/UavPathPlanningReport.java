@@ -15,6 +15,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Performance report for individual UAV path planning.
+ * Tracks completion rates, travel efficiency, collisions, and computational cost.
+ */
 public class UavPathPlanningReport extends Report implements UpdateListener {
 
     public static final String COLLISION_THRESHOLD_S = "collisionThreshold";
@@ -26,12 +30,14 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
     private boolean trackExecutionTime = false;
     private boolean trackSmoothness = false;
 
+    // Per-UAV performance metrics
     private Map<Integer, Double> startTimes = new HashMap<>();
     private Map<Integer, Double> finishTimes = new HashMap<>();
     private Map<Integer, Double> distanceTraveled = new HashMap<>();
     private Map<Integer, Coord> lastKnownLocation = new HashMap<>();
     private Map<Integer, Boolean> isFinished = new HashMap<>();
 
+    // Collision metrics
     private Set<String> activeCollisions = new HashSet<>();
     private int totalCollisions = 0;
 
@@ -53,10 +59,9 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
     @Override
     public void updated(List<DTNHost> hosts) {
         if (isWarmup()) return;
-
         double currentTime = getSimTime();
 
-        // Track distances and completion
+        // Track distance and completion status
         for (DTNHost host : hosts) {
             int id = host.getAddress();
             movement.MovementModel mm = host.getMovement();
@@ -68,20 +73,22 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
 
             if (!isTrackedDrone) continue;
 
+            // Initialize tracking for new drones
             Coord currentLocation = host.getLocation();
-
             if (!startTimes.containsKey(id)) {
                 startTimes.put(id, currentTime);
                 distanceTraveled.put(id, 0.0);
                 isFinished.put(id, false);
             }
 
+            // Accumulate distance until finished
             if (lastKnownLocation.containsKey(id) && !isFinished.get(id)) {
                 double dist = currentLocation.distance(lastKnownLocation.get(id));
                 distanceTraveled.put(id, distanceTraveled.get(id) + dist);
             }
             lastKnownLocation.put(id, currentLocation.clone());
 
+            // Check completion based on specific movement model logic
             if (!isFinished.get(id)) {
                 boolean done = false;
                 if (mm instanceof GDRRTMovement) {
@@ -113,12 +120,13 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
                 double dist = h1.getLocation().distance(h2.getLocation());
                 String pairId = h1.getAddress() + "-" + h2.getAddress();
 
+                // Log the start of a new collision event
                 if (dist < collisionThreshold) {
                     if (!activeCollisions.contains(pairId)) {
                         activeCollisions.add(pairId);
                         totalCollisions++;
                         
-                        System.out.printf("[GUI/LOG] COLLISION at T=%.1fs between %s and %s! Dist: %.2fm | Pos1:(%.1f, %.1f) Pos2:(%.1f, %.1f)%n",
+                        System.out.printf("COLLISION at T=%.1fs between %s and %s! Dist: %.2fm | Pos1:(%.1f, %.1f) Pos2:(%.1f, %.1f)%n",
                                 currentTime, h1.getName(), h2.getName(), dist,
                                 h1.getLocation().getX(), h1.getLocation().getY(),
                                 h2.getLocation().getX(), h2.getLocation().getY());
@@ -138,6 +146,7 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
         write("=================================================");
         write("NodeID\tDistance(m)\tTravelTime(s)\tFinished");
 
+        // Log individual results
         double totalDistance = 0.0;
         double totalTime = 0.0;
         int finishedCount = 0;
@@ -157,10 +166,10 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
             }
         }
 
+        // Add up computational overhead & smoothness metrics
         double totalExecTime = 0.0;
         double totalSmoothness = 0.0;
         int execCount = 0;
-
         for (DTNHost host : SimScenario.getInstance().getHosts()) {
             if (startTimes.containsKey(host.getAddress())) {
                 movement.MovementModel mm = host.getMovement();
@@ -180,6 +189,7 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
             }
         }
 
+        // Summary statistics
         write("-------------------------------------------------");
         write("Total Tracked UAVs: " + trackedCount);
         write("Total UAVs Finished: " + finishedCount);
