@@ -48,7 +48,7 @@ class Node {
 
 public class GDRRTPlanner {
 
-    // inner class to hold planning results before committing
+    // Inner class to hold planning results before committing
     class PlannedSegment {
         Path path;
         Node nodeToCommit;
@@ -85,7 +85,7 @@ public class GDRRTPlanner {
         this.obstacleFilePath = obstacleFilePath;
     }
 
-    // Constructor only to see the boundary of obstacles
+    // Constructor to see the boundary of obstacles
     public GDRRTPlanner(DTNSimGUI gui) {
         GDRRTPlanner.gui = gui;
     }
@@ -254,6 +254,7 @@ public class GDRRTPlanner {
 
     private Coord smartSample(Coord posTemp, double d, Random rand) {
         // 10% of the time, or if wildly escaping, sample a wide area to clear large obstacles
+        // This 10% number allows the algorithm to escap a local minima faster.
         if (rand.nextDouble() < 0.1 || delta > 50.0) {
             double rx = posTemp.getX() + (rand.nextDouble() - 0.5) * 2000.0;
             double ry = posTemp.getY() + (rand.nextDouble() - 0.5) * 2000.0;
@@ -384,7 +385,7 @@ public class GDRRTPlanner {
                     if (gui != null) {
                         gui.showPath(q, pathColor);
                     }
-                    
+
                     // Add visual thickness specifically for the campus boundary map
                     if (filePath.contains("uoh_map.wkt")) {
                         int[] offsets = {-10, -5, 5, 10};
@@ -399,7 +400,7 @@ public class GDRRTPlanner {
                             pathColors.add(pathColor);
                             obstaclePaths.add(pY);
                             pathColors.add(pathColor);
-                            
+
                             if (gui != null) {
                                 gui.showPath(pX, pathColor);
                                 gui.showPath(pY, pathColor);
