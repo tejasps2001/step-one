@@ -340,7 +340,7 @@ public class GDRRTPlanner {
                 filePath.contains("sl_") ||
                 filePath.contains("buildings.wkt") || 
                 filePath.contains("u_trap")) {
-                pathColor = Color.RED; // Obstacles in one color
+                // Obstacles in one color
                 pathColor = new Color(255, 0, 0, 100); // Specific color with alpha to trigger polygon filling
             }
             
