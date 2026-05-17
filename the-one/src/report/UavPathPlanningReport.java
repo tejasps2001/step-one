@@ -6,6 +6,7 @@ import core.UpdateListener;
 import core.SimScenario;
 import movement.DroneMovement;
 import movement.GDRRTMovement;
+import movement.ExtendedGDRRTMovement;
 import movement.UAVWaypointMovement;
 
 import java.util.HashMap;
@@ -19,7 +20,7 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
     public static final String COLLISION_THRESHOLD_S = "collisionThreshold";
     public static final String TRACK_EXEC_TIME_S = "trackExecutionTime";
     public static final String TRACK_SMOOTHNESS_S = "trackSmoothness";
-    private static final double DEFAULT_COLLISION_THRESHOLD = 20.0;
+    private static final double DEFAULT_COLLISION_THRESHOLD = 5.0;
 
     private double collisionThreshold;
     private boolean trackExecutionTime = false;
@@ -61,6 +62,7 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
             movement.MovementModel mm = host.getMovement();
             
             boolean isTrackedDrone = (mm instanceof GDRRTMovement) || 
+                                     (mm instanceof ExtendedGDRRTMovement) || 
                                      (mm instanceof UAVWaypointMovement) || 
                                      (mm instanceof DroneMovement);
 
@@ -84,6 +86,8 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
                 boolean done = false;
                 if (mm instanceof GDRRTMovement) {
                     done = ((GDRRTMovement) mm).isDone() || ((GDRRTMovement) mm).isDead();
+                } else if (mm instanceof ExtendedGDRRTMovement) {
+                    done = ((ExtendedGDRRTMovement) mm).isDone() || ((ExtendedGDRRTMovement) mm).isDead();
                 } else if (mm instanceof UAVWaypointMovement) {
                     done = ((UAVWaypointMovement) mm).isReachedFinalGoal();
                 } else if (mm instanceof DroneMovement) {
@@ -163,6 +167,10 @@ public class UavPathPlanningReport extends Report implements UpdateListener {
                 if (mm instanceof GDRRTMovement) {
                     totalExecTime += ((GDRRTMovement) mm).getComputeTimeSeconds();
                     totalSmoothness += ((GDRRTMovement) mm).getPathSmoothness();
+                    execCount++;
+                } else if (mm instanceof ExtendedGDRRTMovement) {
+                    totalExecTime += ((ExtendedGDRRTMovement) mm).getComputeTimeSeconds();
+                    totalSmoothness += ((ExtendedGDRRTMovement) mm).getPathSmoothness();
                     execCount++;
                 } else if (mm instanceof UAVWaypointMovement) {
                     totalExecTime += ((UAVWaypointMovement) mm).getComputeTimeSeconds();

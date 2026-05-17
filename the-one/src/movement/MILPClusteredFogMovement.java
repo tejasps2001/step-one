@@ -163,19 +163,19 @@ public class MILPClusteredFogMovement extends MovementModel {
         GDRRTPlanner.PlannedSegment proposedSegment = gdrrt.planNextSegment();
 
         if (proposedSegment == null) {
-            DronePathManager.setStationary(getHost().getAddress());
+            ExtendedDronePathManager.setStationary(getHost().getAddress());
             return null;
         }
 
         // 3. Collision Avoidance & Path Commitment
-        if (DronePathManager.requestPath(getHost().getAddress(), proposedSegment.path)) {
+        if (ExtendedDronePathManager.requestPath(getHost().getAddress(), proposedSegment.path)) {
             isWaiting = false;
             gdrrt.commit(proposedSegment);
             return proposedSegment.path;
         } else {
             // Wait if a collision is detected by the Path Manager
             isWaiting = true;
-            DronePathManager.setStationary(getHost().getAddress());
+            ExtendedDronePathManager.setStationary(getHost().getAddress());
             
             // FIX: Clear the tree so it doesn't grow infinitely while stuck
             gdrrt.init(getHost().getLocation(), currentOptimalTarget);
@@ -197,8 +197,8 @@ public class MILPClusteredFogMovement extends MovementModel {
         List<DTNHost> activeDrones = new ArrayList<>();
         
         for (DTNHost host : core.SimScenario.getInstance().getHosts()) {
-            if (host.getMovement() instanceof GDRRTMovement) {
-                GDRRTMovement mm = (GDRRTMovement) host.getMovement();
+            if (host.getMovement() instanceof ExtendedGDRRTMovement) {
+                ExtendedGDRRTMovement mm = (ExtendedGDRRTMovement) host.getMovement();
                 if (!mm.isDone() && !mm.isDead()) activeDrones.add(host);
             }
         }
@@ -208,7 +208,7 @@ public class MILPClusteredFogMovement extends MovementModel {
         // 1. Pick a random active drone to shut down
         java.util.Collections.shuffle(activeDrones, new java.util.Random((long)SimClock.getTime()));
         DTNHost killedDrone = activeDrones.get(0);
-        GDRRTMovement killedMm = (GDRRTMovement) killedDrone.getMovement();
+        ExtendedGDRRTMovement killedMm = (ExtendedGDRRTMovement) killedDrone.getMovement();
         
         double killedPriority = killedMm.getPriority();
         Coord killedTarget = killedMm.getEndLocation();
@@ -223,7 +223,7 @@ public class MILPClusteredFogMovement extends MovementModel {
 
         for (DTNHost host : activeDrones) {
             if (host == killedDrone) continue;
-            GDRRTMovement mm = (GDRRTMovement) host.getMovement();
+            ExtendedGDRRTMovement mm = (ExtendedGDRRTMovement) host.getMovement();
             double priority = mm.getPriority();
             
             // Check: not done, not dead, lower priority than killed drone, AND in physical range
@@ -242,7 +242,7 @@ public class MILPClusteredFogMovement extends MovementModel {
         if (replacement != null) {
             System.out.println(">>> FOG UAV ACTION: Reassigning higher priority target " + killedTarget + 
                                " to lower priority in-range Drone " + replacement.getName() + " <<<");
-            ((GDRRTMovement) replacement.getMovement()).changeTarget(killedTarget, killedPriority);
+            ((ExtendedGDRRTMovement) replacement.getMovement()).changeTarget(killedTarget, killedPriority);
             reassignmentSuccessful = true;
             System.out.println(replacement.getPath());
         } else {
@@ -288,7 +288,7 @@ public class MILPClusteredFogMovement extends MovementModel {
 
             // 3. Iterate through sorted drones, find their target, and print info
             for (DTNHost drone : drones) {
-                GDRRTMovement gdrrtMm = (GDRRTMovement) drone.getMovement();
+                ExtendedGDRRTMovement gdrrtMm = (ExtendedGDRRTMovement) drone.getMovement();
                 Coord endLoc = gdrrtMm.getEndLocation();
                 double priority = gdrrtMm.getPriority();
                 String targetName = "unassigned";
@@ -327,10 +327,10 @@ public class MILPClusteredFogMovement extends MovementModel {
             boolean hasReached = false;
             double priority = 1.0;
             
-            if (mm instanceof GDRRTMovement || mm instanceof DroneMovement) { // Covers FogDeployedGDRRTMovement
+            if (mm instanceof ExtendedGDRRTMovement || mm instanceof DroneMovement) { // Covers FogDeployedGDRRTMovement
                 isDrone = true;
-                hasReached = ((GDRRTMovement) mm).isDone();
-                priority = ((GDRRTMovement) mm).getPriority();
+                hasReached = ((ExtendedGDRRTMovement) mm).isDone();
+                priority = ((ExtendedGDRRTMovement) mm).getPriority();
             } else if (mm instanceof DroneMovement) {
                 isDrone = true;
                 hasReached = ((DroneMovement) mm).hasReachedTarget();

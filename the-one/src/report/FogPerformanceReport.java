@@ -7,6 +7,7 @@ import movement.MovementModel;
 import movement.WOAFogMovement;
 import movement.MILPClusteredFogMovement;
 import movement.GDRRTMovement;
+import movement.ExtendedGDRRTMovement;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -75,12 +76,25 @@ public class FogPerformanceReport extends Report implements UpdateListener {
         
         for (DTNHost h : hosts) {
             MovementModel mm = h.getMovement();
-            if (mm instanceof GDRRTMovement) {
-                GDRRTMovement gmm = (GDRRTMovement) mm;
-                if (!gmm.isDone() && !gmm.isDead()) {
+            if (mm instanceof GDRRTMovement || mm instanceof ExtendedGDRRTMovement) {
+                boolean isDone = false;
+                boolean isDead = false;
+                double priority = 0.0;
+                
+                if (mm instanceof GDRRTMovement) {
+                    isDone = ((GDRRTMovement) mm).isDone();
+                    isDead = ((GDRRTMovement) mm).isDead();
+                    priority = ((GDRRTMovement) mm).getPriority();
+                } else {
+                    isDone = ((ExtendedGDRRTMovement) mm).isDone();
+                    isDead = ((ExtendedGDRRTMovement) mm).isDead();
+                    priority = ((ExtendedGDRRTMovement) mm).getPriority();
+                }
+                
+                if (!isDone && !isDead) {
                     activeDrones.add(h);
-                    if (gmm.getPriority() > highestPriority) {
-                        highestPriority = gmm.getPriority();
+                    if (priority > highestPriority) {
+                        highestPriority = priority;
                         highestPriorityDrone = h;
                     }
                 }
@@ -96,7 +110,15 @@ public class FogPerformanceReport extends Report implements UpdateListener {
             double dist = drone.getLocation().distance(fogUAV.getLocation());
             if (dist <= commRange) {
                 coveredCount++;
-                currentWeightedScore += ((GDRRTMovement)drone.getMovement()).getPriority();
+                
+                double priority = 0.0;
+                if (drone.getMovement() instanceof GDRRTMovement) {
+                    priority = ((GDRRTMovement)drone.getMovement()).getPriority();
+                } else if (drone.getMovement() instanceof ExtendedGDRRTMovement) {
+                    priority = ((ExtendedGDRRTMovement)drone.getMovement()).getPriority();
+                }
+                
+                currentWeightedScore += priority;
                 currentStarvationTime.put(drone, 0.0); // reset starvation
             } else {
                 totalDisconnectionTime.put(drone, totalDisconnectionTime.getOrDefault(drone, 0.0) + updateInterval);

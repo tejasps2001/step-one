@@ -18,8 +18,8 @@ MovementModel.rngSeed = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10]
 MovementModel.worldSize = 10000, 10000
 
 # --> TOGGLE WHICH MODEL TO TEST HERE <--
-# Group.movementModel = GDRRTMovement
-Group.movementModel = UAVWaypointMovement
+Group.movementModel = GDRRTMovement
+# Group.movementModel = UAVWaypointMovement
 
 # ================================================================
 #  SHARED MOVEMENT SETTINGS (Applies to all 8 drones)
@@ -28,11 +28,11 @@ Group.speed = 0.5, 0.5
 Group.bufferSize = 5M
 
 # --- GDRRT Shared Settings ---
-Group.GDRRTMovement.obstacleFile = samples/gdrrt/uoh_map.wkt
+Group.GDRRTMovement.obstacleFile = samples/milp/uoh_map.wkt,samples/milp/buildings/building1.wkt,samples/milp/buildings/building2.wkt,samples/milp/buildings/building3.wkt,samples/milp/buildings/building4.wkt,samples/milp/buildings/building5.wkt,samples/milp/buildings/building6.wkt,samples/milp/buildings/building7.wkt,samples/milp/buildings/building8.wkt,samples/milp/buildings/building9.wkt,samples/milp/buildings/building10.wkt,samples/milp/buildings/building11.wkt,samples/milp/buildings/building12.wkt,samples/milp/buildings/building13.wkt,samples/milp/buildings/building14.wkt,samples/milp/buildings/building15.wkt,samples/milp/buildings/building16.wkt,samples/milp/buildings/building17.wkt,samples/milp/buildings/building18.wkt,samples/milp/buildings/building19.wkt,samples/milp/buildings/building20.wkt,samples/milp/buildings/building21.wkt,samples/milp/buildings/building22.wkt,samples/milp/buildings/building23.wkt,samples/milp/buildings/building24.wkt,samples/milp/buildings/building25.wkt,samples/milp/buildings/building26.wkt,samples/milp/buildings/building27.wkt,samples/milp/buildings/building28.wkt,samples/milp/facilities/facility1.wkt,samples/milp/facilities/facility2.wkt,samples/milp/facilities/facility3.wkt,samples/milp/facilities/facility4.wkt,samples/milp/facilities/facility5.wkt,samples/milp/facilities/facility6.wkt,samples/milp/facilities/facility7.wkt,samples/milp/facilities/facility8.wkt,samples/milp/facilities/facility9.wkt,samples/milp/facilities/facility10.wkt,samples/milp/facilities/facility11.wkt,samples/milp/facilities/facility12.wkt,samples/milp/facilities/facility13.wkt,samples/milp/facilities/facility14.wkt,samples/milp/facilities/facility15.wkt,samples/milp/facilities/facility16.wkt,samples/milp/sports_lakes/sl_1.wkt,samples/milp/sports_lakes/sl_2.wkt,samples/milp/sports_lakes/sl_3.wkt,samples/milp/sports_lakes/sl_4.wkt,samples/milp/sports_lakes/sl_5.wkt,samples/milp/sports_lakes/sl_6.wkt,samples/milp/sports_lakes/sl_7.wkt,samples/milp/sports_lakes/sl_8.wkt,samples/milp/sports_lakes/sl_9.wkt,samples/milp/sports_lakes/sl_10.wkt,samples/milp/sports_lakes/sl_11.wkt,samples/milp/sports_lakes/sl_12.wkt,samples/milp/sports_lakes/sl_13.wkt,samples/milp/sports_lakes/sl_14.wkt,samples/milp/sports_lakes/sl_15.wkt,samples/milp/sports_lakes/sl_16.wkt
 
 # --- UAVWaypoint Shared Settings (Adapted from Collision Test) ---
-UAVWaypointMovement.obstacleWktFile = samples/gdrrt/uoh_map.wkt
-UAVWaypointMovement.geoExtentFiles = samples/gdrrt/uoh_map.wkt
+UAVWaypointMovement.obstacleWktFile = samples/milp/uoh_map.wkt,samples/milp/buildings/building1.wkt,samples/milp/buildings/building2.wkt,samples/milp/buildings/building3.wkt,samples/milp/buildings/building4.wkt,samples/milp/buildings/building5.wkt,samples/milp/buildings/building6.wkt,samples/milp/buildings/building7.wkt,samples/milp/buildings/building8.wkt,samples/milp/buildings/building9.wkt,samples/milp/buildings/building10.wkt,samples/milp/buildings/building11.wkt,samples/milp/buildings/building12.wkt,samples/milp/buildings/building13.wkt,samples/milp/buildings/building14.wkt,samples/milp/buildings/building15.wkt,samples/milp/buildings/building16.wkt,samples/milp/buildings/building17.wkt,samples/milp/buildings/building18.wkt,samples/milp/buildings/building19.wkt,samples/milp/buildings/building20.wkt,samples/milp/buildings/building21.wkt,samples/milp/buildings/building22.wkt,samples/milp/buildings/building23.wkt,samples/milp/buildings/building24.wkt,samples/milp/buildings/building25.wkt,samples/milp/buildings/building26.wkt,samples/milp/buildings/building27.wkt,samples/milp/buildings/building28.wkt,samples/milp/facilities/facility1.wkt,samples/milp/facilities/facility2.wkt,samples/milp/facilities/facility3.wkt,samples/milp/facilities/facility4.wkt,samples/milp/facilities/facility5.wkt,samples/milp/facilities/facility6.wkt,samples/milp/facilities/facility7.wkt,samples/milp/facilities/facility8.wkt,samples/milp/facilities/facility9.wkt,samples/milp/facilities/facility10.wkt,samples/milp/facilities/facility11.wkt,samples/milp/facilities/facility12.wkt,samples/milp/facilities/facility13.wkt,samples/milp/facilities/facility14.wkt,samples/milp/facilities/facility15.wkt,samples/milp/facilities/facility16.wkt,samples/milp/sports_lakes/sl_1.wkt,samples/milp/sports_lakes/sl_2.wkt,samples/milp/sports_lakes/sl_3.wkt,samples/milp/sports_lakes/sl_4.wkt,samples/milp/sports_lakes/sl_5.wkt,samples/milp/sports_lakes/sl_6.wkt,samples/milp/sports_lakes/sl_7.wkt,samples/milp/sports_lakes/sl_8.wkt,samples/milp/sports_lakes/sl_9.wkt,samples/milp/sports_lakes/sl_10.wkt,samples/milp/sports_lakes/sl_11.wkt,samples/milp/sports_lakes/sl_12.wkt,samples/milp/sports_lakes/sl_13.wkt,samples/milp/sports_lakes/sl_14.wkt,samples/milp/sports_lakes/sl_15.wkt,samples/milp/sports_lakes/sl_16.wkt
+UAVWaypointMovement.geoExtentFiles = samples/milp/uoh_map.wkt,samples/milp/buildings/building1.wkt,samples/milp/buildings/building2.wkt,samples/milp/buildings/building3.wkt,samples/milp/buildings/building4.wkt,samples/milp/buildings/building5.wkt,samples/milp/buildings/building6.wkt,samples/milp/buildings/building7.wkt,samples/milp/buildings/building8.wkt,samples/milp/buildings/building9.wkt,samples/milp/buildings/building10.wkt,samples/milp/buildings/building11.wkt,samples/milp/buildings/building12.wkt,samples/milp/buildings/building13.wkt,samples/milp/buildings/building14.wkt,samples/milp/buildings/building15.wkt,samples/milp/buildings/building16.wkt,samples/milp/buildings/building17.wkt,samples/milp/buildings/building18.wkt,samples/milp/buildings/building19.wkt,samples/milp/buildings/building20.wkt,samples/milp/buildings/building21.wkt,samples/milp/buildings/building22.wkt,samples/milp/buildings/building23.wkt,samples/milp/buildings/building24.wkt,samples/milp/buildings/building25.wkt,samples/milp/buildings/building26.wkt,samples/milp/buildings/building27.wkt,samples/milp/buildings/building28.wkt,samples/milp/facilities/facility1.wkt,samples/milp/facilities/facility2.wkt,samples/milp/facilities/facility3.wkt,samples/milp/facilities/facility4.wkt,samples/milp/facilities/facility5.wkt,samples/milp/facilities/facility6.wkt,samples/milp/facilities/facility7.wkt,samples/milp/facilities/facility8.wkt,samples/milp/facilities/facility9.wkt,samples/milp/facilities/facility10.wkt,samples/milp/facilities/facility11.wkt,samples/milp/facilities/facility12.wkt,samples/milp/facilities/facility13.wkt,samples/milp/facilities/facility14.wkt,samples/milp/facilities/facility15.wkt,samples/milp/facilities/facility16.wkt,samples/milp/sports_lakes/sl_1.wkt,samples/milp/sports_lakes/sl_2.wkt,samples/milp/sports_lakes/sl_3.wkt,samples/milp/sports_lakes/sl_4.wkt,samples/milp/sports_lakes/sl_5.wkt,samples/milp/sports_lakes/sl_6.wkt,samples/milp/sports_lakes/sl_7.wkt,samples/milp/sports_lakes/sl_8.wkt,samples/milp/sports_lakes/sl_9.wkt,samples/milp/sports_lakes/sl_10.wkt,samples/milp/sports_lakes/sl_11.wkt,samples/milp/sports_lakes/sl_12.wkt,samples/milp/sports_lakes/sl_13.wkt,samples/milp/sports_lakes/sl_14.wkt,samples/milp/sports_lakes/sl_15.wkt,samples/milp/sports_lakes/sl_16.wkt
 UAVWaypointMovement.gridCellM = 30
 UAVWaypointMovement.pointObstacleRadius = 30
 UAVWaypointMovement.lineObstacleHalfWidth = 20
@@ -42,7 +42,7 @@ UAVWaypointMovement.dwaSteps = 16
 UAVWaypointMovement.distAlert = 30
 UAVWaypointMovement.distRisk = 18
 UAVWaypointMovement.finalGoalTolerance = 2.5
-UAVWaypointMovement.uavSeparationM = 20.0
+UAVWaypointMovement.uavSeparationM = 5.0
 UAVWaypointMovement.voWeight = 3.0
 UAVWaypointMovement.launchStaggerS = 2.0
 UAVWaypointMovement.speedMin = 0.5
@@ -116,8 +116,14 @@ Group8.target = 2971, 2600
 Group9.groupID = Map
 Group9.movementModel = MapBasedMovement
 Group9.nrofHosts = 0
-MapBasedMovement.nrofMapFiles = 1
-MapBasedMovement.mapFile1 = samples/gdrrt/uoh_map.wkt
+MapBasedMovement.nrofMapFiles = 7
+MapBasedMovement.mapFile1 = samples/milp/highwaysbarriers.wkt
+MapBasedMovement.mapFile2 = samples/milp/waterway.wkt 
+MapBasedMovement.mapFile3 = samples/milp/highwaysstreets.wkt  
+MapBasedMovement.mapFile4 = samples/milp/uoh_map.wkt
+MapBasedMovement.mapFile5 = samples/milp/highwaysways.wkt
+MapBasedMovement.mapFile6 = samples/milp/land_use_and_nature_lines.wkt
+MapBasedMovement.mapFile7 = samples/milp/manmadepowerlines.wkt 
 
 # ================================================================
 #  REPORTING

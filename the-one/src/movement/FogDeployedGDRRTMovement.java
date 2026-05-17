@@ -6,7 +6,7 @@ import core.Settings;
 /**
  * A wrapper movement model that ensures drones are deployed directly
  * from the Fog UAV's starting location.
- * It extends GDRRTMovement to inherit all pathfinding and movement logic,
+ * It extends ExtendedGDRRTMovement to inherit all pathfinding and movement logic,
  * but overrides the initial location to sync dynamically with the Fog UAV.
  *
  * FIX-B04: The original code hard-coded the settings namespace as
@@ -22,7 +22,7 @@ import core.Settings;
  * for backwards compatibility with the Tejas branch, and finally falls back to
  * the hard-coded coordinate if neither namespace has the key.
  */
-public class FogDeployedGDRRTMovement extends GDRRTMovement {
+public class FogDeployedGDRRTMovement extends ExtendedGDRRTMovement {
 
     private Coord deploymentLoc;
 

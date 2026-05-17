@@ -2,6 +2,8 @@ package movement;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 import core.Coord;
 import java.awt.geom.Line2D;
 import core.DTNSim;
@@ -51,9 +53,12 @@ public class DronePathManager {
     /**
      * Informs the manager that a drone is now stationary and its path should be cleared.
      * @param droneId The ID of the drone that is now waiting.
+     * @param location The exact physical coordinate where the drone is hovering.
      */
-    public static synchronized void setStationary(int droneId) {
-        activePaths.remove(droneId);
+    public static synchronized void setStationary(int droneId, Coord location) {
+        Path stationaryPath = new Path(0);
+        stationaryPath.addWaypoint(location.clone());
+        activePaths.put(droneId, stationaryPath);
     }
 
     /**
@@ -62,20 +67,23 @@ public class DronePathManager {
      * @return True if a collision is detected, false otherwise.
      */
     private static boolean isCollision(Path requestedPath) {
-        if (requestedPath == null || requestedPath.getCoords().size() < 2) {
-            return false; // A stationary or invalid path can't collide.
+        if (requestedPath == null || requestedPath.getCoords().isEmpty()) {
+            return false;
         }
-        Line2D.Double requesterSegment = createLineFromPath(requestedPath);
+        List<Line2D.Double> reqSegments = createSegmentsFromPath(requestedPath);
 
         for (Path otherPath : activePaths.values()) {
-            if (otherPath == null || otherPath.getCoords().size() < 2) {
+            if (otherPath == null || otherPath.getCoords().isEmpty()) {
                 continue;
             }
-            Line2D.Double otherSegment = createLineFromPath(otherPath);
+            List<Line2D.Double> otherSegments = createSegmentsFromPath(otherPath);
 
-            // Check proximity buffer (intersection is handled inside the helper method).
-            if (getSegmentToSegmentDistance(requesterSegment, otherSegment) < DRONE_BUFFER) {
-                return true;
+            for (Line2D.Double reqSeg : reqSegments) {
+                for (Line2D.Double otherSeg : otherSegments) {
+                    if (getSegmentToSegmentDistance(reqSeg, otherSeg) < DRONE_BUFFER) {
+                        return true;
+                    }
+                }
             }
         }
         return false;
@@ -92,9 +100,19 @@ public class DronePathManager {
         return Math.min(Math.min(d1, d2), Math.min(d3, d4));
     }
 
-    private static Line2D.Double createLineFromPath(Path path) {
-        Coord start = path.getCoords().get(0);
-        Coord end = path.getCoords().get(path.getCoords().size() - 1);
-        return new Line2D.Double(start.getX(), start.getY(), end.getX(), end.getY());
+    private static List<Line2D.Double> createSegmentsFromPath(Path path) {
+        List<Line2D.Double> segments = new ArrayList<>();
+        List<Coord> coords = path.getCoords();
+        if (coords.size() == 1) {
+            Coord c = coords.get(0);
+            segments.add(new Line2D.Double(c.getX(), c.getY(), c.getX(), c.getY()));
+        } else {
+            for (int i = 0; i < coords.size() - 1; i++) {
+                Coord c1 = coords.get(i);
+                Coord c2 = coords.get(i + 1);
+                segments.add(new Line2D.Double(c1.getX(), c1.getY(), c2.getX(), c2.getY()));
+            }
+        }
+        return segments;
     }
 }

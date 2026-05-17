@@ -340,16 +340,6 @@ public class UAVWaypointMovement extends MovementModel {
     private static final double PEER_CHECK_RATIO = 1.5;
 
     // ================================================================ //
-    //  DEBUG: Stuck-detection logging
-    //
-    //  Log a detailed status message whenever the drone fires its stall
-    //  handler, and track the last position where we logged so we avoid
-    //  flooding the console on every single tick.
-    // ================================================================ //
-    /** Sim time of the last stall-debug log for this drone. */
-    private double lastStallLogTime = -1.0;
-
-    // ================================================================ //
     //  Two-level settings helpers
     // ================================================================ //
 
@@ -571,7 +561,6 @@ public class UAVWaypointMovement extends MovementModel {
             trailPath.addWaypoint(uavPos.clone());
             historyHead = 0;
             historyFill = 0;
-            lastStallLogTime = -1.0;
             planToNextPoi();
             hovering   = false;
             hoverUntil = 0;
@@ -618,7 +607,7 @@ public class UAVWaypointMovement extends MovementModel {
                 lastVx = 0.0;
                 lastVy = 0.0;
                 if (uavId >= 0)
-                    PEER_REGISTRY.remove(uavId);
+                    PEER_REGISTRY.put(uavId, new double[]{ uavPos.getX(), uavPos.getY(), 0.0, 0.0 });
                 Path path = new Path(0);
                 path.addWaypoint(uavPos.clone());
                 path.addWaypoint(uavPos.clone());
@@ -688,11 +677,7 @@ public class UAVWaypointMovement extends MovementModel {
             else stallCount = 0;
 
             if (stallCount >= STALL_LIMIT || isOscillating) {
-                double now = SimClock.getTime();
-                if (now - lastStallLogTime >= STALL_LOG_INTERVAL) {
-                    lastStallLogTime = now;
-                    logStuckState(subGoal, peerThreat);
-                }
+
                 stallCount  = 0;
                 progressStallCount = 0;
                 minSubGoalDist = Double.MAX_VALUE;
@@ -744,7 +729,7 @@ public class UAVWaypointMovement extends MovementModel {
                             lastVx = 0.0;
                             lastVy = 0.0;
                             if (uavId >= 0)
-                                PEER_REGISTRY.remove(uavId);
+                                PEER_REGISTRY.put(uavId, new double[]{ uavPos.getX(), uavPos.getY(), 0.0, 0.0 });
                             Path path = new Path(0);
                             path.addWaypoint(uavPos.clone());
                             path.addWaypoint(uavPos.clone());
@@ -820,83 +805,26 @@ public class UAVWaypointMovement extends MovementModel {
             if (e.getKey() == uavId) continue;
             double[] p = e.getValue();
 
-            // Ignore peers that are located exactly at our target (e.g., the target DTNHosts themselves)
-            if (Math.hypot(p[0] - targetX, p[1] - targetY) <= Math.max(2.5, finalGoalTolerance)) continue;
-
             double dist = Math.hypot(p[0] - pos.getX(), p[1] - pos.getY());
             if (dist < threshold) return true;
         }
         return false;
     }
 
-    // ================================================================ //
-    //  DEBUG: Stuck-state logger
-    // ================================================================ //
-
-    private void logStuckState(Coord subGoal, boolean peerThreat) {
-        int[] gc = worldToGrid(uavPos);
-        double distToSub = uavPos.distance(subGoal);
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(String.format(
-            "%n── [UAV%d STUCK @ T=%.1fs] ──────────────────────────────────────%n",
-            uavId, SimClock.getTime()));
-        sb.append(String.format(
-            "  Position  : (%.1f, %.1f)  grid[%d, %d]%n",
-            uavPos.getX(), uavPos.getY(), gc[0], gc[1]));
-        sb.append(String.format(
-            "  SubGoal   : (%.1f, %.1f)  dist=%.1f m  (keyNode %d/%d)%n",
-            subGoal.getX(), subGoal.getY(), distToSub,
-            keyIndex, keyNodes == null ? 0 : keyNodes.size() - 1));
-
-        if (keyNodes != null && keyIndex + 1 < keyNodes.size()) {
-            Coord next = keyNodes.get(keyIndex + 1);
-            sb.append(String.format(
-                "  NextNode  : (%.1f, %.1f)  dist=%.1f m%n",
-                next.getX(), next.getY(), uavPos.distance(next)));
-        }
-
-        Coord currentPoi = (poiTour != null && poiIndex < poiTour.size())
-                           ? poiTour.get(poiIndex) : null;
-        if (currentPoi != null)
-            sb.append(String.format(
-                "  POI Target: (%.1f, %.1f)  dist=%.1f m  (poi %d/%d)%n",
-                currentPoi.getX(), currentPoi.getY(),
-                uavPos.distance(currentPoi), poiIndex, poiTour.size() - 1));
-
-        sb.append(String.format(
-            "  Flags     : replanPending=%b  peerThreat=%b  stallCount=%d%n",
-            replanNeeded, peerThreat, STALL_LIMIT));
-
-        sb.append("  Peers     :");
-        boolean anyPeer = false;
-        for (Map.Entry<Integer, double[]> e : PEER_REGISTRY.entrySet()) {
-            if (e.getKey() == uavId) continue;
-            double[] p = e.getValue();
-            double dist = Math.hypot(p[0] - uavPos.getX(), p[1] - uavPos.getY());
-            sb.append(String.format(
-                "%n    UAV%d @ (%.1f, %.1f)  dist=%.1f m  vel=(%.2f, %.2f)",
-                e.getKey(), p[0], p[1], dist, p[2], p[3]));
-            anyPeer = true;
-        }
-        if (!anyPeer) sb.append(" (none registered)");
-        sb.append("\n");
-
-        if (keyNodes != null && !keyNodes.isEmpty()) {
-            sb.append("  KeyNodes  :\n");
-            for (int i = 0; i < keyNodes.size(); i++) {
-                Coord kn = keyNodes.get(i);
-                String tag = i < keyIndex  ? "[DONE]"
-                           : i == keyIndex ? "[CURR]"
-                                           : "[NEXT]";
-                sb.append(String.format(
-                    "    %s %d: (%.1f, %.1f)  dist=%.1f m%n",
-                    tag, i, kn.getX(), kn.getY(), uavPos.distance(kn)));
-            }
-        }
-        sb.append("─────────────────────────────────────────────────────────────────\n");
-        System.out.print(sb.toString());
+    @Override
+    public double nextPathAvailable() {
+        double dwell = dwellMin + this.rng.nextDouble() * (dwellMax - dwellMin);
+        if (uavId >= 0 && SimClock.getTime() < 1.0) dwell += uavId * launchStaggerS;
+        hoverUntil = SimClock.getTime() + dwell;
+        hovering   = true;
+        return hoverUntil;
     }
+
+    @Override
+    public UAVWaypointMovement replicate() { return new UAVWaypointMovement(this); }
+
+    private double worldW() { return getMaxX(); }
+    private double worldH() { return getMaxY(); }
 
     // ================================================================ //
     //  LAYER 1 — Improved A*
@@ -1029,9 +957,6 @@ public class UAVWaypointMovement extends MovementModel {
             if (e.getKey() == uavId) continue;
             double[] p = e.getValue();
             
-            // Ignore peers that are located at our target to prevent repulsion from target DTNHosts
-            if (Math.hypot(p[0] - targetX, p[1] - targetY) <= Math.max(2.5, finalGoalTolerance)) continue;
-
             double px = p[0], py = p[1], pvx = p[2], pvy = p[3];
             double pvm = Math.hypot(pvx, pvy);
             if (pvm > 1e-9) { px += (pvx / pvm) * step; py += (pvy / pvm) * step; }
@@ -1052,7 +977,18 @@ public class UAVWaypointMovement extends MovementModel {
             int[] cell = worldToGrid(cand);
             if (UavObstacleGrid.obstacleGrid[cell[1]][cell[0]]) continue;
 
-            // ── History penalty ──────────────────────────────────────────
+            // HARD COLLISION AVOIDANCE
+            boolean hardCollision = false;
+            for (double[] peer : peerSnapshots) {
+                double curDist = Math.hypot(peer[0] - pos.getX(), peer[1] - pos.getY());
+                double nxtDist = Math.hypot(peer[0] - cand.getX(), peer[1] - cand.getY());
+                if (nxtDist < 5.5 && nxtDist <= curDist + 1e-4) {
+                    hardCollision = true;
+                    break;
+                }
+            }
+            if (hardCollision) continue;
+
             double histPenalty = 0.0;
             for (int h = 0; h < historyFill; h++) {
                 int hi = (historyHead - 1 - h + HISTORY_SIZE) % HISTORY_SIZE;
@@ -1135,24 +1071,30 @@ public class UAVWaypointMovement extends MovementModel {
     }
 
     private Coord dwaEscapePoint(Coord pos, Coord goal) {
-        double best = Double.NEGATIVE_INFINITY;
-        Coord  out  = pos.clone();
-        double step = gridCellM * 3;
-        double gb   = Math.atan2(goal.getY() - pos.getY(), goal.getX() - pos.getX());
-        int sw = dwaSteps * 2;
-        for (int i = 0; i <= sw; i++) {
-            double angle = ((double) i / sw) * 2 * Math.PI;
-            Coord c = UavPathUtils.clampToWorld(
-                new Coord(pos.getX() + step * Math.cos(angle),
-                          pos.getY() + step * Math.sin(angle)),
-                worldW(), worldH());
-            int[] cell = worldToGrid(c);
-            if (UavObstacleGrid.obstacleGrid[cell[1]][cell[0]]) continue;
-            double sc = 0.75 * Math.min(1, UavPathUtils.nearestObstacleDistance(
-                                c, UavObstacleGrid.obstacleDiscs,
-                                UavObstacleGrid.obstacleSegBuf, distAlert * 2) / distAlert)
-                      + 0.25 * 0.5 * (1 + Math.cos(angle - gb));
-            if (sc > best) { best = sc; out = c; }
+        double best=Double.NEGATIVE_INFINITY; Coord out=pos.clone();
+        double step=gridCellM*3;
+        double gb=Math.atan2(goal.getY()-pos.getY(), goal.getX()-pos.getX());
+        int sw=dwaSteps*2;
+        for (int i=0; i<=sw; i++) {
+            double angle=((double)i/sw)*2*Math.PI;
+            Coord c=clampToWorld(new Coord(
+                pos.getX()+step*Math.cos(angle), pos.getY()+step*Math.sin(angle)));
+            int[] cell=worldToGrid(c); if(obstacleGrid[cell[1]][cell[0]]) continue;
+            
+            boolean peerTooClose = false;
+            for (Map.Entry<Integer, double[]> e : PEER_REGISTRY.entrySet()) {
+                if (e.getKey() == uavId) continue;
+                double[] p = e.getValue();
+                if (Math.hypot(p[0] - c.getX(), p[1] - c.getY()) < uavSeparationM) {
+                    peerTooClose = true;
+                    break;
+                }
+            }
+            if (peerTooClose) continue;
+
+            double sc=0.75*Math.min(1,nearestObstacleDistance(c)/distAlert)
+                    +0.25*0.5*(1+Math.cos(angle-gb));
+            if (sc>best) { best=sc; out=c; }
         }
         return out;
     }

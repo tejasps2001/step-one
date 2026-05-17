@@ -311,20 +311,20 @@ public class WOAFogMovement extends MovementModel {
         // ------------------------------------------------------------------
         GDRRTPlanner.PlannedSegment proposed = gdrrt.planNextSegment();
         if (proposed == null) {
-            DronePathManager.setStationary(getHost().getAddress());
+            ExtendedDronePathManager.setStationary(getHost().getAddress());
             return null;
         }
 
         // ------------------------------------------------------------------
         // 5. Collision-avoidance handshake with DronePathManager
         // ------------------------------------------------------------------
-        if (DronePathManager.requestPath(getHost().getAddress(), proposed.path)) {
+        if (ExtendedDronePathManager.requestPath(getHost().getAddress(), proposed.path)) {
             isWaiting = false;
             gdrrt.commit(proposed);
             return proposed.path;
         } else {
             isWaiting = true;
-            DronePathManager.setStationary(getHost().getAddress());
+            ExtendedDronePathManager.setStationary(getHost().getAddress());
             
             // FIX: Clear the tree so it doesn't grow infinitely while stuck
             gdrrt.init(getHost().getLocation(), currentOptimalTarget);
@@ -505,9 +505,9 @@ public class WOAFogMovement extends MovementModel {
         for (DTNHost host : SimScenario.getInstance().getHosts()) {
             MovementModel mm = host.getMovement();
             // FIX-B01: instanceof is correct here — it accepts both
-            // GDRRTMovement and FogDeployedGDRRTMovement (a subclass).
-            if (mm instanceof GDRRTMovement) {
-                GDRRTMovement gmm = (GDRRTMovement) mm;
+            // ExtendedGDRRTMovement and FogDeployedGDRRTMovement (a subclass).
+            if (mm instanceof ExtendedGDRRTMovement) {
+                ExtendedGDRRTMovement gmm = (ExtendedGDRRTMovement) mm;
                 if (!gmm.isDone() && !gmm.isDead()) {
                     activeDrones.add(host);
                 }
@@ -527,12 +527,12 @@ public class WOAFogMovement extends MovementModel {
         DTNHost killedDrone = activeDrones.get(0);
 
         // FIX-B01: Guard the cast with instanceof before committing to it.
-        if (!(killedDrone.getMovement() instanceof GDRRTMovement)) {
+        if (!(killedDrone.getMovement() instanceof ExtendedGDRRTMovement)) {
             System.out.println("[WOA-EVENT]   Shutdown aborted: selected drone does not have"
-                    + " a GDRRTMovement — cannot kill.");
+                    + " an ExtendedGDRRTMovement — cannot kill.");
             return;
         }
-        GDRRTMovement killedMm = (GDRRTMovement) killedDrone.getMovement();
+        ExtendedGDRRTMovement killedMm = (ExtendedGDRRTMovement) killedDrone.getMovement();
 
         double killedPriority = killedMm.getPriority();
         Coord  killedTarget   = killedMm.getEndLocation();
@@ -555,8 +555,8 @@ public class WOAFogMovement extends MovementModel {
 
         for (DTNHost host : activeDrones) {
             // FIX-B01: Guard the cast inside the replacement loop.
-            if (!(host.getMovement() instanceof GDRRTMovement)) continue;
-            GDRRTMovement mm = (GDRRTMovement) host.getMovement();
+            if (!(host.getMovement() instanceof ExtendedGDRRTMovement)) continue;
+            ExtendedGDRRTMovement mm = (ExtendedGDRRTMovement) host.getMovement();
             double priority  = mm.getPriority();
 
             // Criteria: not done, not dead, lower priority than killed drone,
@@ -576,7 +576,7 @@ public class WOAFogMovement extends MovementModel {
         // 3. Reassign if a suitable drone was found
         if (replacement != null) {
             // FIX-B01: Guard this cast too for consistency.
-            GDRRTMovement replacementMm = (GDRRTMovement) replacement.getMovement();
+            ExtendedGDRRTMovement replacementMm = (ExtendedGDRRTMovement) replacement.getMovement();
             System.out.println("[WOA-EVENT] >>> FOG ACTION: Reassigning target "
                     + fmtCoord(killedTarget)
                     + " to lower priority in-range Drone " + replacement.getName()
@@ -617,7 +617,7 @@ public class WOAFogMovement extends MovementModel {
                 if (h == fogHost) continue;
                 MovementModel mm = h.getMovement();
                 boolean isMission =
-                        (mm.getClass() == GDRRTMovement.class) ||
+                        (mm.getClass() == ExtendedGDRRTMovement.class) ||
                         (mm.getClass() == FogDeployedGDRRTMovement.class);
                 if (!isMission) continue;
                 if (droneGroupBaseAddr == DRONE_GROUP_ADDR_UNKNOWN
@@ -638,7 +638,7 @@ public class WOAFogMovement extends MovementModel {
 
             // Only accept exact mission-drone classes
             boolean isMission =
-                    (mm.getClass() == GDRRTMovement.class) ||
+                    (mm.getClass() == ExtendedGDRRTMovement.class) ||
                     (mm.getClass() == FogDeployedGDRRTMovement.class);
             if (!isMission) {
                 continue;
@@ -647,8 +647,8 @@ public class WOAFogMovement extends MovementModel {
             // Use instanceof for the isDone() check — safe for both classes
             int     dIdx = (droneGroupBaseAddr != DRONE_GROUP_ADDR_UNKNOWN)
                          ? host.getAddress() - droneGroupBaseAddr : -1;
-            boolean done = (mm instanceof GDRRTMovement)
-                        && ((GDRRTMovement) mm).isDone();
+            boolean done = (mm instanceof ExtendedGDRRTMovement)
+                        && ((ExtendedGDRRTMovement) mm).isDone();
 
             // Skip drones that have completed their mission
             if (done) {

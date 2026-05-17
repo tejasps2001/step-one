@@ -8,7 +8,7 @@
 Scenario.name = %%Group3.movementModel%%_Seed%%MovementModel.rngSeed%%
 Scenario.simulateConnections = true
 Scenario.updateInterval = 1.0
-Scenario.endTime = 10000
+Scenario.endTime = 20000
 
 Scenario.nrofHostGroups = 3
 
