@@ -119,7 +119,6 @@ public class UAVWaypointMovement extends MovementModel {
     private static final double DEF_LAUNCH_STAGGER  = 8.0;
     /** Default X-axis spawn stride in metres when drones share a fallback spawn point. */
     private static final double DEF_SPAWN_STRIDE    = 20.0;
-    private static final double DEFAULT_FINAL_GOAL_TOLERANCE = 2.0;
 
     
 
@@ -473,12 +472,12 @@ public class UAVWaypointMovement extends MovementModel {
 
         double[] sp = readCsvDoubles(s, cfg, SPAWN_S, 2);
         double[] tg = readCsvDoubles(s, cfg, TARGET_S, 2);
-        if (sp == null || tg == null)
+        if (sp == null || tg == null) {
             throw new SimError("UAVWaypointMovement requires '"
                 + SPAWN_S + "' and '" + TARGET_S
                 + "' in GroupN.* or " + SETTINGS_NS + ".*");
-
-        spawnX  = sp[0]; spawnY  = sp[1];
+        }
+        spawnX = sp[0];  spawnY = sp[1];
         targetX = tg[0]; targetY = tg[1];
 
         // Track whether a per-group spawn was given to avoid applying spawnStrideM
@@ -507,8 +506,8 @@ public class UAVWaypointMovement extends MovementModel {
         poiGridRows         = readInt    (s, cfg, POI_GRID_ROWS_S, 0);
         snapLocationsToGrid = readBoolean(s, cfg, SNAP_TO_GRID_S,  true);
 
-        finalGoalTolerance = readDouble(s, cfg, FINAL_GOAL_TOLERANCE_S,
-                                        DEFAULT_FINAL_GOAL_TOLERANCE);
+        finalGoalTolerance  = readDouble (s, cfg, FINAL_GOAL_TOLERANCE_S,
+                                          DEFAULT_FINAL_GOAL_TOLERANCE);
 
         // Derive grid dimensions from world size and cell resolution.
         gridW = (int) Math.ceil(worldW() / gridCellM);
@@ -524,14 +523,14 @@ public class UAVWaypointMovement extends MovementModel {
         // Parse optional explicit geographic extents.
         String geoExtStr = readString(s, cfg, GEO_EXTENTS_S, "");
         if (!geoExtStr.trim().isEmpty()) {
-            String[] parts = geoExtStr.split(",");
-            if (parts.length == 4) {
+            String[] extParts = geoExtStr.split(",");
+            if (extParts.length == 4) {
                 try {
                     explicitGeoExtents = new double[]{
-                        Double.parseDouble(parts[0].trim()),
-                        Double.parseDouble(parts[1].trim()),
-                        Double.parseDouble(parts[2].trim()),
-                        Double.parseDouble(parts[3].trim())
+                        Double.parseDouble(extParts[0].trim()),
+                        Double.parseDouble(extParts[1].trim()),
+                        Double.parseDouble(extParts[2].trim()),
+                        Double.parseDouble(extParts[3].trim())
                     };
                 } catch (NumberFormatException e) {
                     System.err.println("[UAVWaypointMovement] WARNING: could not parse "
@@ -582,11 +581,12 @@ public class UAVWaypointMovement extends MovementModel {
         this.poiGridCols           = proto.poiGridCols;
         this.poiGridRows           = proto.poiGridRows;
         this.snapLocationsToGrid   = proto.snapLocationsToGrid;
-        this.groupObstacleWktFiles = new ArrayList<>(proto.groupObstacleWktFiles);
+        this.groupObstacleWktFiles  = new ArrayList<>(proto.groupObstacleWktFiles);
         this.perGroupSpawnSet      = proto.perGroupSpawnSet;
         this.geoExtentFiles        = new ArrayList<>(proto.geoExtentFiles);
         this.explicitGeoExtents    = proto.explicitGeoExtents != null
                                      ? proto.explicitGeoExtents.clone() : null;
+
         this.finalGoalTolerance    = proto.finalGoalTolerance;
 
         // Per-instance planning state is not inherited from the prototype.
@@ -930,8 +930,7 @@ public class UAVWaypointMovement extends MovementModel {
         } else {
             List<Coord> wp = pathUtils.gridPathToWorld(raw);
             wp.add(goal.clone());
-            keyNodes = UavPathUtils.bresenhamExtractKeyNodes(
-                wp, UavObstacleGrid.obstacleGrid, gridCellM, gridW, gridH);
+            keyNodes = bresenhamExtractKeyNodes(wp);
         }
         keyIndex = 0;
     }
@@ -947,9 +946,9 @@ public class UAVWaypointMovement extends MovementModel {
      */
     private List<int[]> aStarSearch(int[] start, int[] goal) {
         int total = gridW * gridH;
-        double[] gCost  = new double[total]; Arrays.fill(gCost, Double.MAX_VALUE);
-        int[]  parentIdx = new int[total];   Arrays.fill(parentIdx, -1);
-        int[]  parentDir = new int[total];   Arrays.fill(parentDir, -1);
+        double[] gCost = new double[total]; Arrays.fill(gCost, Double.MAX_VALUE);
+        int[] parentIdx = new int[total];   Arrays.fill(parentIdx, -1);
+        int[] parentDir = new int[total];   Arrays.fill(parentDir, -1);
         boolean[] closed = new boolean[total];
 
         PriorityQueue<double[]> open = new PriorityQueue<>(
@@ -969,7 +968,7 @@ public class UAVWaypointMovement extends MovementModel {
             if (closed[idx]) continue;
             closed[idx] = true;
             if (col == goal[0] && row == goal[1])
-                return reconstructPath(parentIdx, goal, start);
+                return reconstructPath(parentIdx, parentDir, goal, start);
 
             // Apply neighbour clipping: only expand the subset of directions
             // that cannot be reached more cheaply via the current node's parent.
@@ -988,8 +987,8 @@ public class UAVWaypointMovement extends MovementModel {
                     gCost[ni] = tg; parentIdx[ni] = idx; parentDir[ni] = di;
                     // Small jitter breaks f-value ties stochastically.
                     double jitter = (this.rng.nextDouble() - 0.5) * gridCellM * 0.01;
-                    open.offer(new double[]{
-                        tg + adaptiveHeuristic(new int[]{nc, nr}, goal) + jitter, nc, nr });
+                    open.offer(new double[]{ tg + adaptiveHeuristic(
+                        new int[]{nc,nr}, goal) + jitter, nc, nr });
                 }
             }
         }
@@ -1005,7 +1004,7 @@ public class UAVWaypointMovement extends MovementModel {
      * faster than a plain Manhattan heuristic.
      */
     private double adaptiveHeuristic(int[] n, int[] g) {
-        double manhattan = (Math.abs(n[0] - g[0]) + Math.abs(n[1] - g[1])) * gridCellM;
+        double manhattan = (Math.abs(n[0]-g[0]) + Math.abs(n[1]-g[1])) * gridCellM;
         double xi = obstacleCoverageRate(n, g);
         double multiplier = 1.0 + 0.3 / (1.0 + Math.exp(-xi * 10.0));
         return multiplier * manhattan;
@@ -1020,11 +1019,11 @@ public class UAVWaypointMovement extends MovementModel {
      * adaptiveHeuristic(int[], int[])
      */
     private double obstacleCoverageRate(int[] n, int[] g) {
-        int x0 = n[0], y0 = n[1], x1 = g[0], y1 = g[1];
-        int dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
-        int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
-        int err = dx - dy, x = x0, y = y0;
-        int total = 0, obs = 0;
+        int x0=n[0], y0=n[1], x1=g[0], y1=g[1];
+        int dx=Math.abs(x1-x0), dy=Math.abs(y1-y0);
+        int sx=x0<x1?1:-1, sy=y0<y1?1:-1;
+        int err=dx-dy, x=x0, y=y0;
+        int total=0, obs=0;
         while (true) {
             total++;
             if (pathUtils.inBounds(x,y) && UavObstacleGrid.obstacleGrid[y][x]) obs++;
@@ -1033,7 +1032,7 @@ public class UAVWaypointMovement extends MovementModel {
             if (e2>-dy) { err-=dy; x+=sx; }
             if (e2< dx) { err+=dx; y+=sy; }
         }
-        return total == 0 ? 0.0 : (double) obs / total;
+        return total==0 ? 0.0 : (double)obs/total;
     }
 
     /**
@@ -1149,7 +1148,7 @@ public class UAVWaypointMovement extends MovementModel {
         double alpha=w[0], beta=w[1], lambda=w[2], eta=w[3];
 
         double bestScore = Double.NEGATIVE_INFINITY;
-        Coord  bestPos   = pos.clone();
+        Coord bestPos    = pos.clone();
         double step = Math.min(speedMax, Math.max(speedMin, pos.distance(subGoal)));
 
         // ID-based tiebreaker: even-ID drones yield slightly left, odd-ID right,
@@ -1167,16 +1166,19 @@ public class UAVWaypointMovement extends MovementModel {
 
             double px = p[0], py = p[1], pvx = p[2], pvy = p[3];
             double pvm = Math.hypot(pvx, pvy);
-            if (pvm > 1e-9) { px += (pvx / pvm) * step; py += (pvy / pvm) * step; }
+            if (pvm > 1e-9) {
+                px += (pvx / pvm) * step;
+                py += (pvy / pvm) * step;
+            }
             peerSnapshots.add(new double[]{ px, py, p[2], p[3] });
         }
 
-        for (int i = 0; i <= nSamples; i++) {
-            double off = nSamples == 0 ? 0.0
-                       : fullSweep    ? ((double) i / nSamples) * 2.0 * Math.PI
-                                      : ((double) i / nSamples - 0.5) * Math.PI;
-            double angle = base + off;
-            double v     = speedMin + (double) i / Math.max(1, nSamples) * (speedMax - speedMin);
+        for (int i=0; i<=nSamples; i++) {
+            double off   = nSamples==0 ? 0.0
+                         : fullSweep   ? ((double)i/nSamples) * 2.0 * Math.PI
+                                       : ((double)i/nSamples - 0.5) * Math.PI;
+            double angle = base+off;
+            double v     = speedMin + (double)i/Math.max(1,nSamples)*(speedMax-speedMin);
 
             Coord cand = pathUtils.clampToWorld(new Coord(
                 pos.getX()+step*Math.cos(angle), pos.getY()+step*Math.sin(angle)));
@@ -1201,21 +1203,22 @@ public class UAVWaypointMovement extends MovementModel {
             double histPenalty = 0.0;
             for (int h = 0; h < historyFill; h++) {
                 int hi = (historyHead - 1 - h + HISTORY_SIZE) % HISTORY_SIZE;
-                if (posHistory[hi][0] == cell[0] && posHistory[hi][1] == cell[1])
-                    histPenalty -= 1.2 * (1.0 - (double) h / HISTORY_SIZE);
+                if (posHistory[hi][0] == cell[0] && posHistory[hi][1] == cell[1]) {
+                    histPenalty -= 1.2 * (1.0 - (double)h / HISTORY_SIZE);
+                }
             }
 
             // ── Velocity Obstacle penalty ────────────────────────────────────────
             double peerPenalty = 0.0;
             boolean peerTooClose = false;
-            double myVx = cand.getX() - pos.getX();
-            double myVy = cand.getY() - pos.getY();
+            double myVx = cand.getX()-pos.getX(), myVy = cand.getY()-pos.getY();
             double myVM = Math.hypot(myVx, myVy);
 
             for (double[] peer : peerSnapshots) {
-                double px = peer[0], py = peer[1], pvx = peer[2], pvy = peer[3];
+                double px=peer[0], py=peer[1], pvx=peer[2], pvy=peer[3];
                 double sd = Math.hypot(px - pos.getX(), py - pos.getY());
                 if (sd < 0.5 || sd > uavSeparationM * 5) continue;
+
                 double rx = px - pos.getX(), ry = py - pos.getY();
 
                 if (sd < uavSeparationM * 0.7) {
@@ -1230,14 +1233,19 @@ public class UAVWaypointMovement extends MovementModel {
                 // Compute the VO cone: sin θ = uavSeparationM / dist(self, peer).
                 double pvm = Math.hypot(pvx, pvy);
                 double rvx, rvy;
-                if (myVM < 1e-9 || pvm < 1e-9) { rvx = myVx - pvx; rvy = myVy - pvy; }
-                else { rvx = myVx / myVM - pvx / pvm; rvy = myVy / myVM - pvy / pvm; }
+                if (myVM < 1e-9 || pvm < 1e-9) {
+                    rvx = myVx - pvx;
+                    rvy = myVy - pvy;
+                } else {
+                    rvx = myVx/myVM - pvx/pvm;
+                    rvy = myVy/myVM - pvy/pvm;
+                }
                 double rvm = Math.hypot(rvx, rvy);
                 if (rvm < 1e-9) continue;
 
                 double sinT = Math.min(1.0, uavSeparationM / sd);
-                double cosT = Math.sqrt(Math.max(0, 1 - sinT * sinT));
-                double cosA = (rvx * rx + rvy * ry) / (rvm * sd);
+                double cosT = Math.sqrt(Math.max(0, 1 - sinT*sinT));
+                double cosA = (rvx*rx + rvy*ry) / (rvm * sd);
                 if (cosA > cosT) {
                     // Relative velocity is inside the VO cone; scale penalty by
                     // penetration depth and proximity.
@@ -1250,7 +1258,7 @@ public class UAVWaypointMovement extends MovementModel {
             // ── Repulsion bonus for moving away from nearby peers ────────────────
             double repulsionBonus = 0.0;
             for (double[] peer : peerSnapshots) {
-                double sd = Math.hypot(peer[0] - pos.getX(), peer[1] - pos.getY());
+                double sd = Math.hypot(peer[0]-pos.getX(), peer[1]-pos.getY());
                 if (sd < 0.5 || sd > uavSeparationM * 3) continue;
                 double rx = peer[0]-pos.getX(), ry = peer[1]-pos.getY();
                 double dot = (myVx*rx + myVy*ry) /
@@ -1272,8 +1280,7 @@ public class UAVWaypointMovement extends MovementModel {
             double dFolS   = 1.0 - Math.min(1.0,
                              UavPathUtils.pointToSegmentDist(cand, pos, subGoal) / (gridCellM * 5));
 
-            double score = alpha * heading + beta * vel
-                         + lambda * dObsS  + eta * dFolS
+            double score = alpha*heading + beta*vel + lambda*dObsS + eta*dFolS
                          + peerPenalty + repulsionBonus + histPenalty + tb;
             if (score > bestScore) { bestScore = score; bestPos = cand; }
         }
@@ -1281,6 +1288,7 @@ public class UAVWaypointMovement extends MovementModel {
         // If the restricted sweep produced no movement, retry with a full 2π sweep.
         if (!fullSweep && bestPos.distance(pos) < 0.5) {
             return dwaStepInternal(pos, subGoal, true);
+        }
 
         return bestPos;
     }
@@ -1393,7 +1401,7 @@ public class UAVWaypointMovement extends MovementModel {
      * return , Samples a cruise speed uniformly from speedMin ,speedMax.
      */
     private double sampleSpeed() {
-        return speedMin + this.rng.nextDouble() * (speedMax - speedMin);
+        return speedMin + this.rng.nextDouble()*(speedMax-speedMin);
     }
 
     

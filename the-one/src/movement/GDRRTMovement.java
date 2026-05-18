@@ -191,46 +191,6 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
         return isDead;
     }
 
-    // Removing & stopping path calculation for the node
-    public void kill() {
-        this.isDead = true;
-        this.reachedEnd = true;
-        
-        // Release path ownership to unblock airspace
-        if (getHost() != null) {
-            if (getHost().getPath() != null) {
-                Coord currentLoc = getHost().getLocation().clone();
-                getHost().getPath().getCoords().clear();
-                getHost().getPath().getCoords().add(currentLoc);
-            }
-            DronePathManager.setStationary(getHost().getAddress(), getHost().getLocation());
-            System.out.println("Drone " + getHost().getAddress() + " was SHOT DOWN at " + core.SimClock.getTime() + "s!");
-        }
-    }
-
-    // Update the target for the node
-    public void changeTarget(Coord newTarget, double newPriority) {
-        this.endLoc = newTarget;
-        this.reachedEnd = false;
-        this.currentPriority = newPriority;
-        // Reinitialize the GDRRT planner with current location and the new higher priority target
-        this.gdrrt.init(getHost().getLocation(), newTarget);
-        
-        // Abort the drone's ongoing movement to force a new path request
-        if (getHost() != null) {
-            if (getHost().getPath() != null) {
-                Coord currentLoc = getHost().getLocation().clone();
-                getHost().getPath().getCoords().clear();
-                getHost().getPath().getCoords().add(currentLoc);
-            }
-        }
-        System.out.println("Drone " + getHost().getAddress() + " re-routed. New target: " + newTarget);
-    }
-
-    public boolean isDead() {
-        return isDead;
-    }
-
     public void kill() {
         this.isDead = true;
         this.reachedEnd = true;
@@ -241,7 +201,7 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
                 getHost().getPath().getCoords().clear();
             }
         }
-        DronePathManager.setStationary(getHost().getAddress());
+        DronePathManager.setStationary(getHost().getAddress(), getHost().getLocation());
         System.out.println("Drone " + getHost().getAddress() + " was SHOT DOWN at " + core.SimClock.getTime() + "s!");
     }
 
