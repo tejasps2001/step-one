@@ -152,16 +152,22 @@ public class MILPClusteredFogMovement extends MovementModel {
             return null; // Nowhere to go therefore, remain stationary
         }
 
+        // Stop planning and remain stationary if we are already at the target
+        if (getHost() != null && getHost().getLocation().distance(currentOptimalTarget) < 1.0) {
+            ExtendedDronePathManager.setStationary(getHost().getAddress());
+            return null;
+        }
+
         if (!gdrrt.isInitialized()) {
             gdrrt.init(getHost().getLocation(), currentOptimalTarget);
         }
-        gdrrt.init(getHost().getLocation(), currentOptimalTarget);
 
         // Plan path segment using GDRRT Planner
         GDRRTPlanner.PlannedSegment proposedSegment = gdrrt.planNextSegment();
 
         if (proposedSegment == null) {
             ExtendedDronePathManager.setStationary(getHost().getAddress());
+            gdrrt.init(getHost().getLocation(), currentOptimalTarget);
             return null;
         }
 

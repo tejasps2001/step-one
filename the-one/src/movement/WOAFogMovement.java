@@ -321,6 +321,12 @@ public class WOAFogMovement extends MovementModel {
             return null;
         }
 
+        // Stop planning and remain stationary if we are already at the target
+        if (getHost() != null && getHost().getLocation().distance(currentOptimalTarget) < 1.0) {
+            ExtendedDronePathManager.setStationary(getHost().getAddress());
+            return null;
+        }
+
      
         if (!gdrrt.isInitialized() && getHost() != null) {
             gdrrt.init(getHost().getLocation(), currentOptimalTarget);
@@ -332,6 +338,7 @@ public class WOAFogMovement extends MovementModel {
         GDRRTPlanner.PlannedSegment proposed = gdrrt.planNextSegment();
         if (proposed == null) {
             ExtendedDronePathManager.setStationary(getHost().getAddress());
+            gdrrt.init(getHost().getLocation(), currentOptimalTarget);
             return null;
         }
 
