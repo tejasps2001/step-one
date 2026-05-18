@@ -20,7 +20,8 @@ sourceSets {
 
     }
 }
-sourceCompatibility = 1.8
+sourceCompatibility = JavaVersion.current()
+targetCompatibility = JavaVersion.current()
 
 test {
     ignoreFailures = true

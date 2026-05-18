@@ -18,7 +18,7 @@ MovementModel.rngSeed = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10]
 MovementModel.worldSize = 10000, 10000
 
 # --> TOGGLE WHICH MODEL TO TEST HERE <--
-#Group.movementModel = GDRRTMovement
+# Group.movementModel = GDRRTMovement
 Group.movementModel = UAVWaypointMovement
 
 # ================================================================
