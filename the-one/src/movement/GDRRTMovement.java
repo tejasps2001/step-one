@@ -199,7 +199,9 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
         // Release path ownership to unblock airspace
         if (getHost() != null) {
             if (getHost().getPath() != null) {
+                Coord currentLoc = getHost().getLocation().clone();
                 getHost().getPath().getCoords().clear();
+                getHost().getPath().getCoords().add(currentLoc);
             }
             DronePathManager.setStationary(getHost().getAddress(), getHost().getLocation());
             System.out.println("Drone " + getHost().getAddress() + " was SHOT DOWN at " + core.SimClock.getTime() + "s!");
@@ -217,7 +219,9 @@ public class GDRRTMovement extends MovementModel implements SwitchableMovement {
         // Abort the drone's ongoing movement to force a new path request
         if (getHost() != null) {
             if (getHost().getPath() != null) {
+                Coord currentLoc = getHost().getLocation().clone();
                 getHost().getPath().getCoords().clear();
+                getHost().getPath().getCoords().add(currentLoc);
             }
         }
         System.out.println("Drone " + getHost().getAddress() + " re-routed. New target: " + newTarget);

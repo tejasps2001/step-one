@@ -152,7 +152,9 @@ public class ExtendedGDRRTMovement extends MovementModel implements SwitchableMo
         this.reachedEnd = true;
         if (getHost() != null) {
             if (getHost().getPath() != null) {
+                Coord currentLoc = getHost().getLocation().clone();
                 getHost().getPath().getCoords().clear();
+                getHost().getPath().getCoords().add(currentLoc);
             }
         }
         ExtendedDronePathManager.setStationary(getHost().getAddress());
@@ -167,7 +169,9 @@ public class ExtendedGDRRTMovement extends MovementModel implements SwitchableMo
         
         if (getHost() != null) {
             if (getHost().getPath() != null) {
+                Coord currentLoc = getHost().getLocation().clone();
                 getHost().getPath().getCoords().clear();
+                getHost().getPath().getCoords().add(currentLoc);
             }
         }
         System.out.println("Drone " + getHost().getAddress() + " re-routed. New target: " + newTarget);
