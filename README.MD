@@ -66,4 +66,4 @@ See the [examples and tutorials page](https://jaks6.github.io/step-one/).
 
 Please cite the work as:
 
-J. Mass, S. N. Srirama, C. Chang: *STEP-ONE: Simulated Testbed for Edge-Fog Processes based on the Opportunistic Network Environment Simulator*, Journal of Systems and Software, ISSN: 0164-1212, 2020. Elsevier. (Accepted for publication)
+J. Mass, S. N. Srirama, C. Chang: *STEP-ONE: Simulated Testbed for Edge-Fog Processes based on the Opportunistic Network Environment Simulator*, Journal of Systems and Software, ISSN: 0164-1212, 2020. Elsevier.
