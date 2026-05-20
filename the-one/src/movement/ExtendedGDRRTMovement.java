@@ -4,6 +4,7 @@ import core.Coord;
 import core.Settings;
 import core.SettingsError;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,6 +33,11 @@ public class ExtendedGDRRTMovement extends MovementModel implements SwitchableMo
     private double totalTurnCost = 0.0;
     private Double lastHeading = null;
 
+    /**
+     * Creates a new movement model based on a Settings object's settings.
+     *
+     * @param s The Settings object where the settings are read from
+     */
     public ExtendedGDRRTMovement(Settings s) {
         super(s);
         this.startLocs = parseCoords(s, GDRRT_MOVEMENT_NS + START_LOCATION_S);
@@ -51,6 +57,7 @@ public class ExtendedGDRRTMovement extends MovementModel implements SwitchableMo
         nextHostIndex = 0; 
     }
 
+    // Helper to parse coordinate arrays like "[x1,y1; x2,y2]"
     private List<Coord> parseCoords(Settings s, String key) {
         String raw = s.getRawSetting(key);
         raw = raw.replace("[", "").replace("]", "");
@@ -66,6 +73,10 @@ public class ExtendedGDRRTMovement extends MovementModel implements SwitchableMo
         return coords;
     }
 
+    /**
+     * Copy constructor used for each node in group
+     * @param proto
+     */
     public ExtendedGDRRTMovement(ExtendedGDRRTMovement proto) {
         super(proto);
         this.startLoc = proto.startLocs.get(nextHostIndex);
@@ -189,6 +200,10 @@ public class ExtendedGDRRTMovement extends MovementModel implements SwitchableMo
         }
     }
 
+    /**
+     * Calculate the cost for turning in degrees
+     * Used for generating reports
+     */
     private void updateTurnCost(Path p) {
         if (p == null || p.getCoords().size() < 2) return;
         List<Coord> coords = p.getCoords();

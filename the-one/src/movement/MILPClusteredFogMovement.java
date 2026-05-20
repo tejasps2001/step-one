@@ -148,6 +148,8 @@ public class MILPClusteredFogMovement extends MovementModel {
             lastUpdateTime = currentTime;
         }
 
+        // This will happen when the newOptimalTarget is null i.e.,
+        // the optimal position is the current one
         if (currentOptimalTarget == null) {
             return null; // Nowhere to go therefore, remain stationary
         }
@@ -167,6 +169,7 @@ public class MILPClusteredFogMovement extends MovementModel {
 
         if (proposedSegment == null) {
             ExtendedDronePathManager.setStationary(getHost().getAddress());
+            // Reset the planner if it is stuck from, say, obstacles since proposedSegment is null
             gdrrt.init(getHost().getLocation(), currentOptimalTarget);
             return null;
         }
@@ -332,7 +335,7 @@ public class MILPClusteredFogMovement extends MovementModel {
             boolean hasReached = false;
             double priority = 1.0;
             
-            if (mm instanceof ExtendedGDRRTMovement || mm instanceof DroneMovement) {
+            if (mm instanceof ExtendedGDRRTMovement) {
                 isDrone = true;
                 hasReached = ((ExtendedGDRRTMovement) mm).isDone();
                 priority = ((ExtendedGDRRTMovement) mm).getPriority();
