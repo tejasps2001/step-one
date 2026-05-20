@@ -429,6 +429,7 @@ public class MILPClusteredFogMovement extends MovementModel {
                 if (i < bestCluster.size() - 1) sb.append(", ");
             }
             sb.append(" (Cluster Priority Score: ").append(finalBestScore).append(")");
+            System.out.println(sb.toString());
         }
 
         lastExecutionTimeMs = (System.nanoTime() - startTime) / 1_000_000.0;
