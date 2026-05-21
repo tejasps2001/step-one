@@ -4,7 +4,6 @@ import core.Coord;
 import core.Settings;
 import core.SettingsError;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
